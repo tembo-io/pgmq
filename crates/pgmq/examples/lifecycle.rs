@@ -1,28 +1,25 @@
-use pgmq::{Message, PGMQueue, PGMQueueConfig};
+use pgmq::{Message, PGMQueue};
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
-    let qconfig = PGMQueueConfig {
-        queue_name: "myqueue".to_owned(),
-        url: "postgres://postgres:postgres@0.0.0.0:5432".to_owned(),
-        vt: 30,
-        delay: 0,
-    };
+    let queue: PGMQueue =
+        PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned()).await;
 
-    let queue: PGMQueue = qconfig.init().await;
-
-    queue.create().await?;
+    let myqueue = "myqueue1".to_owned();
+    queue.create(&myqueue).await?;
 
     let msg = serde_json::json!({
         "foo": "bar"
     });
-    let msg_id = queue.enqueue(&msg).await;
+    let msg_id = queue.enqueue(&myqueue, &msg).await;
     println!("msg_id: {:?}", msg_id);
 
-    let read_msg: Message = queue.read().await.unwrap();
+    // read a message from myqueue. Set it to become visible 30 seconds from now.
+    let read_msg: Message = queue.read(&myqueue, Some(&30_u32)).await.unwrap();
     print!("read_msg: {:?}", read_msg);
 
-    let deleted = queue.delete(&read_msg.msg_id).await;
+    // we're done with that message, so let's delete it from myqueue by passing the msg_id
+    let deleted = queue.delete(&myqueue, &read_msg.msg_id).await;
     println!("deleted: {:?}", deleted);
 
     Ok(())

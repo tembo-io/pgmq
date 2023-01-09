@@ -1,33 +1,26 @@
 # Postgres Message Queue
 
 
-
-
-### Start any PG instance
+### Start any Postgres instance
 ```bash
 docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres
 ```
 
-
 ## Initialize a queue connection
 
 ```rust
-use pgmq::{Message, PGMQueue, PGMQueueConfig};
+use pgmq::{Message, PGMQueue};
 
-let qconfig = PGMQueueConfig {
-    queue_name: "myqueue".to_owned(),
-    url: "postgres://postgres:postgres@0.0.0.0:5432".to_owned(),
-    vt: 30,
-    delay: 0,
-};
 
-let queue: PGMQueue = qconfig.init().await;
+let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned()).await;
+
 ```
 
 ## Create the queue
 
 ```rust
-queue.create().await?;
+let myqueue = "myqueue".to_owned();
+queue.create(&myqueue).await?;
 ```
 
 ## Pusblish a message
@@ -35,16 +28,16 @@ queue.create().await?;
 let msg = serde_json::json!({
     "foo": "bar"
 });
-let msg_id = queue.enqueue(&msg).await;
+let msg_id = queue.enqueue(&myqueue, &msg).await;
 ```
 
 ## Read a message
-No messages are returned when the queue is empty or all messages are invisible.
-
 Reading a message will make it invisible for the duration of the visibility timeout (vt).
 
+No messages are returned when the queue is empty or all messages are invisible.
 ```rust
-let read_msg: Message = queue.read().await.unwrap();
+let vt: u32 = 30;
+let read_msg: Message = queue.read(&myqueue, Some(&vt)).await.expect("no messages in the queue!");
 ```
 
 ## Delete a message
