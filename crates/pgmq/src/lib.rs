@@ -1,4 +1,3 @@
-use chrono;
 use sqlx::types::chrono::Utc;
 
 use sqlx::error::Error;
@@ -26,7 +25,7 @@ impl PGMQueue {
     pub async fn new(url: String) -> PGMQueue {
         let con = PGMQueue::connect(&url).await;
         PGMQueue {
-            url: url,
+            url,
             connection: con,
         }
     }
@@ -35,14 +34,14 @@ impl PGMQueue {
         PgPoolOptions::new()
             .acquire_timeout(std::time::Duration::from_secs(10))
             .max_connections(5)
-            .connect(&url)
+            .connect(url)
             .await
             .expect("connection failed")
     }
 
     pub async fn create(&self, queue_name: &str) -> Result<(), Error> {
-        let create = query::create(&queue_name);
-        let index: String = query::create_index(&queue_name);
+        let create = query::create(queue_name);
+        let index: String = query::create_index(queue_name);
         sqlx::query(&create).execute(&self.connection).await?;
         sqlx::query(&index).execute(&self.connection).await?;
         Ok(())
@@ -55,7 +54,7 @@ impl PGMQueue {
     ) -> Result<i64, Error> {
         // TODO: sends any struct that can be serialized to json
         // struct will need to derive serialize
-        let row: PgRow = sqlx::query(&query::enqueue(&queue_name, &message))
+        let row: PgRow = sqlx::query(&query::enqueue(queue_name, message))
             .fetch_one(&self.connection)
             .await?;
 
@@ -68,7 +67,7 @@ impl PGMQueue {
             Some(t) => t,
             None => &VT_DEFAULT,
         };
-        let query = &query::read(&queue_name, &vt_);
+        let query = &query::read(queue_name, vt_);
         let row = sqlx::query(query).fetch_one(&self.connection).await;
 
         match row {
@@ -82,7 +81,7 @@ impl PGMQueue {
     }
 
     pub async fn delete(&self, queue_name: &str, msg_id: &i64) -> Result<u64, Error> {
-        let query = &&query::delete(&queue_name, &msg_id);
+        let query = &&query::delete(queue_name, msg_id);
         let row = sqlx::query(query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
         println!("num_deleted: {}", num_deleted);
