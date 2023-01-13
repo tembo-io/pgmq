@@ -84,7 +84,6 @@ impl PGMQueue {
         let query = &&query::delete(queue_name, msg_id);
         let row = sqlx::query(query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
-        println!("num_deleted: {}", num_deleted);
         Ok(num_deleted)
     }
 

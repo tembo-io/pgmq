@@ -39,6 +39,7 @@ pub fn read(name: &str, vt: &u32) -> String {
             SELECT msg_id, vt, message
             FROM {TABLE_PREFIX}_{name}
             WHERE vt <= now() at time zone 'utc'
+            ORDER BY msg_id ASC
             LIMIT 1
             FOR UPDATE SKIP LOCKED
         )

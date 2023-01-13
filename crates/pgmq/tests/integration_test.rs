@@ -2,17 +2,27 @@ use pgmq;
 use sqlx::Row;
 use std::env;
 
-#[tokio::test]
-async fn test_lifecycle() {
+async fn init_queue(qname: &str) -> pgmq::PGMQueue {
     let pgpass = env::var("POSTGRES_PASSWORD").unwrap_or_else(|_| "postgres".to_owned());
     let queue = pgmq::PGMQueue::new(format!("postgres://postgres:{}@0.0.0.0:5432", pgpass)).await;
-    let test_queue = "test_queue_0".to_owned();
 
-    // drop the test table at beginning of integration test
-    sqlx::query(format!("DROP TABLE IF EXISTS pgmq_{}", test_queue).as_str())
+    // drop the test table at beginning of test
+    sqlx::query(format!("DROP TABLE IF EXISTS pgmq_{}", qname).as_str())
         .execute(&queue.connection)
         .await
         .unwrap();
+
+    // CREATE QUEUE
+    let q_success = queue.create(qname).await;
+    assert!(q_success.is_ok());
+    queue
+}
+
+#[tokio::test]
+async fn test_lifecycle() {
+    let test_queue = "test_queue_0".to_owned();
+
+    let queue = init_queue(&test_queue).await;
 
     let row_ct_query = format!("SELECT count(*) as ct FROM pgmq_{}", test_queue);
 
@@ -74,4 +84,40 @@ async fn test_lifecycle() {
         .get::<i64, usize>(0);
     // table empty
     assert_eq!(results, 0);
+}
+
+#[tokio::test]
+async fn test_fifo() {
+    let test_queue = "test_fifo_queue".to_owned();
+
+    let queue = init_queue(&test_queue).await;
+
+    // PUBLISH THREE MESSAGES
+    let msg = serde_json::json!({
+        "foo": "bar1"
+    });
+    let msg_id1 = queue.enqueue(&test_queue, &msg).await.unwrap();
+    assert_eq!(msg_id1, 1);
+    let msg_id2 = queue.enqueue(&test_queue, &msg).await.unwrap();
+    assert_eq!(msg_id2, 2);
+    let msg_id3 = queue.enqueue(&test_queue, &msg).await.unwrap();
+    assert_eq!(msg_id3, 3);
+
+    let vt: u32 = 1;
+    // READ FIRST TWO MESSAGES
+    let read1 = queue.read(&test_queue, Some(&vt)).await.unwrap();
+    let read2 = queue.read(&test_queue, Some(&vt)).await.unwrap();
+    assert_eq!(read1.msg_id, 1);
+    assert_eq!(read2.msg_id, 2);
+    // WAIT FOR VISIBILITY TIMEOUT TO EXPIRE
+    tokio::time::sleep(std::time::Duration::from_secs(vt as u64)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(vt as u64)).await;
+
+    // READ ALL, must still be in order
+    let read1 = queue.read(&test_queue, Some(&vt)).await.unwrap();
+    let read2 = queue.read(&test_queue, Some(&vt)).await.unwrap();
+    let read3 = queue.read(&test_queue, Some(&vt)).await.unwrap();
+    assert_eq!(read1.msg_id, 1);
+    assert_eq!(read2.msg_id, 2);
+    assert_eq!(read3.msg_id, 3);
 }
