@@ -1,6 +1,6 @@
 [package]
 name = "pgmq"
-version = "0.0.1-alpha.1"
+version = "0.0.1"
 edition = "2021"
 
 description = "A Rust client for Postgres Message Queues"
