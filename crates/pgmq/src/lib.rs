@@ -1,18 +1,21 @@
-use sqlx::types::chrono::Utc;
-
+use serde::{Deserialize, Serialize};
 use sqlx::error::Error;
 use sqlx::postgres::{PgPoolOptions, PgRow};
+use sqlx::types::chrono::Utc;
+use sqlx::FromRow;
 use sqlx::{Pool, Postgres, Row};
 
 mod query;
+use chrono::serde::ts_seconds::deserialize as from_ts;
 
 const VT_DEFAULT: u32 = 30;
 
-#[derive(Debug)]
-pub struct Message {
+#[derive(Debug, Deserialize, FromRow)]
+pub struct Message<T = serde_json::Value> {
     pub msg_id: i64,
+    #[serde(deserialize_with = "from_ts")]
     pub vt: chrono::DateTime<Utc>,
-    pub message: serde_json::Value,
+    pub message: T,
 }
 
 #[derive(Debug)]
@@ -47,35 +50,38 @@ impl PGMQueue {
         Ok(())
     }
 
-    pub async fn enqueue(
-        &self,
-        queue_name: &str,
-        message: &serde_json::Value,
-    ) -> Result<i64, Error> {
-        // TODO: sends any struct that can be serialized to json
-        // struct will need to derive serialize
-        let row: PgRow = sqlx::query(&query::enqueue(queue_name, message))
+    pub async fn enqueue<T: Serialize>(&self, queue_name: &str, message: &T) -> Result<i64, Error> {
+        let msg = &serde_json::json!(&message);
+        let row: PgRow = sqlx::query(&query::enqueue(queue_name, msg))
             .fetch_one(&self.connection)
             .await?;
 
         Ok(row.try_get("msg_id").unwrap())
     }
 
-    pub async fn read(&self, queue_name: &str, vt: Option<&u32>) -> Option<Message> {
+    pub async fn read<T: for<'de> Deserialize<'de>>(
+        &self,
+        queue_name: &str,
+        vt: Option<&u32>,
+    ) -> Option<Message<T>> {
         // map vt or default VT
         let vt_ = match vt {
             Some(t) => t,
             None => &VT_DEFAULT,
         };
         let query = &query::read(queue_name, vt_);
-        let row = sqlx::query(query).fetch_one(&self.connection).await;
+        let row: Result<PgRow, Error> = sqlx::query(query).fetch_one(&self.connection).await;
 
         match row {
-            Ok(row) => Some(Message {
-                msg_id: row.get("msg_id"),
-                vt: row.get("vt"),
-                message: row.try_get("message").unwrap(),
-            }),
+            Ok(row) => {
+                let b = row.get("message");
+                let a = serde_json::from_value::<T>(b).unwrap();
+                Some(Message {
+                    msg_id: row.get("msg_id"),
+                    vt: row.get("vt"),
+                    message: a,
+                })
+            }
             Err(_) => None,
         }
     }
@@ -90,11 +96,4 @@ impl PGMQueue {
     // pub async fn pop(self) -> Message{
     //     // TODO: returns a struct
     // }
-}
-
-pub struct PGMQueueConfig {
-    pub url: String,
-    pub queue_name: String,
-    pub vt: u32,
-    pub delay: u32,
 }

@@ -15,7 +15,7 @@ pub fn create(name: &str) -> String {
 pub fn create_index(name: &str) -> String {
     format!(
         "
-        CREATE INDEX IF NOT EXISTS vt_idx ON {TABLE_PREFIX}_{name} (vt ASC);
+        CREATE INDEX IF NOT EXISTS vt_idx_{name} ON {TABLE_PREFIX}_{name} (vt ASC);
         "
     )
 }

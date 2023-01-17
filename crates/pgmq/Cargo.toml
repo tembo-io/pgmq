@@ -1,6 +1,6 @@
 [package]
 name = "pgmq"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 
 description = "A Rust client for Postgres Message Queues"
@@ -12,7 +12,11 @@ readme = "README.md"
 repo = "https://github.com/CoreDB-io/coredb/crates/pgmq"
 
 [dependencies]
-chrono = "0.4.23"
-serde_json = "1.0.91"
+chrono = { version = "0.4.23", features = [ "serde" ] }
+serde = "1.0.152"
+serde_json = { version = "1.0.91", features = [ "raw_value" ] }
 sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls" , "postgres", "chrono" ] }
 tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+rand = "0.8.5"
