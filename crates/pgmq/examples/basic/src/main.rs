@@ -1,52 +1,60 @@
 use pgmq::{Message, PGMQueue};
-use serde_json;
-use serde::{Serialize, Deserialize};
-
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[tokio::main]
-async fn run() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() {
+    // CREATE A QUEUE
     let queue: PGMQueue =
         PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned()).await;
+    let myqueue = "myqueue".to_owned();
+    queue
+        .create(&myqueue)
+        .await
+        .expect("Failed to create queue");
 
-    // CREATE A QUEUE
-    let myqueue = "demo_queue_0".to_owned();
-    queue.create(&myqueue).await?;
-
-    // // SEND A MESSAGE
-    let msg = serde_json::json!({
-        "foo1": "bar"
+    // SEND A `serde_json::Value` MESSAGE
+    let msg1 = serde_json::json!({
+        "foo": "bar"
     });
-    let msg_id = queue.enqueue(&myqueue, &msg).await;
-    println!("msg_id: {:?}", msg_id);
-
-    // READ A MESSAGE - set it to be invisible for 30 seconds
-    let read_msg: Message = queue.read(&myqueue, Some(&30_u32)).await.unwrap();
-    println!("read_json_msg: {:?}", read_msg);
-
-    // DELETE A MESSAGE - we're done with that message, so let's delete it from myqueue by passing the msg_id
-    let deleted = queue.delete(&myqueue, &read_msg.msg_id).await;
-    println!("deleted: {:?}", deleted);
+    let _msg_id1: i64 = queue
+        .enqueue(&myqueue, &msg1)
+        .await
+        .expect("Failed to enqueue message");
 
     // SEND A STRUCT
     #[derive(Serialize, Debug, Deserialize)]
     struct MyMessage {
         foo: String,
     }
-
-    let mymsg = MyMessage {
+    let msg2 = MyMessage {
         foo: "bar".to_owned(),
     };
-    let msg_id = queue.enqueue(&myqueue, &mymsg).await;
-    println!("msg_id: {:?}", msg_id);
+    let _msg_id2: i64 = queue
+        .enqueue(&myqueue, &msg2)
+        .await
+        .expect("Failed to enqueue message");
 
-    // READ A STRUCT
-    let read_msg: Message<MyMessage> = queue.read::<MyMessage>(&myqueue, None).await.unwrap();
-    println!("read_struct_msg: {:?}", read_msg);
+    // READ A MESSAGE as `serde_json::Value`
+    let vt: u32 = 30;
+    let read_msg1: Message<Value> = queue
+        .read::<Value>(&myqueue, Some(&vt))
+        .await
+        .expect("no messages in the queue!");
 
-    Ok(())
+    // READ A MESSAGE as a struct
+    let read_msg2: Message<MyMessage> = queue
+        .read::<MyMessage>(&myqueue, Some(&vt))
+        .await
+        .expect("no messages in the queue!");
+
+    // DELETE THE MESSAGE WE SENT
+    queue
+        .delete(&myqueue, &read_msg1.msg_id)
+        .await
+        .expect("Failed to delete message");
+    queue
+        .delete(&myqueue, &read_msg2.msg_id)
+        .await
+        .expect("Failed to delete message");
 }
-
-fn main() {
-    run();
-}
-

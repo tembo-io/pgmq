@@ -9,7 +9,7 @@ homepage = "https://www.coredb.io"
 keywords = ["messaging", "queues", "postgres"]
 license = "MIT"
 readme = "README.md"
-repo = "https://github.com/CoreDB-io/coredb/tree/main/crates/pgmq"
+repository = "https://github.com/CoreDB-io/coredb/tree/main/crates/pgmq"
 
 [dependencies]
 chrono = { version = "0.4.23", features = [ "serde" ] }

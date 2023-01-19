@@ -9,9 +9,10 @@ update.readme:
 run.docker:
 	docker run --rm -d --name postgres -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD} -p 5432:5432 postgres:15.1
 
-test.integration: run.docker
+test: run.docker
 	sleep 2;
-	cargo test --test integration_test
+	echo "Running all tests..."
+	cargo test
 
 test.cleanup:
 	docker stop postgres
