@@ -114,6 +114,7 @@ impl PGMQueue {
         }
     }
 
+    /// Connect to the database
     async fn connect(url: &str) -> Pool<Postgres> {
         PgPoolOptions::new()
             .acquire_timeout(std::time::Duration::from_secs(10))
@@ -123,6 +124,7 @@ impl PGMQueue {
             .expect("connection failed")
     }
 
+    /// Create a queue
     pub async fn create(&self, queue_name: &str) -> Result<(), Error> {
         let create = query::create(queue_name);
         let index: String = query::create_index(queue_name);
@@ -131,6 +133,7 @@ impl PGMQueue {
         Ok(())
     }
 
+    /// Send a message to the queue
     pub async fn enqueue<T: Serialize>(&self, queue_name: &str, message: &T) -> Result<i64, Error> {
         let msg = &serde_json::json!(&message);
         let row: PgRow = sqlx::query(&query::enqueue(queue_name, msg))
@@ -140,6 +143,8 @@ impl PGMQueue {
         Ok(row.try_get("msg_id").unwrap())
     }
 
+    /// Reads a single message from the queue. If the queue is empty or all messages are invisible, `None` is returned.
+    /// If a message is returned, it is made invisible for the duration of the visibility timeout (vt) in seconds.
     pub async fn read<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
@@ -167,14 +172,39 @@ impl PGMQueue {
         }
     }
 
+    /// Delete a message from the queue
     pub async fn delete(&self, queue_name: &str, msg_id: &i64) -> Result<u64, Error> {
-        let query = &&query::delete(queue_name, msg_id);
+        let query = &query::delete(queue_name, msg_id);
         let row = sqlx::query(query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
         Ok(num_deleted)
     }
 
-    // pub async fn pop(self) -> Message{
-    //     // TODO: returns a struct
-    // }
+    /// Reads a single message from the queue. The message is deleted from the queue immediately.
+    /// If no messages are available, `None` is returned.
+    pub async fn pop<T: for<'de> Deserialize<'de>>(&self, queue_name: &str) -> Option<Message<T>> {
+        let query = &query::pop(queue_name);
+        fetch_one::<T>(query, &self.connection).await
+    }
+}
+
+// Executes a query and returns a single row
+// If the query returns no rows, None is returned
+async fn fetch_one<T: for<'de> Deserialize<'de>>(
+    query: &str,
+    connection: &Pool<Postgres>,
+) -> Option<Message<T>> {
+    let row: Result<PgRow, Error> = sqlx::query(query).fetch_one(connection).await;
+    match row {
+        Ok(row) => {
+            let raw_msg = row.get("message");
+            let parsed_msg = serde_json::from_value::<T>(raw_msg).expect("unable to parse message");
+            Some(Message {
+                msg_id: row.get("msg_id"),
+                vt: row.get("vt"),
+                message: parsed_msg,
+            })
+        }
+        Err(_) => None,
+    }
 }

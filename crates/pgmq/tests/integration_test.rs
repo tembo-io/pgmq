@@ -2,7 +2,7 @@ use pgmq;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::Row;
+use sqlx::{Pool, Postgres, Row};
 use std::env;
 
 async fn init_queue(qname: &str) -> pgmq::PGMQueue {
@@ -22,24 +22,42 @@ async fn init_queue(qname: &str) -> pgmq::PGMQueue {
     queue
 }
 
+#[derive(Serialize, Debug, Deserialize)]
+struct MyMessage {
+    foo: String,
+    num: u64,
+}
+
+impl Default for MyMessage {
+    fn default() -> Self {
+        MyMessage {
+            foo: "bar".to_owned(),
+            num: rand::thread_rng().gen_range(0..100),
+        }
+    }
+}
+
+async fn rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
+    let row_ct_query = format!("SELECT count(*) as ct FROM pgmq_{}", qname);
+    sqlx::query(&row_ct_query)
+        .fetch_one(connection)
+        .await
+        .unwrap()
+        .get::<i64, usize>(0)
+}
+
 #[tokio::test]
 async fn test_lifecycle() {
     let test_queue = "test_queue_0".to_owned();
 
     let queue = init_queue(&test_queue).await;
 
-    let row_ct_query = format!("SELECT count(*) as ct FROM pgmq_{}", test_queue);
-
     // CREATE QUEUE
     let q_success = queue.create(&test_queue).await;
     assert!(q_success.is_ok());
-    let results = sqlx::query(&row_ct_query)
-        .fetch_one(&queue.connection)
-        .await
-        .unwrap()
-        .get::<i64, usize>(0);
+    let num_rows = rowcount(&test_queue, &queue.connection).await;
     // no records on init
-    assert_eq!(results, 0);
+    assert_eq!(num_rows, 0);
 
     // SEND MESSAGE
     let msg = serde_json::json!({
@@ -47,13 +65,10 @@ async fn test_lifecycle() {
     });
     let msg_id = queue.enqueue(&test_queue, &msg).await.unwrap();
     assert_eq!(msg_id, 1);
-    let results = sqlx::query(&row_ct_query)
-        .fetch_one(&queue.connection)
-        .await
-        .unwrap()
-        .get::<i64, usize>(0);
+    let num_rows = rowcount(&test_queue, &queue.connection).await;
+
     // one record after one record sent
-    assert_eq!(results, 1);
+    assert_eq!(num_rows, 1);
 
     // READ MESSAGE
     let vt = 2;
@@ -63,13 +78,10 @@ async fn test_lifecycle() {
     let no_messages = queue.read::<Value>(&test_queue, Some(&vt)).await;
     assert!(no_messages.is_none());
     // still one invisible record on the table
-    let results = sqlx::query(&row_ct_query)
-        .fetch_one(&queue.connection)
-        .await
-        .unwrap()
-        .get::<i64, usize>(0);
+    let num_rows = rowcount(&test_queue, &queue.connection).await;
+
     // still one invisible record
-    assert_eq!(results, 1);
+    assert_eq!(num_rows, 1);
 
     // WAIT FOR VISIBILITY TIMEOUT TO EXPIRE
     tokio::time::sleep(std::time::Duration::from_secs(vt as u64)).await;
@@ -81,13 +93,10 @@ async fn test_lifecycle() {
     assert_eq!(deleted, 1);
     let msg3 = queue.read::<Value>(&test_queue, Some(&vt)).await;
     assert!(msg3.is_none());
-    let results = sqlx::query(&row_ct_query)
-        .fetch_one(&queue.connection)
-        .await
-        .unwrap()
-        .get::<i64, usize>(0);
+    let num_rows = rowcount(&test_queue, &queue.connection).await;
+
     // table empty
-    assert_eq!(results, 0);
+    assert_eq!(num_rows, 0);
 }
 
 #[tokio::test]
@@ -135,12 +144,6 @@ async fn test_serde() {
 
     // STRUCT => STRUCT
     // enqueue a struct and read a struct
-    #[derive(Serialize, Debug, Deserialize)]
-    struct MyMessage {
-        foo: String,
-        num: u64,
-    }
-
     let msg = MyMessage {
         foo: "bar".to_owned(),
         num: rng.gen_range(0..100000),
@@ -224,4 +227,18 @@ async fn test_serde() {
         msg_read.message["num"].as_u64().unwrap(),
         msg["num"].as_u64().unwrap()
     );
+}
+
+#[tokio::test]
+async fn test_pop() {
+    let test_queue = "test_pop_queue".to_owned();
+    let queue = init_queue(&test_queue).await;
+    let msg = MyMessage::default();
+    let msg = queue.enqueue(&test_queue, &msg).await.unwrap();
+    assert_eq!(msg, 1);
+    let popped_msg = queue.pop::<MyMessage>(&test_queue).await.unwrap();
+    assert_eq!(popped_msg.msg_id, 1);
+    let num_rows = rowcount(&test_queue, &queue.connection).await;
+    // popped record is deleted on read
+    assert_eq!(num_rows, 0);
 }
