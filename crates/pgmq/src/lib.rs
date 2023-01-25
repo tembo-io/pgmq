@@ -22,7 +22,7 @@
 //! #[tokio::main]
 //! async fn main() {
 //!     // CREATE A QUEUE
-//!     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned()).await;
+//!     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned()).await.expect("failed to connect to postgres");
 //!     let myqueue = "myqueue".to_owned();
 //!     queue.create(&myqueue).await.expect("Failed to create queue");
 //!
@@ -44,16 +44,20 @@
 //!     
 //!     // READ A MESSAGE as `serde_json::Value`
 //!     let vt: u32 = 30;
-//!     let read_msg1: Message<Value> = queue.read::<Value>(&myqueue, Some(&vt)).await.expect("no messages in the queue!");
+//!     let read_msg1: Message<Value> = queue.read::<Value>(&myqueue, Some(&vt)).await.unwrap().expect("no messages in the queue!");
 //!     assert_eq!(read_msg1.msg_id, msg_id1);
 //!
 //!     // READ A MESSAGE as a struct
-//!     let read_msg2: Message<MyMessage> = queue.read::<MyMessage>(&myqueue, Some(&vt)).await.expect("no messages in the queue!");
+//!     let read_msg2: Message<MyMessage> = queue.read::<MyMessage>(&myqueue, Some(&vt)).await.unwrap().expect("no messages in the queue!");
 //!     assert_eq!(read_msg2.msg_id, msg_id2);
 //!
 //!     // DELETE THE MESSAGE WE SENT
 //!     let deleted = queue.delete(&myqueue, &read_msg1.msg_id).await.expect("Failed to delete message");
 //!     let deleted = queue.delete(&myqueue, &read_msg2.msg_id).await.expect("Failed to delete message");
+//!
+//!     // No messages present aftwe we've deleted all of them
+//!     let no_msg: Option<Message<Value>> = queue.read::<Value>(&myqueue, Some(&vt)).await.unwrap();
+//!     assert!(no_msg.is_none());
 //! }
 //! ```
 //! ## Sending messages
@@ -64,9 +68,9 @@
 //! Reading a message will make it invisible (unavailable for consumption) for the duration of the visibility timeout (vt).
 //! No messages are returned when the queue is empty or all messages are invisible.
 //!
-//! Messages can be parsed as JSON or into a struct. `queue.read()` returns an `Option<Message<T>>`
-//! where `T` is the type of the message on the queue. It can be parsed as JSON or as a struct.
-//! Note that when parsing into a `struct`, the application will panic if the message cannot be
+//! Messages can be parsed as serde_json::Value or into a struct. `queue.read()` returns an `Result<Option<Message<T>>, PGMQError>`
+//! where `T` is the type of the message on the queue. It returns an error when there is an issue parsing the message or if PGMQ is unable to reach postgres.
+//! Note that when parsing into a `struct`, the operation will return an error if
 //! parsed as the type specified. For example, if the message expected is
 //! `MyMessage{foo: "bar"}` but` {"hello": "world"}` is received, the application will panic.
 //!
@@ -86,6 +90,7 @@ use sqlx::types::chrono::Utc;
 use sqlx::FromRow;
 use sqlx::{Pool, Postgres, Row};
 
+pub mod errors;
 mod query;
 use chrono::serde::ts_seconds::deserialize as from_ts;
 
@@ -106,26 +111,26 @@ pub struct PGMQueue {
 }
 
 impl PGMQueue {
-    pub async fn new(url: String) -> PGMQueue {
-        let con = PGMQueue::connect(&url).await;
-        PGMQueue {
+    pub async fn new(url: String) -> Result<PGMQueue, errors::PgmqError> {
+        let con = PGMQueue::connect(&url).await?;
+        Ok(PGMQueue {
             url,
             connection: con,
-        }
+        })
     }
 
     /// Connect to the database
-    async fn connect(url: &str) -> Pool<Postgres> {
-        PgPoolOptions::new()
+    async fn connect(url: &str) -> Result<Pool<Postgres>, errors::PgmqError> {
+        let pgp = PgPoolOptions::new()
             .acquire_timeout(std::time::Duration::from_secs(10))
             .max_connections(5)
             .connect(url)
-            .await
-            .expect("connection failed")
+            .await?;
+        Ok(pgp)
     }
 
     /// Create a queue
-    pub async fn create(&self, queue_name: &str) -> Result<(), Error> {
+    pub async fn create(&self, queue_name: &str) -> Result<(), errors::PgmqError> {
         let create = query::create(queue_name);
         let index: String = query::create_index(queue_name);
         sqlx::query(&create).execute(&self.connection).await?;
@@ -134,13 +139,17 @@ impl PGMQueue {
     }
 
     /// Send a message to the queue
-    pub async fn enqueue<T: Serialize>(&self, queue_name: &str, message: &T) -> Result<i64, Error> {
+    pub async fn enqueue<T: Serialize>(
+        &self,
+        queue_name: &str,
+        message: &T,
+    ) -> Result<i64, errors::PgmqError> {
         let msg = &serde_json::json!(&message);
         let row: PgRow = sqlx::query(&query::enqueue(queue_name, msg))
             .fetch_one(&self.connection)
             .await?;
-
-        Ok(row.try_get("msg_id").unwrap())
+        let msg_id: i64 = row.get("msg_id");
+        Ok(msg_id)
     }
 
     /// Reads a single message from the queue. If the queue is empty or all messages are invisible, `None` is returned.
@@ -149,27 +158,15 @@ impl PGMQueue {
         &self,
         queue_name: &str,
         vt: Option<&u32>,
-    ) -> Option<Message<T>> {
+    ) -> Result<Option<Message<T>>, errors::PgmqError> {
         // map vt or default VT
         let vt_ = match vt {
             Some(t) => t,
             None => &VT_DEFAULT,
         };
         let query = &query::read(queue_name, vt_);
-        let row: Result<PgRow, Error> = sqlx::query(query).fetch_one(&self.connection).await;
-
-        match row {
-            Ok(row) => {
-                let b = row.get("message");
-                let a = serde_json::from_value::<T>(b).unwrap();
-                Some(Message {
-                    msg_id: row.get("msg_id"),
-                    vt: row.get("vt"),
-                    message: a,
-                })
-            }
-            Err(_) => None,
-        }
+        let message = fetch_one_message::<T>(query, &self.connection).await?;
+        Ok(message)
     }
 
     /// Delete a message from the queue
@@ -182,29 +179,38 @@ impl PGMQueue {
 
     /// Reads a single message from the queue. The message is deleted from the queue immediately.
     /// If no messages are available, `None` is returned.
-    pub async fn pop<T: for<'de> Deserialize<'de>>(&self, queue_name: &str) -> Option<Message<T>> {
+    pub async fn pop<T: for<'de> Deserialize<'de>>(
+        &self,
+        queue_name: &str,
+    ) -> Result<Option<Message<T>>, errors::PgmqError> {
         let query = &query::pop(queue_name);
-        fetch_one::<T>(query, &self.connection).await
+        let message = fetch_one_message::<T>(query, &self.connection).await?;
+        Ok(message)
     }
 }
 
 // Executes a query and returns a single row
 // If the query returns no rows, None is returned
-async fn fetch_one<T: for<'de> Deserialize<'de>>(
+async fn fetch_one_message<T: for<'de> Deserialize<'de>>(
     query: &str,
     connection: &Pool<Postgres>,
-) -> Option<Message<T>> {
+) -> Result<Option<Message<T>>, errors::PgmqError> {
     let row: Result<PgRow, Error> = sqlx::query(query).fetch_one(connection).await;
     match row {
         Ok(row) => {
+            // happy path - successfully read a message
             let raw_msg = row.get("message");
-            let parsed_msg = serde_json::from_value::<T>(raw_msg).expect("unable to parse message");
-            Some(Message {
-                msg_id: row.get("msg_id"),
-                vt: row.get("vt"),
-                message: parsed_msg,
-            })
+            let parsed_msg = serde_json::from_value::<T>(raw_msg);
+            match parsed_msg {
+                Ok(parsed_msg) => Ok(Some(Message {
+                    msg_id: row.get("msg_id"),
+                    vt: row.get("vt"),
+                    message: parsed_msg,
+                })),
+                Err(e) => Err(errors::PgmqError::ParsingError(e)),
+            }
         }
-        Err(_) => None,
+        Err(sqlx::error::Error::RowNotFound) => Ok(None),
+        Err(e) => Err(e)?,
     }
 }

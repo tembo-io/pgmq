@@ -1,6 +1,6 @@
 [package]
 name = "pgmq"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["CoreDB.io"]
 description = "A message queue for Rust applications. The only external dependency is a Postgres database."
@@ -16,6 +16,7 @@ chrono = { version = "0.4.23", features = [ "serde" ] }
 serde = { version = "1.0.152" }
 serde_json = { version = "1.0.91", features = [ "raw_value" ] }
 sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls" , "postgres", "chrono" ] }
+thiserror = "1.0.38"
 tokio = { version = "1", features = ["macros"] }
 
 [dev-dependencies]

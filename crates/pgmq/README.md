@@ -22,7 +22,7 @@ use serde_json::Value;
 #[tokio::main]
 async fn main() {
     // CREATE A QUEUE
-    let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned()).await;
+    let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned()).await.expect("failed to connect to postgres");
     let myqueue = "myqueue".to_owned();
     queue.create(&myqueue).await.expect("Failed to create queue");
 
@@ -44,16 +44,20 @@ async fn main() {
 
     // READ A MESSAGE as `serde_json::Value`
     let vt: u32 = 30;
-    let read_msg1: Message<Value> = queue.read::<Value>(&myqueue, Some(&vt)).await.expect("no messages in the queue!");
+    let read_msg1: Message<Value> = queue.read::<Value>(&myqueue, Some(&vt)).await.unwrap().expect("no messages in the queue!");
     assert_eq!(read_msg1.msg_id, msg_id1);
 
     // READ A MESSAGE as a struct
-    let read_msg2: Message<MyMessage> = queue.read::<MyMessage>(&myqueue, Some(&vt)).await.expect("no messages in the queue!");
+    let read_msg2: Message<MyMessage> = queue.read::<MyMessage>(&myqueue, Some(&vt)).await.unwrap().expect("no messages in the queue!");
     assert_eq!(read_msg2.msg_id, msg_id2);
 
     // DELETE THE MESSAGE WE SENT
     let deleted = queue.delete(&myqueue, &read_msg1.msg_id).await.expect("Failed to delete message");
     let deleted = queue.delete(&myqueue, &read_msg2.msg_id).await.expect("Failed to delete message");
+
+    // No messages present aftwe we've deleted all of them
+    let no_msg: Option<Message<Value>> = queue.read::<Value>(&myqueue, Some(&vt)).await.unwrap();
+    assert!(no_msg.is_none());
 }
 ```
 ## Sending messages
@@ -64,9 +68,9 @@ async fn main() {
 Reading a message will make it invisible (unavailable for consumption) for the duration of the visibility timeout (vt).
 No messages are returned when the queue is empty or all messages are invisible.
 
-Messages can be parsed as JSON or into a struct. `queue.read()` returns an `Option<Message<T>>`
-where `T` is the type of the message on the queue. It can be parsed as JSON or as a struct.
-Note that when parsing into a `struct`, the application will panic if the message cannot be
+Messages can be parsed as serde_json::Value or into a struct. `queue.read()` returns an `Result<Option<Message<T>>, PGMQError>`
+where `T` is the type of the message on the queue. It returns an error when there is an issue parsing the message or if PGMQ is unable to reach postgres.
+Note that when parsing into a `struct`, the operation will return an error if
 parsed as the type specified. For example, if the message expected is
 `MyMessage{foo: "bar"}` but` {"hello": "world"}` is received, the application will panic.
 
