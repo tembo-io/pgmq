@@ -16,7 +16,7 @@ Then, clone this repo and change into this directory.
 
 ```
 git clone git@github.com:CoreDB-io/coredb.git
-cd coredb/extenesions/pgmq/
+cd coredb/extensions/pgmq/
 ```
 
 Run the dev environment

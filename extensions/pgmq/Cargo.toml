@@ -1,6 +1,6 @@
 [package]
 name = "pgmq"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2021"
 
 [lib]
@@ -16,12 +16,13 @@ pg15 = ["pgx/pg15", "pgx-tests/pg15" ]
 pg_test = []
 
 [dependencies]
-pgx = "=0.6.1"
+pgx = "0.7.1"
 serde = "1.0.152"
+pgmq = { path = "../../crates/pgmq", version = "0.2.0" }
 serde_json = "1.0.91"
 
 [dev-dependencies]
-pgx-tests = "=0.6.1"
+pgx-tests = "0.7.1"
 
 [profile.dev]
 panic = "unwind"

@@ -43,7 +43,7 @@ async fn main() {
     let msg_id2: i64  = queue.enqueue(&myqueue, &msg2).await.expect("Failed to enqueue message");
 
     // READ A MESSAGE as `serde_json::Value`
-    let vt: u32 = 30;
+    let vt: i32 = 30;
     let read_msg1: Message<Value> = queue.read::<Value>(&myqueue, Some(&vt)).await.unwrap().expect("no messages in the queue!");
     assert_eq!(read_msg1.msg_id, msg_id1);
 

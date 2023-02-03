@@ -43,7 +43,7 @@
 //!     let msg_id2: i64  = queue.enqueue(&myqueue, &msg2).await.expect("Failed to enqueue message");
 //!     
 //!     // READ A MESSAGE as `serde_json::Value`
-//!     let vt: u32 = 30;
+//!     let vt: i32 = 30;
 //!     let read_msg1: Message<Value> = queue.read::<Value>(&myqueue, Some(&vt)).await.unwrap().expect("no messages in the queue!");
 //!     assert_eq!(read_msg1.msg_id, msg_id1);
 //!
@@ -91,10 +91,10 @@ use sqlx::FromRow;
 use sqlx::{Pool, Postgres, Row};
 
 pub mod errors;
-mod query;
+pub mod query;
 use chrono::serde::ts_seconds::deserialize as from_ts;
 
-const VT_DEFAULT: u32 = 30;
+const VT_DEFAULT: i32 = 30;
 
 #[derive(Debug, Deserialize, FromRow)]
 pub struct Message<T = serde_json::Value> {
@@ -157,7 +157,7 @@ impl PGMQueue {
     pub async fn read<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
-        vt: Option<&u32>,
+        vt: Option<&i32>,
     ) -> Result<Option<Message<T>>, errors::PgmqError> {
         // map vt or default VT
         let vt_ = match vt {

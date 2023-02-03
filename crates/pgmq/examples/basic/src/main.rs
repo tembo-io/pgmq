@@ -36,7 +36,7 @@ async fn main() {
         .expect("Failed to enqueue message");
 
     // READ A MESSAGE as `serde_json::Value`
-    let vt: u32 = 30;
+    let vt: i32 = 30;
     let read_msg1: Message<Value> = queue
         .read::<Value>(&myqueue, Some(&vt))
         .await

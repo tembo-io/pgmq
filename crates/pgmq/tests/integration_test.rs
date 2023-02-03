@@ -131,7 +131,7 @@ async fn test_fifo() {
     let msg_id3 = queue.enqueue(&test_queue, &msg).await.unwrap();
     assert_eq!(msg_id3, 3);
 
-    let vt: u32 = 1;
+    let vt: i32 = 1;
     // READ FIRST TWO MESSAGES
     let read1 = queue
         .read::<Value>(&test_queue, Some(&vt))
@@ -187,7 +187,7 @@ async fn test_serde() {
     assert_eq!(msg1, 1);
 
     let msg_read = queue
-        .read::<MyMessage>(&test_queue, Some(&30_u32))
+        .read::<MyMessage>(&test_queue, Some(&30_i32))
         .await
         .unwrap()
         .unwrap();
@@ -204,7 +204,7 @@ async fn test_serde() {
     assert_eq!(msg2, 2);
 
     let msg_read = queue
-        .read::<Value>(&test_queue, Some(&30_u32))
+        .read::<Value>(&test_queue, Some(&30_i32))
         .await
         .unwrap()
         .unwrap();
@@ -223,7 +223,7 @@ async fn test_serde() {
     assert_eq!(msg3, 3);
 
     let msg_read = queue
-        .read::<MyMessage>(&test_queue, Some(&30_u32))
+        .read::<MyMessage>(&test_queue, Some(&30_i32))
         .await
         .unwrap()
         .unwrap();
@@ -239,7 +239,7 @@ async fn test_serde() {
     let msg4 = queue.enqueue(&test_queue, &msg).await.unwrap();
     assert_eq!(msg4, 4);
     let msg_read = queue
-        .read::<Value>(&test_queue, Some(&30_u32))
+        .read::<Value>(&test_queue, Some(&30_i32))
         .await
         .unwrap()
         .unwrap();
@@ -257,7 +257,7 @@ async fn test_serde() {
     let msg5 = queue.enqueue(&test_queue, &msg).await.unwrap();
     assert_eq!(msg5, 5);
     let msg_read: crate::pgmq::Message = queue
-        .read(&test_queue, Some(&30_u32)) // no turbofish on this line
+        .read(&test_queue, Some(&30_i32)) // no turbofish on this line
         .await
         .unwrap()
         .unwrap();
@@ -295,7 +295,7 @@ async fn test_database_error_modes() {
     assert!(msg_id.is_err());
 
     // read from a queue that does not exist should error
-    let read_msg = queue.read::<Message>("doesNotExist", Some(&10_u32)).await;
+    let read_msg = queue.read::<Message>("doesNotExist", Some(&10_i32)).await;
     assert!(read_msg.is_err());
 
     // connect to a postgres instance that doesnt exist should error
@@ -324,7 +324,7 @@ async fn test_parsing_error_modes() {
     let _ = queue.enqueue(&test_queue, &msg).await.unwrap();
 
     // we sent MyMessage, so trying to parse into YoloMessage should error
-    let read_msg = queue.read::<YoloMessage>(&test_queue, Some(&10_u32)).await;
+    let read_msg = queue.read::<YoloMessage>(&test_queue, Some(&10_i32)).await;
 
     // we expect a parse error
     match read_msg {

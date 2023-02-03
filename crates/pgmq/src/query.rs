@@ -1,4 +1,4 @@
-const TABLE_PREFIX: &str = r#"pgmq"#;
+pub const TABLE_PREFIX: &str = r#"pgmq"#;
 
 pub fn create(name: &str) -> String {
     format!(
@@ -30,8 +30,18 @@ pub fn enqueue(name: &str, message: &serde_json::Value) -> String {
         "
     )
 }
+pub fn enqueue_str(name: &str, message: &str) -> String {
+    // TOOO: vt should be now() + delay
+    format!(
+        "
+        INSERT INTO {TABLE_PREFIX}_{name} (vt, message)
+        VALUES (now() at time zone 'utc', '{message}'::json)
+        RETURNING msg_id;
+        "
+    )
+}
 
-pub fn read(name: &str, vt: &u32) -> String {
+pub fn read(name: &str, vt: &i32) -> String {
     format!(
         "
     WITH cte AS
@@ -102,7 +112,7 @@ mod tests {
     #[test]
     fn test_read() {
         let qname = "myqueue";
-        let vt: u32 = 20;
+        let vt: i32 = 20;
 
         let query = read(&qname, &vt);
 
