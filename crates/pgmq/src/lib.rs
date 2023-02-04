@@ -30,7 +30,7 @@
 //!     let msg1 = serde_json::json!({
 //!         "foo": "bar"
 //!     });
-//!     let msg_id1: i64 = queue.enqueue(&myqueue, &msg1).await.expect("Failed to enqueue message");
+//!     let msg_id1: i64 = queue.send(&myqueue, &msg1).await.expect("Failed to enqueue message");
 //!
 //!     // SEND A STRUCT
 //!     #[derive(Serialize, Debug, Deserialize)]
@@ -40,7 +40,7 @@
 //!     let msg2 = MyMessage {
 //!         foo: "bar".to_owned(),
 //!     };
-//!     let msg_id2: i64  = queue.enqueue(&myqueue, &msg2).await.expect("Failed to enqueue message");
+//!     let msg_id2: i64  = queue.send(&myqueue, &msg2).await.expect("Failed to enqueue message");
 //!     
 //!     // READ A MESSAGE as `serde_json::Value`
 //!     let vt: i32 = 30;
@@ -62,7 +62,7 @@
 //! ```
 //! ## Sending messages
 //!
-//! `queue.enqueue()` can be passed any type that implements `serde::Serialize`. This means you can prepare your messages as JSON or as a struct.
+//! `queue.send()` can be passed any type that implements `serde::Serialize`. This means you can prepare your messages as JSON or as a struct.
 //!
 //! ## Reading messages
 //! Reading a message will make it invisible (unavailable for consumption) for the duration of the visibility timeout (vt).
@@ -131,15 +131,17 @@ impl PGMQueue {
 
     /// Create a queue
     pub async fn create(&self, queue_name: &str) -> Result<(), errors::PgmqError> {
-        let create = query::create(queue_name);
-        let index: String = query::create_index(queue_name);
-        sqlx::query(&create).execute(&self.connection).await?;
-        sqlx::query(&index).execute(&self.connection).await?;
+        let mut tx = self.connection.begin().await?;
+        let setup = query::init_queue(queue_name);
+        for q in setup {
+            sqlx::query(&q).execute(&mut tx).await?;
+        }
+        tx.commit().await?;
         Ok(())
     }
 
     /// Send a message to the queue
-    pub async fn enqueue<T: Serialize>(
+    pub async fn send<T: Serialize>(
         &self,
         queue_name: &str,
         message: &T,
@@ -195,6 +197,7 @@ async fn fetch_one_message<T: for<'de> Deserialize<'de>>(
     query: &str,
     connection: &Pool<Postgres>,
 ) -> Result<Option<Message<T>>, errors::PgmqError> {
+    // explore: .fetch_optional()
     let row: Result<PgRow, Error> = sqlx::query(query).fetch_one(connection).await;
     match row {
         Ok(row) => {

@@ -70,7 +70,7 @@ async fn test_lifecycle() {
     let msg = serde_json::json!({
         "foo": "bar"
     });
-    let msg_id = queue.enqueue(&test_queue, &msg).await.unwrap();
+    let msg_id = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg_id, 1);
     let num_rows = rowcount(&test_queue, &queue.connection).await;
 
@@ -124,11 +124,11 @@ async fn test_fifo() {
     let msg = serde_json::json!({
         "foo": "bar1"
     });
-    let msg_id1 = queue.enqueue(&test_queue, &msg).await.unwrap();
+    let msg_id1 = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg_id1, 1);
-    let msg_id2 = queue.enqueue(&test_queue, &msg).await.unwrap();
+    let msg_id2 = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg_id2, 2);
-    let msg_id3 = queue.enqueue(&test_queue, &msg).await.unwrap();
+    let msg_id3 = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg_id3, 3);
 
     let vt: i32 = 1;
@@ -183,7 +183,7 @@ async fn test_serde() {
         foo: "bar".to_owned(),
         num: rng.gen_range(0..100000),
     };
-    let msg1 = queue.enqueue(&test_queue, &msg).await.unwrap();
+    let msg1 = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg1, 1);
 
     let msg_read = queue
@@ -200,7 +200,7 @@ async fn test_serde() {
         "foo": "bar",
         "num": rng.gen_range(0..100000)
     });
-    let msg2 = queue.enqueue(&test_queue, &msg).await.unwrap();
+    let msg2 = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg2, 2);
 
     let msg_read = queue
@@ -219,7 +219,7 @@ async fn test_serde() {
         "num": rng.gen_range(0..100000)
     });
 
-    let msg3 = queue.enqueue(&test_queue, &msg).await.unwrap();
+    let msg3 = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg3, 3);
 
     let msg_read = queue
@@ -236,7 +236,7 @@ async fn test_serde() {
         foo: "bar".to_owned(),
         num: rng.gen_range(0..100000),
     };
-    let msg4 = queue.enqueue(&test_queue, &msg).await.unwrap();
+    let msg4 = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg4, 4);
     let msg_read = queue
         .read::<Value>(&test_queue, Some(&30_i32))
@@ -254,7 +254,7 @@ async fn test_serde() {
         "foo": "bar".to_owned(),
         "num": rng.gen_range(0..100000),
     });
-    let msg5 = queue.enqueue(&test_queue, &msg).await.unwrap();
+    let msg5 = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg5, 5);
     let msg_read: crate::pgmq::Message = queue
         .read(&test_queue, Some(&30_i32)) // no turbofish on this line
@@ -274,7 +274,7 @@ async fn test_pop() {
     let test_queue = "test_pop_queue".to_owned();
     let queue = init_queue(&test_queue).await;
     let msg = MyMessage::default();
-    let msg = queue.enqueue(&test_queue, &msg).await.unwrap();
+    let msg = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg, 1);
     let popped_msg = queue.pop::<MyMessage>(&test_queue).await.unwrap().unwrap();
     assert_eq!(popped_msg.msg_id, 1);
@@ -291,7 +291,7 @@ async fn test_database_error_modes() {
         .await
         .expect("failed to connect to postgres");
     // let's not create the queues and make sure we get an error
-    let msg_id = queue.enqueue("doesNotExist", &"foo").await;
+    let msg_id = queue.send("doesNotExist", &"foo").await;
     assert!(msg_id.is_err());
 
     // read from a queue that does not exist should error
@@ -321,7 +321,7 @@ async fn test_parsing_error_modes() {
     let test_queue = "test_parsing_queue".to_owned();
     let queue = init_queue(&test_queue).await;
     let msg = MyMessage::default();
-    let _ = queue.enqueue(&test_queue, &msg).await.unwrap();
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
 
     // we sent MyMessage, so trying to parse into YoloMessage should error
     let read_msg = queue.read::<YoloMessage>(&test_queue, Some(&10_i32)).await;

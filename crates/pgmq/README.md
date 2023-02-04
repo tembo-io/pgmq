@@ -30,7 +30,7 @@ async fn main() {
     let msg1 = serde_json::json!({
         "foo": "bar"
     });
-    let msg_id1: i64 = queue.enqueue(&myqueue, &msg1).await.expect("Failed to enqueue message");
+    let msg_id1: i64 = queue.send(&myqueue, &msg1).await.expect("Failed to enqueue message");
 
     // SEND A STRUCT
     #[derive(Serialize, Debug, Deserialize)]
@@ -40,7 +40,7 @@ async fn main() {
     let msg2 = MyMessage {
         foo: "bar".to_owned(),
     };
-    let msg_id2: i64  = queue.enqueue(&myqueue, &msg2).await.expect("Failed to enqueue message");
+    let msg_id2: i64  = queue.send(&myqueue, &msg2).await.expect("Failed to enqueue message");
 
     // READ A MESSAGE as `serde_json::Value`
     let vt: i32 = 30;
@@ -62,7 +62,7 @@ async fn main() {
 ```
 ## Sending messages
 
-`queue.enqueue()` can be passed any type that implements `serde::Serialize`. This means you can prepare your messages as JSON or as a struct.
+`queue.send()` can be passed any type that implements `serde::Serialize`. This means you can prepare your messages as JSON or as a struct.
 
 ## Reading messages
 Reading a message will make it invisible (unavailable for consumption) for the duration of the visibility timeout (vt).

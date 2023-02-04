@@ -1,13 +1,62 @@
 pub const TABLE_PREFIX: &str = r#"pgmq"#;
 
-pub fn create(name: &str) -> String {
+pub fn init_queue(name: &str) -> Vec<String> {
+    vec![
+        create_meta(),
+        create_queue(name),
+        create_index(name),
+        create_archive(name),
+        insert_meta(name),
+    ]
+}
+
+pub fn create_queue(name: &str) -> String {
     format!(
         "
         CREATE TABLE IF NOT EXISTS {TABLE_PREFIX}_{name} (
             msg_id BIGSERIAL,
+            read_ct INT DEFAULT 0,
+            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc'),
             vt TIMESTAMP WITH TIME ZONE,
             message JSON
         );
+        "
+    )
+}
+
+pub fn create_archive(name: &str) -> String {
+    format!(
+        "
+        CREATE TABLE IF NOT EXISTS {TABLE_PREFIX}_{name}_archive (
+            msg_id BIGSERIAL,
+            read_ct INT DEFAULT 0,
+            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc'),
+            deleted_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc'),
+            vt TIMESTAMP WITH TIME ZONE,
+            message JSON
+        );
+        "
+    )
+}
+
+pub fn create_meta() -> String {
+    format!(
+        "
+        CREATE TABLE IF NOT EXISTS {TABLE_PREFIX}_meta (
+            queue_name VARCHAR UNIQUE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc')
+        );
+        "
+    )
+}
+
+pub fn insert_meta(name: &str) -> String {
+    format!(
+        "
+        INSERT INTO {TABLE_PREFIX}_meta (queue_name)
+        VALUES ('{name}')
+        ON CONFLICT
+        DO NOTHING;
         "
     )
 }
@@ -46,7 +95,7 @@ pub fn read(name: &str, vt: &i32) -> String {
         "
     WITH cte AS
         (
-            SELECT msg_id, vt, message
+            SELECT *
             FROM {TABLE_PREFIX}_{name}
             WHERE vt <= now() at time zone 'utc'
             ORDER BY msg_id ASC
@@ -54,7 +103,9 @@ pub fn read(name: &str, vt: &i32) -> String {
             FOR UPDATE SKIP LOCKED
         )
     UPDATE {TABLE_PREFIX}_{name}
-    SET vt = (now() at time zone 'utc' + interval '{vt} seconds')
+    SET 
+        vt = (now() at time zone 'utc' + interval '{vt} seconds'),
+        read_ct = read_ct + 1
     WHERE msg_id = (select msg_id from cte)
     RETURNING *;
     "
@@ -70,12 +121,22 @@ pub fn delete(name: &str, msg_id: &i64) -> String {
     )
 }
 
+pub fn archive(name: &str, msg_id: &i64) -> String {
+    format!(
+        "
+        INSERT INTO {TABLE_PREFIX}_{name}_archive
+        SELECT * FROM {TABLE_PREFIX}_{name}
+        WHERE msg_id = {msg_id};
+        "
+    )
+}
+
 pub fn pop(name: &str) -> String {
     format!(
         "
         WITH cte AS
             (
-                SELECT msg_id, vt, message
+                SELECT *
                 FROM {TABLE_PREFIX}_{name}
                 WHERE vt <= now() at time zone 'utc'
                 ORDER BY msg_id ASC
@@ -95,7 +156,7 @@ mod tests {
 
     #[test]
     fn test_create() {
-        let query = create("yolo");
+        let query = create_queue("yolo");
         assert!(query.contains("pgmq_yolo"));
     }
 
