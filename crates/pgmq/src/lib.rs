@@ -3,7 +3,7 @@
 //! A lightweight messaging queue for Rust, using Postgres as the backend.
 //! Inspired by the [RSMQ project](https://github.com/smrchy/rsmq).
 //!
-//! # Examples
+//! ## Examples
 //!
 //! First, start any Postgres instance. It is the only external dependency.
 //!
@@ -65,6 +65,7 @@
 //! `queue.send()` can be passed any type that implements `serde::Serialize`. This means you can prepare your messages as JSON or as a struct.
 //!
 //! ## Reading messages
+//!
 //! Reading a message will make it invisible (unavailable for consumption) for the duration of the visibility timeout (vt).
 //! No messages are returned when the queue is empty or all messages are invisible.
 //!
@@ -74,12 +75,9 @@
 //! parsed as the type specified. For example, if the message expected is
 //! `MyMessage{foo: "bar"}` but` {"hello": "world"}` is received, the application will panic.
 //!
-//! #### as a Struct
-//! Reading a message will make it invisible for the duration of the visibility timeout (vt).
-//! No messages are returned when the queue is empty or all messages are invisible.
+//! ## Archive or Delete a message
 //!
-//! ## Delete a message
-//! Remove the message from the queue when you are done with it.
+//! Remove the message from the queue when you are done with it. You can either completely `.delete()`, or `.archive()` the message. Archived messages are deleted from the queue and inserted to the queue's archive table. Deleted messages are just deleted.
 
 #![doc(html_root_url = "https://docs.rs/pgmq/")]
 

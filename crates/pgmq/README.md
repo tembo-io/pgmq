@@ -3,7 +3,7 @@
 A lightweight messaging queue for Rust, using Postgres as the backend.
 Inspired by the [RSMQ project](https://github.com/smrchy/rsmq).
 
-## Examples
+# Examples
 
 First, start any Postgres instance. It is the only external dependency.
 
@@ -60,7 +60,6 @@ async fn main() {
     assert!(no_msg.is_none());
 }
 ```
-
 ## Sending messages
 
 `queue.send()` can be passed any type that implements `serde::Serialize`. This means you can prepare your messages as JSON or as a struct.
