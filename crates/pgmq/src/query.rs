@@ -10,6 +10,15 @@ pub fn init_queue(name: &str) -> Vec<String> {
     ]
 }
 
+pub fn destory_queue(name: &str) -> Vec<String> {
+    vec![
+        drop_queue(name),
+        delete_queue_index(name),
+        drop_queue_archive(name),
+        delete_queue_metadata(name),
+    ]
+}
+
 pub fn create_queue(name: &str) -> String {
     format!(
         "
@@ -46,6 +55,49 @@ pub fn create_meta() -> String {
             queue_name VARCHAR UNIQUE,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc')
         );
+        "
+    )
+}
+
+pub fn drop_queue(name: &str) -> String {
+    format!(
+        "
+        DROP TABLE IF EXISTS {TABLE_PREFIX}_{name};
+        "
+    )
+}
+
+pub fn delete_queue_index(name: &str) -> String {
+    format!(
+        "
+        DROP INDEX IF EXISTS {TABLE_PREFIX}_{name}.vt_idx_{name};
+        "
+    )
+}
+
+pub fn delete_queue_metadata(name: &str) -> String {
+    format!(
+        "
+        DO $$
+        BEGIN
+           IF EXISTS (
+                SELECT 1
+                FROM information_schema.tables
+                WHERE table_name = '{TABLE_PREFIX}_meta')
+            THEN
+              DELETE
+              FROM {TABLE_PREFIX}_meta
+              WHERE queue_name = '{name}';
+           END IF;
+        END $$;
+        "
+    )
+}
+
+pub fn drop_queue_archive(name: &str) -> String {
+    format!(
+        "
+        DROP TABLE IF EXISTS {TABLE_PREFIX}_{name}_archive;
         "
     )
 }
@@ -124,9 +176,14 @@ pub fn delete(name: &str, msg_id: &i64) -> String {
 pub fn archive(name: &str, msg_id: &i64) -> String {
     format!(
         "
-        INSERT INTO {TABLE_PREFIX}_{name}_archive
-        SELECT * FROM {TABLE_PREFIX}_{name}
-        WHERE msg_id = {msg_id};
+        WITH archived AS (
+            DELETE FROM {TABLE_PREFIX}_{name}
+            WHERE msg_id = {msg_id}
+            RETURNING msg_id, vt, read_ct, enqueued_at, message
+        )
+        INSERT INTO {TABLE_PREFIX}_{name}_archive (msg_id, vt, read_ct, enqueued_at, message)
+        SELECT msg_id, vt, read_ct, enqueued_at, message 
+        FROM archived;
         "
     )
 }

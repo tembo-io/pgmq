@@ -1,4 +1,4 @@
-use pgmq::{self, Message};
+use pgmq::{self, query::TABLE_PREFIX, Message};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -10,13 +10,8 @@ async fn init_queue(qname: &str) -> pgmq::PGMQueue {
     let queue = pgmq::PGMQueue::new(format!("postgres://postgres:{}@0.0.0.0:5432", pgpass))
         .await
         .expect("failed to connect to postgres");
-
-    // drop the test table at beginning of test
-    sqlx::query(format!("DROP TABLE IF EXISTS pgmq_{}", qname).as_str())
-        .execute(&queue.connection)
-        .await
-        .unwrap();
-
+    // make sure queue doesn't exist before the test
+    let _ = queue.destroy(qname).await.unwrap();
     // CREATE QUEUE
     let q_success = queue.create(qname).await;
     println!("q_success: {:?}", q_success);
@@ -45,12 +40,26 @@ struct YoloMessage {
 }
 
 async fn rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
-    let row_ct_query = format!("SELECT count(*) as ct FROM pgmq_{}", qname);
+    let row_ct_query = format!("SELECT count(*) as ct FROM {TABLE_PREFIX}_{qname}");
     sqlx::query(&row_ct_query)
         .fetch_one(connection)
         .await
         .unwrap()
         .get::<i64, usize>(0)
+}
+
+// we need to check whether table exists
+// simple solution: our existing rowcount() helper will fail
+// wrap it in a Result<> so we can use it
+async fn fallible_rowcount(
+    qname: &str,
+    connection: &Pool<Postgres>,
+) -> Result<i64, pgmq::errors::PgmqError> {
+    let row_ct_query = format!("SELECT count(*) as ct FROM {TABLE_PREFIX}_{qname}");
+    Ok(sqlx::query(&row_ct_query)
+        .fetch_one(connection)
+        .await?
+        .get::<i64, usize>(0))
 }
 
 #[tokio::test]
@@ -283,6 +292,23 @@ async fn test_pop() {
     assert_eq!(num_rows, 0);
 }
 
+#[tokio::test]
+async fn test_archive() {
+    let test_queue = "test_archive_queue".to_owned();
+    let queue = init_queue(&test_queue).await;
+    let msg = MyMessage::default();
+    let msg = queue.send(&test_queue, &msg).await.unwrap();
+    assert_eq!(msg, 1);
+    let num_moved = queue.archive(&test_queue, &msg).await.unwrap();
+    assert_eq!(num_moved, 1);
+    let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
+    // archived record is no longer on the queue
+    assert_eq!(num_rows_queue, 0);
+    let num_rows_archive = rowcount(&format!("{test_queue}_archive"), &queue.connection).await;
+    // archived record is now on the archive table
+    assert_eq!(num_rows_archive, 1);
+}
+
 /// test db operations that should produce errors
 #[tokio::test]
 async fn test_database_error_modes() {
@@ -339,4 +365,48 @@ async fn test_parsing_error_modes() {
         // didnt get an error. bad.
         _ => panic!("expected a parse error, got {:?}", read_msg),
     }
+}
+
+/// destroy queue should clean up appropriately
+#[tokio::test]
+async fn test_destroy() {
+    let test_queue = "test_destroy_queue".to_owned();
+    let queue = init_queue(&test_queue).await;
+    let msg = MyMessage::default();
+    // send two messages
+    let msg1 = queue.send(&test_queue, &msg).await.unwrap();
+    let msg2 = queue.send(&test_queue, &msg).await.unwrap();
+
+    // archive one, so there's messages in queue and in archive
+    let _ = queue.archive(&test_queue, &msg1).await.unwrap();
+    // read one to make sure messages are on the queue
+    let read: Message = queue
+        .read(&test_queue, Some(&30_i32))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(read.msg_id, msg2);
+
+    // must not panic
+    let _ = queue.destroy(&test_queue).await.unwrap();
+
+    // the queue and the queue archive should no longer exist
+    let queue_table = fallible_rowcount(&test_queue, &queue.connection).await;
+    assert!(queue_table.is_err());
+    let archive_table =
+        fallible_rowcount(&format!("{test_queue}_archive"), &queue.connection).await;
+    assert!(archive_table.is_err());
+
+    // queue must not be present on pgmq_meta
+    let pgmq_meta_query = format!(
+        "SELECT count(*) as ct
+        FROM {TABLE_PREFIX}_meta
+        WHERE queue_name = '{test_queue}'",
+    );
+    let rowcount = sqlx::query(&pgmq_meta_query)
+        .fetch_one(&queue.connection)
+        .await
+        .unwrap()
+        .get::<i64, usize>(0);
+    assert_eq!(rowcount, 0);
 }

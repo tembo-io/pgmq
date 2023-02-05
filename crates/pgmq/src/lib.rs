@@ -140,6 +140,17 @@ impl PGMQueue {
         Ok(())
     }
 
+    /// destroy a queue
+    pub async fn destroy(&self, queue_name: &str) -> Result<(), errors::PgmqError> {
+        let mut tx = self.connection.begin().await?;
+        let setup = query::destory_queue(queue_name);
+        for q in setup {
+            sqlx::query(&q).execute(&mut tx).await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Send a message to the queue
     pub async fn send<T: Serialize>(
         &self,
@@ -175,6 +186,14 @@ impl PGMQueue {
     pub async fn delete(&self, queue_name: &str, msg_id: &i64) -> Result<u64, Error> {
         let query = &query::delete(queue_name, msg_id);
         let row = sqlx::query(query).execute(&self.connection).await?;
+        let num_deleted = row.rows_affected();
+        Ok(num_deleted)
+    }
+
+    /// move message from queue table to archive table
+    pub async fn archive(&self, queue_name: &str, msg_id: &i64) -> Result<u64, Error> {
+        let query = query::archive(queue_name, msg_id);
+        let row = sqlx::query(&query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
         Ok(num_deleted)
     }
