@@ -324,12 +324,28 @@ async fn test_database_error_modes() {
     let read_msg = queue.read::<Message>("doesNotExist", Some(&10_i32)).await;
     assert!(read_msg.is_err());
 
-    // connect to a postgres instance that doesnt exist should error
+    // connect to a postgres instance with a malformed connection string should error
     let queue = pgmq::PGMQueue::new("postgres://DNE:5432".to_owned()).await;
-    // we expect a database error
+    // we expect a url parsing error
     match queue {
         Err(e) => {
             if let pgmq::errors::PgmqError::UrlParsingError { .. } = e {
+                // got the url parsing error error. good.
+            } else {
+                // got some other error. bad.
+                panic!("expected a url parsing error, got {:?}", e);
+            }
+        }
+        // didnt get an error. bad.
+        _ => panic!("expected a url parsing error, got {:?}", read_msg),
+    }
+
+    // connect to a postgres instance that doesnt exist should error
+    let queue = pgmq::PGMQueue::new("postgres://user:pass@badhost:5432".to_owned()).await;
+    // we expect a database error
+    match queue {
+        Err(e) => {
+            if let pgmq::errors::PgmqError::DatabaseError { .. } = e {
                 // got the db error. good.
             } else {
                 // got some other error. bad.
