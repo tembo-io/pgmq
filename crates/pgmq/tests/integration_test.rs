@@ -329,7 +329,7 @@ async fn test_database_error_modes() {
     // we expect a database error
     match queue {
         Err(e) => {
-            if let pgmq::errors::PgmqError::DatabaseError { .. } = e {
+            if let pgmq::errors::PgmqError::UrlParsingError { .. } = e {
                 // got the db error. good.
             } else {
                 // got some other error. bad.
@@ -355,7 +355,7 @@ async fn test_parsing_error_modes() {
     // we expect a parse error
     match read_msg {
         Err(e) => {
-            if let pgmq::errors::PgmqError::ParsingError { .. } = e {
+            if let pgmq::errors::PgmqError::JsonParsingError { .. } = e {
                 // got the parsing error. good.
             } else {
                 // got some other error. bad.

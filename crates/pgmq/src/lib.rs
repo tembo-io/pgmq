@@ -81,12 +81,14 @@
 
 #![doc(html_root_url = "https://docs.rs/pgmq/")]
 
+use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use sqlx::error::Error;
-use sqlx::postgres::{PgPoolOptions, PgRow};
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgRow};
 use sqlx::types::chrono::Utc;
-use sqlx::FromRow;
+use sqlx::{ConnectOptions, FromRow};
 use sqlx::{Pool, Postgres, Row};
+use url::{ParseError, Url};
 
 pub mod errors;
 pub mod query;
@@ -119,10 +121,11 @@ impl PGMQueue {
 
     /// Connect to the database
     async fn connect(url: &str) -> Result<Pool<Postgres>, errors::PgmqError> {
+        let options = conn_options(url)?;
         let pgp = PgPoolOptions::new()
             .acquire_timeout(std::time::Duration::from_secs(10))
             .max_connections(5)
-            .connect(url)
+            .connect_with(options)
             .await?;
         Ok(pgp)
     }
@@ -227,10 +230,23 @@ async fn fetch_one_message<T: for<'de> Deserialize<'de>>(
                     vt: row.get("vt"),
                     message: parsed_msg,
                 })),
-                Err(e) => Err(errors::PgmqError::ParsingError(e)),
+                Err(e) => Err(errors::PgmqError::JsonParsingError(e)),
             }
         }
         Err(sqlx::error::Error::RowNotFound) => Ok(None),
         Err(e) => Err(e)?,
     }
+}
+
+// Configure connection options
+pub fn conn_options(url: &str) -> Result<PgConnectOptions, ParseError> {
+    // Parse url
+    let parsed = Url::parse(url)?;
+    let mut options = PgConnectOptions::new()
+        .host(parsed.host_str().ok_or(ParseError::EmptyHost)?)
+        .port(parsed.port().ok_or(ParseError::InvalidPort)?)
+        .username(parsed.username())
+        .password(parsed.password().ok_or(ParseError::IdnaError)?);
+    options.log_statements(LevelFilter::Debug);
+    Ok(options)
 }
