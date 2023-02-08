@@ -142,7 +142,7 @@ pub fn enqueue_str(name: &str, message: &str) -> String {
     )
 }
 
-pub fn read(name: &str, vt: &i32) -> String {
+pub fn read(name: &str, vt: &i32, limit: &i32) -> String {
     format!(
         "
     WITH cte AS
@@ -151,14 +151,14 @@ pub fn read(name: &str, vt: &i32) -> String {
             FROM {TABLE_PREFIX}_{name}
             WHERE vt <= now() at time zone 'utc'
             ORDER BY msg_id ASC
-            LIMIT 1
+            LIMIT {limit}
             FOR UPDATE SKIP LOCKED
         )
     UPDATE {TABLE_PREFIX}_{name}
     SET 
         vt = (now() at time zone 'utc' + interval '{vt} seconds'),
         read_ct = read_ct + 1
-    WHERE msg_id = (select msg_id from cte)
+    WHERE msg_id in (select msg_id from cte)
     RETURNING *;
     "
     )
@@ -231,8 +231,9 @@ mod tests {
     fn test_read() {
         let qname = "myqueue";
         let vt: i32 = 20;
+        let limit: i32 = 1;
 
-        let query = read(&qname, &vt);
+        let query = read(&qname, &vt, &limit);
 
         assert!(query.contains(&qname));
         assert!(query.contains(&vt.to_string()));
