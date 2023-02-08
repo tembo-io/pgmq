@@ -117,6 +117,8 @@ pub struct Message<T = serde_json::Value> {
     pub msg_id: i64,
     #[serde(deserialize_with = "from_ts")]
     pub vt: chrono::DateTime<Utc>,
+    pub enqueued_at: chrono::DateTime<Utc>,
+    pub read_ct: i32,
     pub message: T,
 }
 
@@ -263,6 +265,8 @@ async fn fetch_one_message<T: for<'de> Deserialize<'de>>(
                 Ok(parsed_msg) => Ok(Some(Message {
                     msg_id: row.get("msg_id"),
                     vt: row.get("vt"),
+                    read_ct: row.get("read_ct"),
+                    enqueued_at: row.get("enqueued_at"),
                     message: parsed_msg,
                 })),
                 Err(e) => Err(errors::PgmqError::JsonParsingError(e)),
@@ -296,6 +300,8 @@ async fn fetch_messages<T: for<'de> Deserialize<'de>>(
                 messages.push(Message {
                     msg_id: row.get("msg_id"),
                     vt: row.get("vt"),
+                    read_ct: row.get("read_ct"),
+                    enqueued_at: row.get("enqueued_at"),
                     message: parsed_msg,
                 })
             }
