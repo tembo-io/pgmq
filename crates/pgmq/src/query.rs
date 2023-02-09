@@ -121,12 +121,20 @@ pub fn create_index(name: &str) -> String {
     )
 }
 
-pub fn enqueue(name: &str, message: &serde_json::Value) -> String {
+pub fn enqueue(name: &str, messages: &Vec<serde_json::Value>) -> String {
     // TOOO: vt should be now() + delay
+    // construct string of comma separated messages
+    let mut values: String = "".to_owned();
+    for message in messages.iter() {
+        let full_msg = format!("(now() at time zone 'utc', '{}'::json),", message);
+        values.push_str(&full_msg)
+    }
+    // drop trailing comma from constructed string
+    values.pop();
     format!(
         "
         INSERT INTO {TABLE_PREFIX}_{name} (vt, message)
-        VALUES (now() at time zone 'utc', '{message}'::json)
+        VALUES {values}
         RETURNING msg_id;
         "
     )
@@ -219,10 +227,12 @@ mod tests {
 
     #[test]
     fn test_enqueue() {
+        let mut msgs: Vec<serde_json::Value> = Vec::new();
         let msg = serde_json::json!({
             "foo": "bar"
         });
-        let query = enqueue("yolo", &msg);
+        msgs.push(msg);
+        let query = enqueue("yolo", &msgs);
         assert!(query.contains("pgmq_yolo"));
         assert!(query.contains("{\"foo\":\"bar\"}"));
     }

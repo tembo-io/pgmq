@@ -41,7 +41,7 @@
 //!         foo: "bar".to_owned(),
 //!     };
 //!     let msg_id2: i64  = queue.send(&myqueue, &msg2).await.expect("Failed to enqueue message");
-//!     
+//!
 //!     // READ A MESSAGE as `serde_json::Value`
 //!     let vt: i32 = 30;
 //!     let read_msg1: Message<Value> = queue.read::<Value>(&myqueue, Some(&vt)).await.unwrap().expect("no messages in the queue!");
@@ -70,9 +70,25 @@
 //!     let deleted = queue.delete(&myqueue, &read_msg1.msg_id).await.expect("Failed to delete message");
 //!     let deleted = queue.delete(&myqueue, &read_msg2.msg_id).await.expect("Failed to delete message");
 //!
-//!     // No messages present aftwe we've deleted all of them
+//!     // No messages present after we've deleted all of them
 //!     let no_msg: Option<Message<Value>> = queue.read::<Value>(&myqueue, Some(&vt)).await.unwrap();
 //!     assert!(no_msg.is_none());
+//!
+//!     // SEND MULTIPLE MESSAGES as `serde_json::Value`
+//!     let msgs1 = vec![
+//!         serde_json::json!({"foo": "bar1"}),
+//!         serde_json::json!({"foo": "bar2"}),
+//!         serde_json::json!({"foo": "bar3"}),
+//!     ];
+//!     let msg_ids1 = queue.send_batch(&myqueue, &msgs1).await.expect("Failed to enqueue messages");
+//!
+//!     // SEND MULTIPLE MESSAGES as a struct
+//!     let msgs2 = vec![
+//!         MyMessage {foo: "bar1".to_owned()},
+//!         MyMessage {foo: "bar2".to_owned()},
+//!         MyMessage {foo: "bar3".to_owned()},
+//!     ];
+//!     let msg_ids2 = queue.send_batch(&myqueue, &msgs2).await.expect("Failed to enqueue messages");
 //! }
 //! ```
 //! ## Sending messages
@@ -176,12 +192,35 @@ impl PGMQueue {
         queue_name: &str,
         message: &T,
     ) -> Result<i64, errors::PgmqError> {
-        let msg = &serde_json::json!(&message);
-        let row: PgRow = sqlx::query(&query::enqueue(queue_name, msg))
+        let mut msgs: Vec<serde_json::Value> = Vec::new();
+        let msg = serde_json::json!(&message);
+        msgs.push(msg);
+        let row: PgRow = sqlx::query(&query::enqueue(queue_name, &msgs))
             .fetch_one(&self.connection)
             .await?;
         let msg_id: i64 = row.get("msg_id");
         Ok(msg_id)
+    }
+
+    /// Send multiple messages to the queue
+    pub async fn send_batch<T: Serialize>(
+        &self,
+        queue_name: &str,
+        messages: &Vec<T>,
+    ) -> Result<Vec<i64>, errors::PgmqError> {
+        let mut msgs: Vec<serde_json::Value> = Vec::new();
+        let mut msg_ids: Vec<i64> = Vec::new();
+        for msg in messages.iter() {
+            let binding = serde_json::json!(&msg);
+            msgs.push(binding)
+        }
+        let rows: Vec<PgRow> = sqlx::query(&query::enqueue(queue_name, &msgs))
+            .fetch_all(&self.connection)
+            .await?;
+        for row in rows.iter() {
+            msg_ids.push(row.get("msg_id"));
+        }
+        Ok(msg_ids)
     }
 
     /// Reads a single message from the queue. If the queue is empty or all messages are invisible, `None` is returned.

@@ -219,6 +219,65 @@ async fn test_read_batch() {
 }
 
 #[tokio::test]
+async fn test_send_batch() {
+    let test_queue = "test_send_batch".to_owned();
+
+    let queue = init_queue(&test_queue).await;
+
+    // Send 3 messages to queue as batch
+    let msgs = vec![
+        serde_json::json!({"foo": "bar1"}),
+        serde_json::json!({"foo": "bar2"}),
+        serde_json::json!({"foo": "bar3"}),
+    ];
+    let msg_ids = queue
+        .send_batch(&test_queue, &msgs)
+        .await
+        .expect("Failed to enqueue messages");
+    for (i, id) in msg_ids.iter().enumerate() {
+        assert_eq!(id.to_string(), msg_ids[i].to_string());
+    }
+
+    // Send 3 messages in struct form to queue as batch
+    #[derive(Serialize, Debug, Deserialize)]
+    struct MyMessage {
+        foo: String,
+    }
+    let msgs2 = vec![
+        MyMessage {
+            foo: "bar1".to_owned(),
+        },
+        MyMessage {
+            foo: "bar2".to_owned(),
+        },
+        MyMessage {
+            foo: "bar3".to_owned(),
+        },
+    ];
+    let msg_ids2 = queue
+        .send_batch(&test_queue, &msgs2)
+        .await
+        .expect("Failed to enqueue messages");
+    for (i, id) in msg_ids2.iter().enumerate() {
+        assert_eq!(id.to_string(), msg_ids2[i].to_string());
+    }
+
+    // Read 3 messages from queue as batch
+    let vt: i32 = 1;
+    let num_msgs = 3;
+    let batch = queue
+        .read_batch::<Value>(&test_queue, Some(&vt), &num_msgs)
+        .await
+        .unwrap()
+        .unwrap();
+
+    for (i, message) in batch.iter().enumerate() {
+        let index = i + 1;
+        assert_eq!(message.msg_id.to_string(), index.to_string());
+    }
+}
+
+#[tokio::test]
 async fn test_serde() {
     // series of tests serializing to queue and deserializing from queue
     let mut rng = rand::thread_rng();
