@@ -278,6 +278,83 @@ async fn test_send_batch() {
 }
 
 #[tokio::test]
+async fn test_delete_batch() {
+    let test_queue = "test_delete_batch".to_owned();
+    let queue = init_queue(&test_queue).await;
+    let vt: i32 = 1;
+    let mut msg_id_first_last: Vec<i64> = Vec::new();
+
+    // Send 1 message to the queue
+    let msg_first = serde_json::json!({
+        "foo": "first"
+    });
+    let msg_id1 = queue.send(&test_queue, &msg_first).await.unwrap();
+    assert_eq!(msg_id1, 1);
+    msg_id_first_last.push(msg_id1);
+
+    // Send 3 messages to queue as batch
+    let msgs = vec![
+        serde_json::json!({"foo": "bar1"}),
+        serde_json::json!({"foo": "bar2"}),
+        serde_json::json!({"foo": "bar3"}),
+    ];
+    let msg_ids = queue
+        .send_batch(&test_queue, &msgs)
+        .await
+        .expect("Failed to enqueue messages");
+    for (i, id) in msg_ids.iter().enumerate() {
+        assert_eq!(id.to_string(), msg_ids[i].to_string());
+    }
+
+    // Send 1 message to the queue
+    let msg_last = serde_json::json!({
+        "foo": "last"
+    });
+    let msg_id2 = queue.send(&test_queue, &msg_last).await.unwrap();
+    assert_eq!(msg_id2, 5);
+    msg_id_first_last.push(msg_id2);
+
+    // Delete 3 messages from queue as batch
+    let del = queue
+        .delete_batch(&test_queue, &msg_ids)
+        .await
+        .expect("Failed to delete messages from queue");
+
+    // Assert the number of messages deleted is equal to the number of messages we passed to delete_batch()
+    assert_eq!(del.to_string(), msg_ids.len().to_string());
+
+    // Assert first message is still present and readable
+    let first = queue
+        .read::<Value>(&test_queue, Some(&vt))
+        .await
+        .expect("Failed to read message");
+    assert_eq!(first.unwrap().msg_id, msg_id1);
+
+    // Assert last message is still present and readable
+    let last = queue
+        .read::<Value>(&test_queue, Some(&vt))
+        .await
+        .expect("Failed to read message");
+    assert_eq!(last.unwrap().msg_id, msg_id2);
+
+    // Delete first and last message as batch
+    let del_first_last = queue
+        .delete_batch(&test_queue, &msg_id_first_last)
+        .await
+        .expect("Failed to delete messages from queue");
+
+    // Assert the number of messages deleted is equal to the number of messages we passed to delete_batch()
+    assert_eq!(
+        del_first_last.to_string(),
+        msg_id_first_last.len().to_string()
+    );
+
+    // Assert there are no messages to read from queue
+    let msg = queue.read::<Value>(&test_queue, Some(&vt)).await.unwrap();
+    assert!(msg.is_none());
+}
+
+#[tokio::test]
 async fn test_serde() {
     // series of tests serializing to queue and deserializing from queue
     let mut rng = rand::thread_rng();

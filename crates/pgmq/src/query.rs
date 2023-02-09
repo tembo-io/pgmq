@@ -181,6 +181,23 @@ pub fn delete(name: &str, msg_id: &i64) -> String {
     )
 }
 
+pub fn delete_batch(name: &str, msg_ids: &Vec<i64>) -> String {
+    // construct string of comma separated msg_id
+    let mut msg_id_list: String = "".to_owned();
+    for msg_id in msg_ids.iter() {
+        let id_str = format!("{},", msg_id);
+        msg_id_list.push_str(&id_str)
+    }
+    // drop trailing comma from constructed string
+    msg_id_list.pop();
+    format!(
+        "
+        DELETE FROM {TABLE_PREFIX}_{name}
+        WHERE msg_id in ({msg_id_list});
+        "
+    )
+}
+
 pub fn archive(name: &str, msg_id: &i64) -> String {
     format!(
         "
@@ -258,5 +275,21 @@ mod tests {
 
         assert!(query.contains(&qname));
         assert!(query.contains(&msg_id.to_string()));
+    }
+
+    #[test]
+    fn test_delete_batch() {
+        let mut msg_ids: Vec<i64> = Vec::new();
+        let qname = "myqueue";
+        msg_ids.push(42);
+        msg_ids.push(43);
+        msg_ids.push(44);
+
+        let query = delete_batch(&qname, &msg_ids);
+
+        assert!(query.contains(&qname));
+        for id in msg_ids.iter() {
+            assert!(query.contains(&id.to_string()));
+        }
     }
 }

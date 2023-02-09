@@ -190,11 +190,14 @@
 //!     println!("Received a batch of messages: {:?}", batch);
 //!     for (_, message) in batch.iter().enumerate() {
 //!         assert!(struct_message_batch_ids.contains(&message.msg_id));
-//!         let _ = queue.delete(&my_queue, &message.msg_id)
-//!             .await
-//!             .expect("Failed to delete message");
-//!         println!("Deleted message {}", message.msg_id);
 //!     }
+//!
+//!     // Delete a batch of messages
+//!     let deleted = queue
+//!         .delete_batch(&my_queue, &struct_message_batch_ids)
+//!         .await
+//!         .expect("Failed to delete messages from queue");
+//!     assert_eq!(deleted.to_string(), struct_message_batch_ids.len().to_string());
 //!
 //!     Ok(())
 //! }
@@ -390,6 +393,14 @@ impl PGMQueue {
     /// Delete a message from the queue
     pub async fn delete(&self, queue_name: &str, msg_id: &i64) -> Result<u64, Error> {
         let query = &query::delete(queue_name, msg_id);
+        let row = sqlx::query(query).execute(&self.connection).await?;
+        let num_deleted = row.rows_affected();
+        Ok(num_deleted)
+    }
+
+    /// Delete multiple messages from the queue
+    pub async fn delete_batch(&self, queue_name: &str, msg_ids: &Vec<i64>) -> Result<u64, Error> {
+        let query = &query::delete_batch(queue_name, msg_ids);
         let row = sqlx::query(query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
         Ok(num_deleted)
