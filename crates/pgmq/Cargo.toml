@@ -1,6 +1,6 @@
 [package]
 name = "pgmq"
-version = "0.6.0"
+version = "0.7.0-alpha.1"
 edition = "2021"
 authors = ["CoreDB.io"]
 description = "A message queue for Rust applications. The only external dependency is a Postgres database."
