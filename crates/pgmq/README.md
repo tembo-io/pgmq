@@ -240,5 +240,4 @@ SELECT *
 FROM pgmq_{your_queue_name}_archive;
 ```
 
-
-License: MIT
+License: Apache-2.0
