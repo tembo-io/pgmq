@@ -1,3 +1,5 @@
+//! Query constructors
+
 pub const TABLE_PREFIX: &str = r#"pgmq"#;
 
 pub fn init_queue(name: &str) -> Vec<String> {
@@ -121,12 +123,12 @@ pub fn create_index(name: &str) -> String {
     )
 }
 
-pub fn enqueue(name: &str, messages: &Vec<serde_json::Value>) -> String {
+pub fn enqueue(name: &str, messages: &[serde_json::Value]) -> String {
     // TOOO: vt should be now() + delay
     // construct string of comma separated messages
     let mut values: String = "".to_owned();
     for message in messages.iter() {
-        let full_msg = format!("(now() at time zone 'utc', '{}'::json),", message);
+        let full_msg = format!("(now() at time zone 'utc', '{message}'::json),");
         values.push_str(&full_msg)
     }
     // drop trailing comma from constructed string
@@ -181,11 +183,11 @@ pub fn delete(name: &str, msg_id: &i64) -> String {
     )
 }
 
-pub fn delete_batch(name: &str, msg_ids: &Vec<i64>) -> String {
+pub fn delete_batch(name: &str, msg_ids: &[i64]) -> String {
     // construct string of comma separated msg_id
     let mut msg_id_list: String = "".to_owned();
     for msg_id in msg_ids.iter() {
-        let id_str = format!("{},", msg_id);
+        let id_str = format!("{msg_id},");
         msg_id_list.push_str(&id_str)
     }
     // drop trailing comma from constructed string

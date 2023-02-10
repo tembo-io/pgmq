@@ -1,3 +1,4 @@
+//! Custom errors types for PGMQ
 use thiserror::Error;
 use url::ParseError;
 

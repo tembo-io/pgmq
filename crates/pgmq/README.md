@@ -1,8 +1,19 @@
 # Postgres Message Queue (PGMQ)
 
-A lightweight distributed message queue for Rust. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq) but on Postgres.
+[![Latest Version](https://img.shields.io/crates/v/pgmq.svg)](https://crates.io/crates/pgmq)
 
-Not building in Rust? Try the [CoreDB pgmq extension](https://github.com/CoreDB-io/coredb/tree/main/extensions/pgx_pgmq).
+PGMQ is a lightweight, distributed message queue.
+It's like [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq) but native to Postgres.
+
+Message queues allow you to decouple and connect microservices.
+Send, store, and receive messages between components scalably, without dropping messages or
+needing other services to be available.
+
+PGMQ was created by CoreDB. Our goal is to make the full Postgres ecosystem accessible to everyone.
+We're building a radically simplified Postgres platform designed to be developer-first and easily extensible.
+PGMQ is a part of that project.
+
+Not building in Rust? Try the [CoreDB pgmq Postgres extension](https://github.com/CoreDB-io/coredb/tree/main/extensions/pgx_pgmq).
 
 ## Features
 
@@ -31,29 +42,18 @@ cargo --version
 
 - This example was written with version 1.67.0, but the latest stable should work. You can go [here](https://www.rust-lang.org/tools/install) to install Rust if you don't have it already, then run `rustup install stable` to install the latest, stable toolchain.
 
-- Next, let's create a Rust project for the demo.
-
+- Change directory to the example project:
 ```bash
-# Create a new Rust project
-cargo new basic
-
-# Change directory into the new project
-cd basic
+cd examples/basic
 ```
 
-- Add PGMQ to the project
+- Run the project!
 
 ```bash
-cargo add pgmq
+cargo run
 ```
 
-- Add other dependencies to the project
-
-```bash
-cargo add tokio serde serde_json
-```
-
-- Replace the contents of `src/main.rs` with this:
+## Minimal example at a glance
 
 ```rust
 use pgmq::{errors::PgmqError, Message, PGMQueue};
@@ -71,144 +71,48 @@ async fn main() -> Result<(), PgmqError> {
 
     // Create a queue
     println!("Creating a queue 'my_queue'");
-    let my_queue = "my_queue".to_owned();
+    let my_queue = "my_example_queue".to_owned();
     queue.create(&my_queue)
         .await
         .expect("Failed to create queue");
 
-    // Send a message as JSON
-    let json_message = serde_json::json!({
-        "foo": "bar"
-    });
-    println!("Enqueueing a JSON message: {json_message}");
-    let json_message_id: i64 = queue
-        .send(&my_queue, &json_message)
-        .await
-        .expect("Failed to enqueue message");
-
-    // Messages can also be sent from structs
+    // Structure a message
     #[derive(Serialize, Debug, Deserialize)]
     struct MyMessage {
         foo: String,
     }
-    let struct_message = MyMessage {
+    let message = MyMessage {
         foo: "bar".to_owned(),
     };
-    println!("Enqueueing a struct message: {:?}", struct_message);
-    let struct_message_id: i64 = queue
-        .send(&my_queue, &struct_message)
+    // Send the message
+    let message_id: i64 = queue
+        .send(&my_queue, &message)
         .await
         .expect("Failed to enqueue message");
 
-    // Use a visibility timeout of 30 seconds.
-    //
-    // Messages that are not deleted within the
-    // visibility timeout will return to the queue.
+    // Use a visibility timeout of 30 seconds
+    // Once read, the message will be unable to be read
+    // until the visibility timeout expires
     let visibility_timeout_seconds: i32 = 30;
 
-    // Read the JSON message
-    let received_json_message: Message<Value> = queue
-        .read::<Value>(&my_queue, Some(&visibility_timeout_seconds))
-        .await
-        .unwrap()
-        .expect("No messages in the queue");
-    println!("Received a message: {:?}", received_json_message);
-
-    // Compare message IDs
-    assert_eq!(received_json_message.msg_id, json_message_id);
-
-    // Read the struct message
-    let received_struct_message: Message<MyMessage> = queue
+    // Read a message
+    let received_message: Message<MyMessage> = queue
         .read::<MyMessage>(&my_queue, Some(&visibility_timeout_seconds))
         .await
         .unwrap()
         .expect("No messages in the queue");
-    println!("Received a message: {:?}", received_struct_message);
+    println!("Received a message: {:?}", received_message);
 
-    assert_eq!(received_struct_message.msg_id, struct_message_id);
+    assert_eq!(received_message.msg_id, message_id);
 
-    // Delete the messages to remove them from the queue
-    let _ = queue.delete(&my_queue, &received_json_message.msg_id)
+    // archive the messages
+    let _ = queue.archive(&my_queue, &received_message.msg_id)
         .await
-        .expect("Failed to delete message");
-    let _ = queue.delete(&my_queue, &received_struct_message.msg_id)
-        .await
-        .expect("Failed to delete message");
-    println!("Deleted the messages from the queue");
-
-    // No messages are remaining
-    let no_message: Option<Message<Value>> = queue.read::<Value>(&my_queue, Some(&visibility_timeout_seconds))
-        .await
-        .unwrap();
-    assert!(no_message.is_none());
-
-    // We can also send and receive messages in batches
-
-    // Send a batch of JSON messages
-    let json_message_batch = vec![
-        serde_json::json!({"foo": "bar1"}),
-        serde_json::json!({"foo": "bar2"}),
-        serde_json::json!({"foo": "bar3"}),
-    ];
-    println!("Enqueuing a batch of messages: {:?}", json_message_batch);
-    let json_message_batch_ids = queue.send_batch(&my_queue, &json_message_batch)
-        .await
-        .expect("Failed to enqueue messages");
-
-    // Receive a batch of JSON messages
-    let batch_size = 3;
-    let batch: Vec<Message<Value>> = queue.read_batch::<Value>(&my_queue, Some(&visibility_timeout_seconds), &batch_size)
-      .await
-      .unwrap()
-      .expect("no messages in the queue!");
-    println!("Received a batch of messages: {:?}", batch);
-    for (_, message) in batch.iter().enumerate() {
-        assert!(json_message_batch_ids.contains(&message.msg_id));
-        let _ = queue.delete(&my_queue, &message.msg_id)
-            .await
-            .expect("Failed to delete message");
-        println!("Deleted message {}", message.msg_id);
-    }
-
-    // Send a batch of struct messages
-    let struct_message_batch = vec![
-        MyMessage {foo: "bar1".to_owned()},
-        MyMessage {foo: "bar2".to_owned()},
-        MyMessage {foo: "bar3".to_owned()},
-    ];
-    println!("Enqueuing a batch of messages: {:?}", struct_message_batch);
-    let struct_message_batch_ids = queue.send_batch(&my_queue, &struct_message_batch)
-        .await
-        .expect("Failed to enqueue messages");
-
-    // Receive a batch of struct messages
-    let batch_size = 3;
-    let batch: Vec<Message<MyMessage>> = queue.read_batch::<MyMessage>(&my_queue, Some(&visibility_timeout_seconds), &batch_size)
-      .await
-      .unwrap()
-      .expect("no messages in the queue!");
-    println!("Received a batch of messages: {:?}", batch);
-    for (_, message) in batch.iter().enumerate() {
-        assert!(struct_message_batch_ids.contains(&message.msg_id));
-    }
-
-    // Delete a batch of messages
-    let deleted = queue
-        .delete_batch(&my_queue, &struct_message_batch_ids)
-        .await
-        .expect("Failed to delete messages from queue");
-    assert_eq!(deleted.to_string(), struct_message_batch_ids.len().to_string());
-
+        .expect("Failed to archive message");
+    println!("archived the messages from the queue");
     Ok(())
+
 }
-```
-
-- Run the program
-
-- This example is present in the examples/basic directory
-
-```bash
-cargo run
 ```
 
 ## Sending messages
@@ -239,5 +143,6 @@ Read messages from the queue archive with SQL:
 SELECT *
 FROM pgmq_{your_queue_name}_archive;
 ```
+
 
 License: Apache-2.0

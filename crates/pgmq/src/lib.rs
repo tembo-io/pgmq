@@ -1,8 +1,19 @@
 //! # Postgres Message Queue (PGMQ)
 //!
-//! A lightweight distributed message queue for Rust. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq) but on Postgres.
+//! [![Latest Version](https://img.shields.io/crates/v/pgmq.svg)](https://crates.io/crates/pgmq)
 //!
-//! Not building in Rust? Try the [CoreDB pgmq extension](https://github.com/CoreDB-io/coredb/tree/main/extensions/pgx_pgmq).
+//! PGMQ is a lightweight, distributed message queue.
+//! It's like [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq) but native to Postgres.
+//!
+//! Message queues allow you to decouple and connect microservices.
+//! Send, store, and receive messages between components scalably, without dropping messages or
+//! needing other services to be available.
+//!
+//! PGMQ was created by CoreDB. Our goal is to make the full Postgres ecosystem accessible to everyone.
+//! We're building a radically simplified Postgres platform designed to be developer-first and easily extensible.
+//! PGMQ is a part of that project.
+//!
+//! Not building in Rust? Try the [CoreDB pgmq Postgres extension](https://github.com/CoreDB-io/coredb/tree/main/extensions/pgx_pgmq).
 //!
 //! ## Features
 //!
@@ -31,29 +42,18 @@
 //!
 //! - This example was written with version 1.67.0, but the latest stable should work. You can go [here](https://www.rust-lang.org/tools/install) to install Rust if you don't have it already, then run `rustup install stable` to install the latest, stable toolchain.
 //!
-//! - Next, let's create a Rust project for the demo.
+//! - Change directory to the example project:
+//! ```bash
+//! cd examples/basic
+//!```
+//!
+//! - Run the project!
 //!
 //! ```bash
-//! # Create a new Rust project
-//! cargo new basic
-//!
-//! # Change directory into the new project
-//! cd basic
+//! cargo run
 //! ```
 //!
-//! - Add PGMQ to the project
-//!
-//! ```bash
-//! cargo add pgmq
-//! ```
-//!
-//! - Add other dependencies to the project
-//!
-//! ```bash
-//! cargo add tokio serde serde_json
-//! ```
-//!
-//! - Replace the contents of `src/main.rs` with this:
+//! ## Minimal example at a glance
 //!
 //! ```rust
 //! use pgmq::{errors::PgmqError, Message, PGMQueue};
@@ -71,144 +71,48 @@
 //!
 //!     // Create a queue
 //!     println!("Creating a queue 'my_queue'");
-//!     let my_queue = "my_queue".to_owned();
+//!     let my_queue = "my_example_queue".to_owned();
 //!     queue.create(&my_queue)
 //!         .await
 //!         .expect("Failed to create queue");
 //!
-//!     // Send a message as JSON
-//!     let json_message = serde_json::json!({
-//!         "foo": "bar"
-//!     });
-//!     println!("Enqueueing a JSON message: {json_message}");
-//!     let json_message_id: i64 = queue
-//!         .send(&my_queue, &json_message)
-//!         .await
-//!         .expect("Failed to enqueue message");
-//!
-//!     // Messages can also be sent from structs
+//!     // Structure a message
 //!     #[derive(Serialize, Debug, Deserialize)]
 //!     struct MyMessage {
 //!         foo: String,
 //!     }
-//!     let struct_message = MyMessage {
+//!     let message = MyMessage {
 //!         foo: "bar".to_owned(),
 //!     };
-//!     println!("Enqueueing a struct message: {:?}", struct_message);
-//!     let struct_message_id: i64 = queue
-//!         .send(&my_queue, &struct_message)
+//!     // Send the message
+//!     let message_id: i64 = queue
+//!         .send(&my_queue, &message)
 //!         .await
 //!         .expect("Failed to enqueue message");
 //!
-//!     // Use a visibility timeout of 30 seconds.
-//!     //
-//!     // Messages that are not deleted within the
-//!     // visibility timeout will return to the queue.
+//!     // Use a visibility timeout of 30 seconds
+//!     // Once read, the message will be unable to be read
+//!     // until the visibility timeout expires
 //!     let visibility_timeout_seconds: i32 = 30;
 //!
-//!     // Read the JSON message
-//!     let received_json_message: Message<Value> = queue
-//!         .read::<Value>(&my_queue, Some(&visibility_timeout_seconds))
-//!         .await
-//!         .unwrap()
-//!         .expect("No messages in the queue");
-//!     println!("Received a message: {:?}", received_json_message);
-//!
-//!     // Compare message IDs
-//!     assert_eq!(received_json_message.msg_id, json_message_id);
-//!
-//!     // Read the struct message
-//!     let received_struct_message: Message<MyMessage> = queue
+//!     // Read a message
+//!     let received_message: Message<MyMessage> = queue
 //!         .read::<MyMessage>(&my_queue, Some(&visibility_timeout_seconds))
 //!         .await
 //!         .unwrap()
 //!         .expect("No messages in the queue");
-//!     println!("Received a message: {:?}", received_struct_message);
+//!     println!("Received a message: {:?}", received_message);
 //!
-//!     assert_eq!(received_struct_message.msg_id, struct_message_id);
+//!     assert_eq!(received_message.msg_id, message_id);
 //!
-//!     // Delete the messages to remove them from the queue
-//!     let _ = queue.delete(&my_queue, &received_json_message.msg_id)
+//!     // archive the messages
+//!     let _ = queue.archive(&my_queue, &received_message.msg_id)
 //!         .await
-//!         .expect("Failed to delete message");
-//!     let _ = queue.delete(&my_queue, &received_struct_message.msg_id)
-//!         .await
-//!         .expect("Failed to delete message");
-//!     println!("Deleted the messages from the queue");
-//!
-//!     // No messages are remaining
-//!     let no_message: Option<Message<Value>> = queue.read::<Value>(&my_queue, Some(&visibility_timeout_seconds))
-//!         .await
-//!         .unwrap();
-//!     assert!(no_message.is_none());
-//!
-//!     // We can also send and receive messages in batches
-//!
-//!     // Send a batch of JSON messages
-//!     let json_message_batch = vec![
-//!         serde_json::json!({"foo": "bar1"}),
-//!         serde_json::json!({"foo": "bar2"}),
-//!         serde_json::json!({"foo": "bar3"}),
-//!     ];
-//!     println!("Enqueuing a batch of messages: {:?}", json_message_batch);
-//!     let json_message_batch_ids = queue.send_batch(&my_queue, &json_message_batch)
-//!         .await
-//!         .expect("Failed to enqueue messages");
-//!
-//!     // Receive a batch of JSON messages
-//!     let batch_size = 3;
-//!     let batch: Vec<Message<Value>> = queue.read_batch::<Value>(&my_queue, Some(&visibility_timeout_seconds), &batch_size)
-//!       .await
-//!       .unwrap()
-//!       .expect("no messages in the queue!");
-//!     println!("Received a batch of messages: {:?}", batch);
-//!     for (_, message) in batch.iter().enumerate() {
-//!         assert!(json_message_batch_ids.contains(&message.msg_id));
-//!         let _ = queue.delete(&my_queue, &message.msg_id)
-//!             .await
-//!             .expect("Failed to delete message");
-//!         println!("Deleted message {}", message.msg_id);
-//!     }
-//!
-//!     // Send a batch of struct messages
-//!     let struct_message_batch = vec![
-//!         MyMessage {foo: "bar1".to_owned()},
-//!         MyMessage {foo: "bar2".to_owned()},
-//!         MyMessage {foo: "bar3".to_owned()},
-//!     ];
-//!     println!("Enqueuing a batch of messages: {:?}", struct_message_batch);
-//!     let struct_message_batch_ids = queue.send_batch(&my_queue, &struct_message_batch)
-//!         .await
-//!         .expect("Failed to enqueue messages");
-//!
-//!     // Receive a batch of struct messages
-//!     let batch_size = 3;
-//!     let batch: Vec<Message<MyMessage>> = queue.read_batch::<MyMessage>(&my_queue, Some(&visibility_timeout_seconds), &batch_size)
-//!       .await
-//!       .unwrap()
-//!       .expect("no messages in the queue!");
-//!     println!("Received a batch of messages: {:?}", batch);
-//!     for (_, message) in batch.iter().enumerate() {
-//!         assert!(struct_message_batch_ids.contains(&message.msg_id));
-//!     }
-//!
-//!     // Delete a batch of messages
-//!     let deleted = queue
-//!         .delete_batch(&my_queue, &struct_message_batch_ids)
-//!         .await
-//!         .expect("Failed to delete messages from queue");
-//!     assert_eq!(deleted.to_string(), struct_message_batch_ids.len().to_string());
-//!
+//!         .expect("Failed to archive message");
+//!     println!("archived the messages from the queue");
 //!     Ok(())
+//!
 //! }
-//! ```
-//!
-//! - Run the program
-//!
-//! - This example is present in the examples/basic directory
-//!
-//! ```bash
-//! cargo run
 //! ```
 //!
 //! ## Sending messages
@@ -259,16 +163,26 @@ use chrono::serde::ts_seconds::deserialize as from_ts;
 const VT_DEFAULT: i32 = 30;
 const READ_LIMIT_DEFAULT: i32 = 1;
 
+/// Message struct received from the queue
+///
+/// It is an "envelope" for the message that is stored in the queue.
+/// It contains both the message body but also metadata about the message.
 #[derive(Debug, Deserialize, FromRow)]
 pub struct Message<T = serde_json::Value> {
+    /// unique identifier for the message
     pub msg_id: i64,
     #[serde(deserialize_with = "from_ts")]
+    /// "visibility time". The UTC timestamp at which the message will be available for reading again.
     pub vt: chrono::DateTime<Utc>,
+    /// UTC timestamp that the message was sent to the queue
     pub enqueued_at: chrono::DateTime<Utc>,
+    /// The number of times the message has been read. Increments on read.
     pub read_ct: i32,
+    /// The message body.
     pub message: T,
 }
 
+/// Main controller for interacting with a queue.
 #[derive(Debug)]
 pub struct PGMQueue {
     pub url: String,
@@ -295,7 +209,28 @@ impl PGMQueue {
         Ok(pgp)
     }
 
-    /// Create a queue
+    /// Create a queue. This sets up the queue's tables, indexes, and metadata.
+    /// It is idempotent, but does not check if the queue already exists.
+    /// Amounts to `IF NOT EXISTS` statements in Postgres.
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{errors::PgmqError, PGMQueue};
+    /// use serde::{Deserialize, Serialize};
+    /// use serde_json::Value;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///    let my_queue = "my_queue";
+    ///    queue.create(my_queue).await?;
+    ///    Ok(())
+    /// }
     pub async fn create(&self, queue_name: &str) -> Result<(), errors::PgmqError> {
         let mut tx = self.connection.begin().await?;
         let setup = query::init_queue(queue_name);
@@ -306,7 +241,30 @@ impl PGMQueue {
         Ok(())
     }
 
-    /// destroy a queue
+    /// Destroy a queue. This deletes the queue's tables, indexes, and metadata.
+    /// Does not delete any data related to adjacent queues.
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{errors::PgmqError, PGMQueue};
+    /// use serde::{Deserialize, Serialize};
+    /// use serde_json::Value;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue_destroy".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///     queue.destroy("my_queue_destroy").await.expect("Failed to destroy queue!");
+    ///     Ok(())
+    /// }
     pub async fn destroy(&self, queue_name: &str) -> Result<(), errors::PgmqError> {
         let mut tx = self.connection.begin().await?;
         let setup = query::destory_queue(queue_name);
@@ -317,7 +275,56 @@ impl PGMQueue {
         Ok(())
     }
 
-    /// Send a message to the queue
+    /// Send a single message to a queue.
+    /// Messages can be any implementor of the [`serde::Serialize`] trait.
+    /// The message id, unique to the queue, is returned. Typically,
+    /// the message sender does not consume the message id but may use it for
+    /// logging and tracing purposes.
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{errors::PgmqError, PGMQueue};
+    /// use serde::{Deserialize, Serialize};
+    /// use serde_json::Value;
+    ///
+    /// #[derive(Debug, Deserialize, Serialize)]
+    /// struct MyMessage {
+    ///    foo: String,
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///
+    ///     let struct_message = MyMessage {
+    ///         foo: "bar".to_owned(),
+    ///     };
+    ///
+    ///     let struct_message_id: i64 = queue
+    ///        .send(&my_queue, &struct_message)
+    ///        .await
+    ///        .expect("Failed to enqueue message");
+    ///     println!("Struct Message id: {}", struct_message_id);
+    ///
+    ///     let json_message = serde_json::json!({
+    ///         "foo": "bar"
+    ///     });
+    ///     let json_message_id: i64 = queue
+    ///         .send(&my_queue, &json_message)
+    ///         .await
+    ///         .expect("Failed to enqueue message");
+    ///     println!("Json Message id: {}", json_message_id);
+    ///     Ok(())
+    /// }
     pub async fn send<T: Serialize>(
         &self,
         queue_name: &str,
@@ -333,11 +340,50 @@ impl PGMQueue {
         Ok(msg_id)
     }
 
-    /// Send multiple messages to the queue
+    /// Send multiple messages to a queue.
+    /// Same as send(), messages can be any implementor of the [`serde::Serialize`] trait.
+    /// A vector of message ids are returned in the call. These message ids are in the
+    /// same order as the messages in the input vector.
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{errors::PgmqError, PGMQueue};
+    /// use serde::{Deserialize, Serialize};
+    /// use serde_json::Value;
+    ///
+    /// #[derive(Debug, Deserialize, Serialize)]
+    /// struct MyMessage {
+    ///    foo: String,
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///    let struct_message_batch = vec![
+    ///        MyMessage {foo: "bar1".to_owned()},
+    ///        MyMessage {foo: "bar2".to_owned()},
+    ///        MyMessage {foo: "bar3".to_owned()},
+    ///    ];
+    ///
+    ///    let struct_message_batch_ids = queue.send_batch(&my_queue, &struct_message_batch)
+    ///        .await
+    ///        .expect("Failed to enqueue messages");
+    ///     println!("Struct Message ids: {:?}", struct_message_batch_ids);
+    ///     Ok(())
+    /// }
     pub async fn send_batch<T: Serialize>(
         &self,
         queue_name: &str,
-        messages: &Vec<T>,
+        messages: &[T],
     ) -> Result<Vec<i64>, errors::PgmqError> {
         let mut msgs: Vec<serde_json::Value> = Vec::new();
         let mut msg_ids: Vec<i64> = Vec::new();
@@ -354,8 +400,69 @@ impl PGMQueue {
         Ok(msg_ids)
     }
 
-    /// Reads a single message from the queue. If the queue is empty or all messages are invisible, `None` is returned.
+    /// Reads a single message from the queue. If the queue is empty or all messages are invisible, [`Option::None`] is returned.
     /// If a message is returned, it is made invisible for the duration of the visibility timeout (vt) in seconds.
+    ///
+    /// Reading a message returns a [`Message`] struct.
+    /// Typically, the application reading messages is most interested in the message body but will use the
+    /// message id in order to either delete or archive the message when it is done processing it.
+    ///
+    /// Refer to the [`Message`] struct for more details.
+    ///
+    /// You can specify the message structure you are expecting to read from the queue by using the type parameters.
+    /// Any implementor of the [`serde::Deserialize`] trait can be used.
+    /// If you do not know the type of the message, it will default to [`serde_json::Value`].
+    ///
+    /// [`Message`]: struct@crate::Message
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{Message, errors::PgmqError, PGMQueue};
+    /// use serde::{Deserialize, Serialize};
+    /// use serde_json::Value;
+    ///
+    /// #[derive(Debug, Deserialize, Serialize)]
+    /// struct MyMessage {
+    ///    foo: String,
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///     let struct_message_batch = vec![
+    ///        MyMessage {foo: "bar1".to_owned()},
+    ///        MyMessage {foo: "bar2".to_owned()},
+    ///        MyMessage {foo: "bar3".to_owned()},
+    ///     ];
+    ///
+    ///     let struct_message_batch_ids = queue.send_batch(&my_queue, &struct_message_batch)
+    ///        .await
+    ///        .expect("Failed to enqueue messages");
+    ///     println!("Struct Message ids: {:?}", struct_message_batch_ids);
+    ///
+    ///     let visibility_timeout_seconds = 30;
+    ///     let known_message_structure: Message<MyMessage> = queue.read::<MyMessage>(&my_queue, Some(&visibility_timeout_seconds))
+    ///         .await
+    ///         .unwrap()
+    ///         .expect("no messages in the queue!");
+    ///     println!("Received known : {known_message_structure:?}");
+    ///
+    ///     let unknown_message_structure: Message = queue.read(&my_queue, Some(&visibility_timeout_seconds))
+    ///         .await
+    ///         .unwrap()
+    ///         .expect("no messages in the queue!");
+    ///     println!("Received known : {unknown_message_structure:?}");
+    ///     Ok(())
+    /// }
     pub async fn read<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
@@ -372,8 +479,71 @@ impl PGMQueue {
         Ok(message)
     }
 
-    /// Reads a given number of messages (num_msgs) from the queue. If the queue is empty or all messages are invisible, `None` is returned.
-    /// If messages are returned, they are made invisible for the duration of the visibility timeout (vt) in seconds.
+    /// Reads a specified number of messages (num_msgs) from the queue.
+    /// Any messages that are returned are made invisible for the duration of the visibility timeout (vt) in seconds.
+    ///
+    /// If the queue is empty or all messages are invisible,[`Option::None`] is returned. If there are messages,
+    /// it is returned as a vector of [`Message`] structs (it will never be an empty vector).
+    ///
+    /// Refer to the [`Message`] struct for more details.
+    ///
+    /// You can specify the message structure you are expecting to read from the queue by using the type parameters.
+    /// Any implementor of the [`serde::Deserialize`] trait can be used.
+    /// If you do not know the type of the message, it will default to [`serde_json::Value`].
+    ///
+    /// [`Message`]: struct@crate::Message
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{Message, errors::PgmqError, PGMQueue};
+    /// use serde::{Deserialize, Serialize};
+    /// use serde_json::Value;
+    ///
+    /// #[derive(Debug, Deserialize, Serialize)]
+    /// struct MyMessage {
+    ///    foo: String,
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///
+    ///     let struct_message_batch = vec![
+    ///        MyMessage {foo: "bar1".to_owned()},
+    ///        MyMessage {foo: "bar2".to_owned()},
+    ///        MyMessage {foo: "bar3".to_owned()},
+    ///     ];
+    ///
+    ///     let struct_message_batch_ids = queue.send_batch(&my_queue, &struct_message_batch)
+    ///        .await
+    ///        .expect("Failed to enqueue messages");
+    ///     println!("Struct Message ids: {struct_message_batch_ids:?}");
+    ///
+    ///     let visibility_timeout_seconds = 30;
+    ///     let batch_size = 1;
+    ///     let batch: Vec<Message<MyMessage>> = queue.read_batch::<MyMessage>(&my_queue, Some(&visibility_timeout_seconds), &batch_size)
+    ///         .await
+    ///         .unwrap()
+    ///         .expect("no messages in the queue!");
+    ///     println!("Received a batch of messages: {batch:?}");
+    ///
+    ///     let batch_size = 2;
+    ///     let unknown_message_structure: Message = queue.read(&my_queue, Some(&visibility_timeout_seconds))
+    ///         .await
+    ///         .unwrap()
+    ///         .expect("no messages in the queue!");
+    ///     println!("Received known : {unknown_message_structure:?}");
+    ///     Ok(())
+    /// }
     pub async fn read_batch<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
@@ -390,7 +560,50 @@ impl PGMQueue {
         Ok(messages)
     }
 
-    /// Delete a message from the queue
+    /// Delete a message from the queue.
+    /// This is a permanent delete and cannot be undone. If you want to retain a log of the message,
+    /// use the [archive](#method.archive) method.
+    ///
+    /// Deletes happen by message id, so you must have the message id to delete the message.
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{errors::PgmqError, PGMQueue};
+    /// use serde::Serialize;
+    /// use serde_json::Value;
+    ///
+    /// #[derive(Debug, Serialize)]
+    /// struct MyMessage {
+    ///    foo: String,
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///
+    ///     let struct_message = MyMessage {
+    ///         foo: "bar".to_owned(),
+    ///     };
+    ///
+    ///     let message_id: i64 = queue
+    ///        .send(&my_queue, &struct_message)
+    ///        .await
+    ///        .expect("Failed to enqueue message");
+    ///     println!("Struct Message id: {message_id}");
+    ///
+    ///     queue.delete(&my_queue, &message_id).await.expect("failed to delete message");
+    ///
+    ///     Ok(())
+    /// }
     pub async fn delete(&self, queue_name: &str, msg_id: &i64) -> Result<u64, Error> {
         let query = &query::delete(queue_name, msg_id);
         let row = sqlx::query(query).execute(&self.connection).await?;
@@ -398,15 +611,91 @@ impl PGMQueue {
         Ok(num_deleted)
     }
 
-    /// Delete multiple messages from the queue
-    pub async fn delete_batch(&self, queue_name: &str, msg_ids: &Vec<i64>) -> Result<u64, Error> {
+    /// Delete multiple messages from the queue.
+    /// This is a permanent delete and cannot be undone. If you want to retain a log of the message,
+    /// use the [archive](#method.archive) method.
+    ///
+    /// Deletes happen by message id, so you must have the message id to delete the message.
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{errors::PgmqError, PGMQueue};
+    /// use serde::Serialize;
+    /// use serde_json::Value;
+    ///
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///
+    ///     let msgs = vec![  
+    ///         serde_json::json!({"foo": "bar1"}),
+    ///         serde_json::json!({"foo": "bar2"}),
+    ///         serde_json::json!({"foo": "bar3"}),
+    ///     ];
+    ///     let msg_ids = queue
+    ///        .send_batch(&my_queue, &msgs)
+    ///        .await
+    ///        .expect("Failed to enqueue messages");
+    ///     let del = queue
+    ///         .delete_batch(&my_queue, &msg_ids)
+    ///         .await
+    ///         .expect("Failed to delete messages from queue");
+    ///
+    ///     Ok(())
+    /// }
+    pub async fn delete_batch(&self, queue_name: &str, msg_ids: &[i64]) -> Result<u64, Error> {
         let query = &query::delete_batch(queue_name, msg_ids);
         let row = sqlx::query(query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
         Ok(num_deleted)
     }
 
-    /// move message from queue table to archive table
+    /// Moves a message, by message id, from the queue table to archive table
+    /// View messages on the archive table with sql:
+    /// ```sql
+    /// SELECT * FROM pgmq_<queue_name>_archive;
+    /// ```
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{errors::PgmqError, PGMQueue};
+    /// use serde::Serialize;
+    /// use serde_json::Value;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///
+    ///     let message = serde_json::json!({"foo": "bar1"});
+    ///
+    ///     let message_id: i64 = queue
+    ///        .send(&my_queue, &message)
+    ///        .await
+    ///        .expect("Failed to enqueue message");
+    ///
+    ///     queue.archive(&my_queue, &message_id).await.expect("failed to archive message");
+    ///
+    ///     Ok(())
+    /// }
     pub async fn archive(&self, queue_name: &str, msg_id: &i64) -> Result<u64, Error> {
         let query = query::archive(queue_name, msg_id);
         let row = sqlx::query(&query).execute(&self.connection).await?;
@@ -414,8 +703,48 @@ impl PGMQueue {
         Ok(num_deleted)
     }
 
-    /// Reads a single message from the queue. The message is deleted from the queue immediately.
-    /// If no messages are available, `None` is returned.
+    /// Reads single message from the queue and delete it at the same time.
+    /// Similar to [read](#method.read) and [read_batch](#method.read_batch),
+    /// if no messages are available, [`Option::None`] is returned. Unlike these methods,
+    /// the visibility timeout does not apply. This is because the message is immediately deleted.
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{Message, errors::PgmqError, PGMQueue};
+    /// use serde::{Deserialize, Serialize};
+    /// use serde_json::Value;
+    ///
+    /// #[derive(Debug, Deserialize, Serialize)]
+    /// struct MyMessage {
+    ///    foo: String,
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///     let send_message = MyMessage {foo: "bar1".to_owned()};
+    ///
+    ///     let struct_message_batch_ids = queue.send(&my_queue, &send_message)
+    ///        .await
+    ///        .expect("Failed to send message");
+    ///
+    ///     let popped_message: Message<MyMessage> = queue.pop::<MyMessage>(&my_queue)
+    ///         .await
+    ///         .unwrap()
+    ///         .expect("no messages in the queue!");
+    ///     println!("Received popped message : {popped_message:?}");
+    ///
+    ///     Ok(())
+    /// }
     pub async fn pop<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
@@ -428,6 +757,7 @@ impl PGMQueue {
 
 // Executes a query and returns a single row
 // If the query returns no rows, None is returned
+// This function is intended for internal use.
 async fn fetch_one_message<T: for<'de> Deserialize<'de>>(
     query: &str,
     connection: &Pool<Postgres>,
@@ -457,6 +787,7 @@ async fn fetch_one_message<T: for<'de> Deserialize<'de>>(
 
 // Executes a query and returns multiple rows
 // If the query returns no rows, None is returned
+// This function is intended for internal use.
 async fn fetch_messages<T: for<'de> Deserialize<'de>>(
     query: &str,
     connection: &Pool<Postgres>,
