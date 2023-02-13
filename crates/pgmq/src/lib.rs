@@ -13,7 +13,7 @@
 //! We're building a radically simplified Postgres platform designed to be developer-first and easily extensible.
 //! PGMQ is a part of that project.
 //!
-//! Not building in Rust? Try the [CoreDB pgmq Postgres extension](https://github.com/CoreDB-io/coredb/tree/main/extensions/pgx_pgmq).
+//! Not building in Rust? Try the [CoreDB pgmq Postgres extension](https://github.com/CoreDB-io/coredb/tree/main/extensions/pgmq).
 //!
 //! ## Features
 //!

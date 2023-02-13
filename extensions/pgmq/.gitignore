@@ -1,0 +1,9 @@
+.DS_Store
+.idea/
+/target
+*.iml
+**/*.rs.bk
+Dockerfile
+.dockerignore
+docker/**
+*.deb
