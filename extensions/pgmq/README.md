@@ -33,7 +33,7 @@ CoreDB Postgres images come with the `pgmq` extension pre-installed.
 
 
 ```bash
-docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/coredb/postgres:1f064f52626f
+docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/coredb/postgres:a71bda2
 ```
 
 ## Python Examples
