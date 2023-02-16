@@ -1,5 +1,6 @@
-comment = 'pgmq:  Created by pgx'
+comment = 'pgmq: easy message queues'
 default_version = '@CARGO_VERSION@'
 module_pathname = '$libdir/pgmq'
 relocatable = false
 superuser = false
+requires = 'pg_partman'

@@ -25,7 +25,10 @@ A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/s
     - [Archive a message](#archive-a-message)
     - [Delete a message](#delete-a-message)
 - [Development](#development)
+    - [Setup dependencies](#setup-dependencies)
 - [Packaging](#packaging)
+- [Configuration](#configuration)
+  - [Partitioned Queues](#partitioned-queues)
 
 ## Start CoreDB Postgres
 
@@ -33,7 +36,7 @@ CoreDB Postgres images come with the `pgmq` extension pre-installed.
 
 
 ```bash
-docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/coredb/postgres:a71bda2
+docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/coredb/postgres:latest
 ```
 
 ## Python Examples
@@ -51,7 +54,7 @@ psql postgres://postgres:postgres@0.0.0.0:5432/postgres
 
 ```sql
 -- create the extension
-CREATE EXTENSION pgmq;
+CREATE EXTENSION pgmq CASCADE;
 ```
 
 ### Creating a queue
@@ -155,10 +158,29 @@ git clone git@github.com:CoreDB-io/coredb.git
 cd coredb/extensions/pgmq/
 ```
 
+### Setup dependencies
+
+Install:
+- [pg_partman](https://github.com/pgpartman/pg_partman), which is required for partitioned tables.
+
+
+Update postgresql.conf in the development environment.
+```
+#  ~/.pgx/data-14/postgresql.conf
+shared_preload_libraries = 'pg_partman_bgw'
+```
+
+
 Run the dev environment
 
 ```bash
 cargo pgx run pg14
+```
+
+Create the extension
+
+```pql
+CREATE EXTENSION pgmq cascade;
 ```
 
 # Packaging
@@ -168,3 +190,12 @@ Run this script to package into a `.deb` file, which can be installed on Ubuntu.
 ```
 /bin/bash build-extension.sh
 ```
+
+# Configuration
+
+## Partitioned Queues
+
+pgmq supports partitioned queues with `create_partitioned()` by `msg_id` and the default value is 10000 messages per partition.
+New partitions are automatically created by [pg_partman](https://github.com/pgpartman/pg_partman/),
+ which is a dependency of this extension. New partitions are created, if necessary, by setting `pg_partman_bgw.interval` 
+ in `postgresql.conf`. Below are the default configuration values set in CoreDB docker images.

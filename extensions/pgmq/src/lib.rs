@@ -4,6 +4,7 @@ use pgx::warning;
 
 pgx::pg_module_magic!();
 
+pub mod partition;
 use pgmq_crate::query::{delete, enqueue_str, init_queue, pop, read};
 
 #[pg_extern]
@@ -22,12 +23,29 @@ fn pgmq_create(queue_name: &str) -> Result<(), spi::Error> {
 }
 
 #[pg_extern]
+fn pgmq_create_partitioned(
+    queue_name: &str,
+    partition_size: default!(i64, 10000),
+) -> Result<(), spi::Error> {
+    let setup = partition::init_partitioned_queue(queue_name, partition_size);
+    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+        for q in setup {
+            let _ = c.update(&q, None, None)?;
+        }
+        Ok(())
+    });
+
+    match ran {
+        Ok(_) => Ok(()),
+        Err(ran) => Err(ran),
+    }
+}
+
+#[pg_extern]
 fn pgmq_send(queue_name: &str, message: pgx::Json) -> Result<Option<i64>, spi::Error> {
     let m = serde_json::to_string(&message.0).unwrap();
     Spi::get_one(&enqueue_str(queue_name, &m))
 }
-
-// check message out of the queue using default timeout
 
 #[pg_extern]
 fn pgmq_read(
@@ -209,7 +227,7 @@ fn listit() -> Result<Vec<(String, TimestampWithTimeZone)>, spi::Error> {
 mod tests {
     use crate::*;
     use pgmq_crate::query::TABLE_PREFIX;
-    // use pgx::prelude::*;
+
     #[pg_test]
     fn test_create() {
         let qname = r#"test_queue"#;
@@ -303,17 +321,73 @@ mod tests {
                 .expect("SQL select failed");
         assert_eq!(init_count.unwrap(), 0);
     }
+
+    /// lifecycle test for partitioned queues
+    #[pg_test]
+    fn test_partitioned() {
+        let qname = r#"test_internal"#;
+        let _ = pgmq_create_partitioned(&qname, 2).unwrap();
+
+        let queues = listit().unwrap();
+        assert_eq!(queues.len(), 1);
+
+        // put two message on the queue
+        let msg_id1 = pgmq_send(&qname, pgx::Json(serde_json::json!({"x":1})))
+            .unwrap()
+            .unwrap();
+        let msg_id2 = pgmq_send(&qname, pgx::Json(serde_json::json!({"x":2})))
+            .unwrap()
+            .unwrap();
+        assert_eq!(msg_id1, 1);
+        assert_eq!(msg_id2, 2);
+
+        // read first message
+        let msg1 = readit(&qname, 1_i32, 1_i32).unwrap();
+        // pop the second message
+        let msg2 = popit(&qname).unwrap();
+        assert_eq!(msg1.len(), 1);
+        assert_eq!(msg2.len(), 1);
+        assert_eq!(msg1[0].0, msg_id1);
+        assert_eq!(msg2[0].0, msg_id2);
+
+        // read again, should be no messages
+        let nothing = readit(&qname, 2_i32, 1_i32).unwrap();
+        assert_eq!(nothing.len(), 0);
+
+        // but still one record on the table
+        let init_count =
+            Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
+                .expect("SQL select failed");
+        assert_eq!(init_count.unwrap(), 1);
+
+        //  delete the messages
+        let delete1 = pgmq_delete(&qname, msg_id1).unwrap().unwrap();
+        assert!(delete1);
+
+        //  delete when message is gone returns False
+        let delete1 = pgmq_delete(&qname, msg_id1).unwrap().unwrap();
+        assert!(!delete1);
+
+        // no records after delete
+        let init_count =
+            Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
+                .expect("SQL select failed");
+        assert_eq!(init_count.unwrap(), 0);
+    }
 }
 
 #[cfg(test)]
 pub mod pg_test {
     // pg_test module with both the setup and postgresql_conf_options functions are required
-    pub fn setup(_options: Vec<&str>) {
-        // perform one-off initialization when the pg_test framework starts
-    }
+
+    use std::vec;
+
+    pub fn setup(_options: Vec<&str>) {}
 
     pub fn postgresql_conf_options() -> Vec<&'static str> {
         // return any postgresql.conf settings that are required for your tests
+        // uncomment this when there are tests for the partman background worker
+        // vec!["shared_preload_libraries = 'pg_partman_bgw'"]
         vec![]
     }
 }

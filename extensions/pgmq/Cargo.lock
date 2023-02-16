@@ -986,9 +986,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.17.0"
+version = "1.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
+checksum = "b7e5500299e16ebb147ae15a00a942af264cf3688f47923b8fc2cd5858f23ad3"
 
 [[package]]
 name = "openssl"
@@ -1151,9 +1151,9 @@ dependencies = [
 
 [[package]]
 name = "pgmq"
-version = "0.0.4"
+version = "0.1.0"
 dependencies = [
- "pgmq 0.7.2",
+ "pgmq 0.7.3",
  "pgx",
  "pgx-tests",
  "serde",
@@ -1162,9 +1162,9 @@ dependencies = [
 
 [[package]]
 name = "pgmq"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e717f52a46868d3a34e3f9d9984319978fcc73b63febd71d87b336a335c2d416"
+checksum = "7677514ea60e7787bf2b838b080ba81a7b53903b6cb5948459c9c0048c141e01"
 dependencies = [
  "chrono",
  "log",
