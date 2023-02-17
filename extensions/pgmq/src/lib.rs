@@ -5,7 +5,7 @@ use pgx::warning;
 pgx::pg_module_magic!();
 
 pub mod partition;
-use pgmq_crate::query::{delete, enqueue_str, init_queue, pop, read};
+use pgmq_crate::query::{check_input, delete, init_queue, pop, read, TABLE_PREFIX};
 
 #[pg_extern]
 fn pgmq_create(queue_name: &str) -> Result<(), spi::Error> {
@@ -45,6 +45,18 @@ fn pgmq_create_partitioned(
 fn pgmq_send(queue_name: &str, message: pgx::Json) -> Result<Option<i64>, spi::Error> {
     let m = serde_json::to_string(&message.0).unwrap();
     Spi::get_one(&enqueue_str(queue_name, &m))
+}
+
+fn enqueue_str(name: &str, message: &str) -> String {
+    check_input(name);
+    // TOOO: vt should be now() + delay
+    format!(
+        "
+        INSERT INTO {TABLE_PREFIX}_{name} (vt, message)
+        VALUES (now() at time zone 'utc', '{message}'::json)
+        RETURNING msg_id;
+        "
+    )
 }
 
 #[pg_extern]
