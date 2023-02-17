@@ -147,6 +147,7 @@
 
 #![doc(html_root_url = "https://docs.rs/pgmq/")]
 
+use errors::PgmqError;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use sqlx::error::Error;
@@ -233,7 +234,7 @@ impl PGMQueue {
     /// }
     pub async fn create(&self, queue_name: &str) -> Result<(), errors::PgmqError> {
         let mut tx = self.connection.begin().await?;
-        let setup = query::init_queue(queue_name);
+        let setup = query::init_queue(queue_name)?;
         for q in setup {
             sqlx::query(&q).execute(&mut tx).await?;
         }
@@ -267,7 +268,7 @@ impl PGMQueue {
     /// }
     pub async fn destroy(&self, queue_name: &str) -> Result<(), errors::PgmqError> {
         let mut tx = self.connection.begin().await?;
-        let setup = query::destory_queue(queue_name);
+        let setup = query::destory_queue(queue_name)?;
         for q in setup {
             sqlx::query(&q).execute(&mut tx).await?;
         }
@@ -333,7 +334,7 @@ impl PGMQueue {
         let mut msgs: Vec<serde_json::Value> = Vec::new();
         let msg = serde_json::json!(&message);
         msgs.push(msg);
-        let row: PgRow = sqlx::query(&query::enqueue(queue_name, &msgs))
+        let row: PgRow = sqlx::query(&query::enqueue(queue_name, &msgs)?)
             .fetch_one(&self.connection)
             .await?;
         let msg_id: i64 = row.get("msg_id");
@@ -391,7 +392,7 @@ impl PGMQueue {
             let binding = serde_json::json!(&msg);
             msgs.push(binding)
         }
-        let rows: Vec<PgRow> = sqlx::query(&query::enqueue(queue_name, &msgs))
+        let rows: Vec<PgRow> = sqlx::query(&query::enqueue(queue_name, &msgs)?)
             .fetch_all(&self.connection)
             .await?;
         for row in rows.iter() {
@@ -474,7 +475,7 @@ impl PGMQueue {
             None => &VT_DEFAULT,
         };
         let limit = &READ_LIMIT_DEFAULT;
-        let query = &query::read(queue_name, vt_, limit);
+        let query = &query::read(queue_name, vt_, limit)?;
         let message = fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
     }
@@ -555,7 +556,7 @@ impl PGMQueue {
             Some(t) => t,
             None => &VT_DEFAULT,
         };
-        let query = &query::read(queue_name, vt_, num_msgs);
+        let query = &query::read(queue_name, vt_, num_msgs)?;
         let messages = fetch_messages::<T>(query, &self.connection).await?;
         Ok(messages)
     }
@@ -604,8 +605,8 @@ impl PGMQueue {
     ///
     ///     Ok(())
     /// }
-    pub async fn delete(&self, queue_name: &str, msg_id: &i64) -> Result<u64, Error> {
-        let query = &query::delete(queue_name, msg_id);
+    pub async fn delete(&self, queue_name: &str, msg_id: &i64) -> Result<u64, PgmqError> {
+        let query = &query::delete(queue_name, msg_id)?;
         let row = sqlx::query(query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
         Ok(num_deleted)
@@ -653,8 +654,8 @@ impl PGMQueue {
     ///
     ///     Ok(())
     /// }
-    pub async fn delete_batch(&self, queue_name: &str, msg_ids: &[i64]) -> Result<u64, Error> {
-        let query = &query::delete_batch(queue_name, msg_ids);
+    pub async fn delete_batch(&self, queue_name: &str, msg_ids: &[i64]) -> Result<u64, PgmqError> {
+        let query = &query::delete_batch(queue_name, msg_ids)?;
         let row = sqlx::query(query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
         Ok(num_deleted)
@@ -696,8 +697,8 @@ impl PGMQueue {
     ///
     ///     Ok(())
     /// }
-    pub async fn archive(&self, queue_name: &str, msg_id: &i64) -> Result<u64, Error> {
-        let query = query::archive(queue_name, msg_id);
+    pub async fn archive(&self, queue_name: &str, msg_id: &i64) -> Result<u64, PgmqError> {
+        let query = query::archive(queue_name, msg_id)?;
         let row = sqlx::query(&query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
         Ok(num_deleted)
@@ -748,8 +749,8 @@ impl PGMQueue {
     pub async fn pop<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
-    ) -> Result<Option<Message<T>>, errors::PgmqError> {
-        let query = &query::pop(queue_name);
+    ) -> Result<Option<Message<T>>, PgmqError> {
+        let query = &query::pop(queue_name)?;
         let message = fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
     }

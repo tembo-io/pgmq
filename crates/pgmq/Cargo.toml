@@ -1,6 +1,6 @@
 [package]
 name = "pgmq"
-version = "0.7.4"
+version = "0.7.5"
 edition = "2021"
 authors = ["CoreDB.io"]
 description = "A distributed message queue for Rust applications, on Postgres."
@@ -20,9 +20,14 @@ thiserror = "1.0.38"
 tokio = { version = "1", features = ["macros"] }
 log = "0.4.17"
 url = "2.3.1"
-regex = "1.7.1"
-lazy_static = "1.4.0"
 
 [dev-dependencies]
 cargo-readme = "3.2.0"
+criterion = "0.4"
 rand = "0.8.5"
+regex = "1.5.4"
+lazy_static = "1.4.0"
+
+[[bench]]
+name = "parsing"
+harness = false

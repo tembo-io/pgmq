@@ -15,4 +15,9 @@ pub enum PgmqError {
     /// a database error
     #[error("database error {0}")]
     DatabaseError(#[from] sqlx::Error),
+
+    /// a queue name error
+    /// queue names must be alphanumeric and start with a letter
+    #[error("naming error: {name}")]
+    InvalidQueueName { name: String },
 }
