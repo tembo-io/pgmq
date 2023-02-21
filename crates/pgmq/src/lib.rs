@@ -184,7 +184,7 @@ pub struct Message<T = serde_json::Value> {
 }
 
 /// Main controller for interacting with a queue.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct PGMQueue {
     pub url: String,
     pub connection: Pool<Postgres>,
