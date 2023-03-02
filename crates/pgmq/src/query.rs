@@ -33,7 +33,7 @@ pub fn create_queue(name: &str) -> Result<String, PgmqError> {
             read_ct INT DEFAULT 0,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc'),
             vt TIMESTAMP WITH TIME ZONE,
-            message JSON
+            message JSONB
         );
         "
     ))
@@ -49,7 +49,7 @@ pub fn create_archive(name: &str) -> Result<String, PgmqError> {
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc'),
             deleted_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc'),
             vt TIMESTAMP WITH TIME ZONE,
-            message JSON
+            message JSONB
         );
         "
     ))
