@@ -29,7 +29,7 @@ pub fn create_partitioned_queue(queue: &str) -> Result<String, PgmqError> {
             read_ct INT DEFAULT 0,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc'),
             vt TIMESTAMP WITH TIME ZONE,
-            message JSON
+            message JSONB
         ) PARTITION BY RANGE (msg_id);;
         "
     ))
