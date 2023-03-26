@@ -331,9 +331,8 @@ impl PGMQueue {
         queue_name: &str,
         message: &T,
     ) -> Result<i64, errors::PgmqError> {
-        let mut msgs: Vec<serde_json::Value> = Vec::new();
         let msg = serde_json::json!(&message);
-        msgs.push(msg);
+        let msgs: [serde_json::Value; 1] = [msg];
         let row: PgRow = sqlx::query(&query::enqueue(queue_name, &msgs)?)
             .fetch_one(&self.connection)
             .await?;
