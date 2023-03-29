@@ -333,7 +333,74 @@ impl PGMQueue {
     ) -> Result<i64, errors::PgmqError> {
         let msg = serde_json::json!(&message);
         let msgs: [serde_json::Value; 1] = [msg];
-        let row: PgRow = sqlx::query(&query::enqueue(queue_name, &msgs)?)
+        let row: PgRow = sqlx::query(&query::enqueue(queue_name, &msgs, &0)?)
+            .fetch_one(&self.connection)
+            .await?;
+        let msg_id: i64 = row.get("msg_id");
+        Ok(msg_id)
+    }
+
+    /// Send a single message to a queue with a delay.
+    /// Specify your delay in seconds.
+    /// Messages can be any implementor of the [`serde::Serialize`] trait.
+    /// The message id, unique to the queue, is returned. Typically,
+    /// the message sender does not consume the message id but may use it for
+    /// logging and tracing purposes.
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{errors::PgmqError, PGMQueue};
+    /// use serde::{Deserialize, Serialize};
+    /// use serde_json::Value;
+    ///
+    /// #[derive(Debug, Deserialize, Serialize)]
+    /// struct MyMessage {
+    ///    foo: String,
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///
+    ///     let struct_message = MyMessage {
+    ///         foo: "bar".to_owned(),
+    ///     };
+    ///
+    ///     let struct_message_id: i64 = queue
+    ///        .send_delay(&my_queue, &struct_message, 15)
+    ///        .await
+    ///        .expect("Failed to enqueue message");
+    ///     println!("Struct Message id: {}", struct_message_id);
+    ///
+    ///     let json_message = serde_json::json!({
+    ///         "foo": "bar"
+    ///     });
+    ///     let json_message_id: i64 = queue
+    ///         .send_delay(&my_queue, &json_message, 15)
+    ///         .await
+    ///         .expect("Failed to enqueue message");
+    ///     println!("Json Message id: {}", json_message_id);
+    ///     Ok(())
+    /// }
+    pub async fn send_delay<T: Serialize>(
+        &self,
+        queue_name: &str,
+        message: &T,
+        delay: u64,
+    ) -> Result<i64, errors::PgmqError> {
+        let mut msgs: Vec<serde_json::Value> = Vec::new();
+        let msg = serde_json::json!(&message);
+        msgs.push(msg);
+        let row: PgRow = sqlx::query(&query::enqueue(queue_name, &msgs, &delay)?)
             .fetch_one(&self.connection)
             .await?;
         let msg_id: i64 = row.get("msg_id");
@@ -391,7 +458,7 @@ impl PGMQueue {
             let binding = serde_json::json!(&msg);
             msgs.push(binding)
         }
-        let rows: Vec<PgRow> = sqlx::query(&query::enqueue(queue_name, &msgs)?)
+        let rows: Vec<PgRow> = sqlx::query(&query::enqueue(queue_name, &msgs, &0)?)
             .fetch_all(&self.connection)
             .await?;
         for row in rows.iter() {

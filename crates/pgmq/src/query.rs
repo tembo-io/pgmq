@@ -134,13 +134,19 @@ pub fn create_index(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn enqueue(name: &str, messages: &[serde_json::Value]) -> Result<String, PgmqError> {
+pub fn enqueue(
+    name: &str,
+    messages: &[serde_json::Value],
+    delay: &u64,
+) -> Result<String, PgmqError> {
     // TOOO: vt should be now() + delay
     // construct string of comma separated messages
     check_input(name)?;
     let mut values: String = "".to_owned();
     for message in messages.iter() {
-        let full_msg = format!("(now() at time zone 'utc', '{message}'::json),");
+        let full_msg = format!(
+            "((now() at time zone 'utc' + interval '{delay} seconds'), '{message}'::json),"
+        );
         values.push_str(&full_msg)
     }
     // drop trailing comma from constructed string
@@ -272,7 +278,7 @@ mod tests {
             "foo": "bar"
         });
         msgs.push(msg);
-        let query = enqueue("yolo", &msgs).unwrap();
+        let query = enqueue("yolo", &msgs, &0).unwrap();
         assert!(query.contains("pgmq_yolo"));
         assert!(query.contains("{\"foo\":\"bar\"}"));
     }

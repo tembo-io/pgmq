@@ -180,6 +180,37 @@ async fn test_fifo() {
 }
 
 #[tokio::test]
+async fn test_send_delay() {
+    let vt: i32 = 1;
+
+    let test_queue = "test_send_delay_queue".to_owned();
+
+    let queue = init_queue(&test_queue).await;
+
+    // CREATE QUEUE
+    let q_success = queue.create(&test_queue).await;
+    assert!(q_success.is_ok());
+    let num_rows = rowcount(&test_queue, &queue.connection).await;
+    // no records on init
+    assert_eq!(num_rows, 0);
+
+    // SEND MESSAGE WITH 5 SECOND DELAY
+    let msg = serde_json::json!({
+        "foo": "bar"
+    });
+    let msg_id = queue.send_delay(&test_queue, &msg, 5).await.unwrap();
+    let num_rows = rowcount(&test_queue, &queue.connection).await;
+    assert_eq!(num_rows, 1);
+    let no_messages = queue.read::<Value>(&test_queue, Some(&vt)).await.unwrap();
+    assert!(no_messages.is_none());
+    // SLEEP 5 SECONDS
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    // GET MESSAGE
+    let one_messages = queue.read::<Value>(&test_queue, Some(&vt)).await.unwrap();
+    assert!(one_messages.is_some());
+}
+
+#[tokio::test]
 async fn test_read_batch() {
     let test_queue = "test_read_batch".to_owned();
 
