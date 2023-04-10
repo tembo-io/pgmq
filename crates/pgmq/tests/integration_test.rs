@@ -1,3 +1,4 @@
+use chrono::{Duration, Utc};
 use pgmq::{self, query::TABLE_PREFIX, Message};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -198,7 +199,7 @@ async fn test_send_delay() {
     let msg = serde_json::json!({
         "foo": "bar"
     });
-    let msg_id = queue.send_delay(&test_queue, &msg, 5).await.unwrap();
+    let _ = queue.send_delay(&test_queue, &msg, 5).await.unwrap();
     let num_rows = rowcount(&test_queue, &queue.connection).await;
     assert_eq!(num_rows, 1);
     let no_messages = queue.read::<Value>(&test_queue, Some(&vt)).await.unwrap();
@@ -631,4 +632,54 @@ async fn test_destroy() {
         .unwrap()
         .get::<i64, usize>(0);
     assert_eq!(rowcount, 0);
+}
+
+#[tokio::test]
+async fn test_set_vt() {
+    let test_queue = "test_set_vt_queue".to_owned();
+    let queue = init_queue(&test_queue).await;
+    let msg = MyMessage::default();
+
+    let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
+    assert_eq!(num_rows_queue, 0);
+
+    let msg_id = queue.send(&test_queue, &msg).await.unwrap();
+    // read the message
+    let read: Message = queue
+        .read(&test_queue, Some(&0_i32))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(read.msg_id, msg_id);
+
+    // read again
+    let read: Message = queue
+        .read(&test_queue, Some(&0_i32))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(read.msg_id, msg_id);
+    assert_eq!(read.msg_id, msg_id);
+
+    // set the vt
+    let utc_24h_from_now = Utc::now() + Duration::hours(24);
+    let _ = queue
+        .set_vt::<MyMessage>(&test_queue, &msg_id, &utc_24h_from_now)
+        .await
+        .unwrap();
+
+    // try read again
+    let read: Option<Message> = queue.read(&test_queue, Some(&0_i32)).await.unwrap();
+    // we set the vt to tomorrow, should not be read
+    assert!(read.is_none());
+
+    // set the vt to now
+    let now = Utc::now();
+    let _ = queue
+        .set_vt::<MyMessage>(&test_queue, &msg_id, &now)
+        .await
+        .unwrap();
+
+    let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
+    assert_eq!(num_rows_queue, 1);
 }

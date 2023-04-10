@@ -168,7 +168,7 @@ const READ_LIMIT_DEFAULT: i32 = 1;
 ///
 /// It is an "envelope" for the message that is stored in the queue.
 /// It contains both the message body but also metadata about the message.
-#[derive(Debug, Deserialize, FromRow)]
+#[derive(Clone, Debug, Deserialize, FromRow)]
 pub struct Message<T = serde_json::Value> {
     /// unique identifier for the message
     pub msg_id: i64,
@@ -819,6 +819,62 @@ impl PGMQueue {
         let query = &query::pop(queue_name)?;
         let message = fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
+    }
+
+    /// Set the visibility time for a single message. This is useful when you want
+    /// change when a message becomes visible again (able to be read with .read() methods).
+    /// For example, in task execution use cases or job scheduling.
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use chrono::{Utc, DateTime, Duration};
+    /// use pgmq::{errors::PgmqError, PGMQueue};
+    /// use serde::{Deserialize, Serialize};
+    /// use serde_json::Value;
+
+    /// #[derive(Debug, Deserialize, Serialize)]
+    /// struct MyMessage {
+    ///    foo: String,
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///
+    ///     let struct_message = MyMessage {
+    ///         foo: "bar".to_owned(),
+    ///     };
+    ///
+    ///     let message_id: i64 = queue
+    ///        .send(&my_queue, &struct_message)
+    ///        .await
+    ///        .expect("Failed to enqueue message");
+    ///     println!("Struct Message id: {message_id}");
+    ///
+    ///     let utc_24h_from_now = Utc::now() + Duration::hours(24);
+    ///
+    ///     queue.set_vt::<MyMessage>(&my_queue, &message_id, &utc_24h_from_now).await.expect("failed to set vt");
+    ///
+    ///     Ok(())
+    /// }
+    pub async fn set_vt<T: for<'de> Deserialize<'de>>(
+        &self,
+        queue_name: &str,
+        msg_id: &i64,
+        vt: &chrono::DateTime<Utc>,
+    ) -> Result<Option<Message<T>>, errors::PgmqError> {
+        let query = &query::set_vt(queue_name, msg_id, vt)?;
+        let updated_message = fetch_one_message::<T>(query, &self.connection).await?;
+        Ok(updated_message)
     }
 }
 

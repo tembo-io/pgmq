@@ -1,6 +1,7 @@
 //! Query constructors
 
 use crate::errors::PgmqError;
+use sqlx::types::chrono::Utc;
 pub const TABLE_PREFIX: &str = r#"pgmq"#;
 
 pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
@@ -139,7 +140,6 @@ pub fn enqueue(
     messages: &[serde_json::Value],
     delay: &u64,
 ) -> Result<String, PgmqError> {
-    // TOOO: vt should be now() + delay
     // construct string of comma separated messages
     check_input(name)?;
     let mut values: String = "".to_owned();
@@ -190,6 +190,19 @@ pub fn delete(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
         DELETE FROM {TABLE_PREFIX}_{name}
         WHERE msg_id = {msg_id};
         "
+    ))
+}
+
+pub fn set_vt(name: &str, msg_id: &i64, vt: &chrono::DateTime<Utc>) -> Result<String, PgmqError> {
+    check_input(name)?;
+    Ok(format!(
+        "
+        UPDATE {TABLE_PREFIX}_{name}
+        SET vt = '{t}'::timestamp
+        WHERE msg_id = {msg_id}
+        RETURNING *;
+        ",
+        t = vt.format("%Y-%m-%d %H:%M:%S%.3f %z")
     ))
 }
 

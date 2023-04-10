@@ -1,5 +1,9 @@
 POSTGRES_PASSWORD:=postgres
 
+format:
+	cargo fmt
+	cargo clippy
+
 update.readme:
 	cargo readme \
 		--no-title \
