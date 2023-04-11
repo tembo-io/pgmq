@@ -268,7 +268,7 @@ impl PGMQueue {
     /// }
     pub async fn destroy(&self, queue_name: &str) -> Result<(), errors::PgmqError> {
         let mut tx = self.connection.begin().await?;
-        let setup = query::destory_queue(queue_name)?;
+        let setup = query::destroy_queue(queue_name)?;
         for q in setup {
             sqlx::query(&q).execute(&mut tx).await?;
         }
@@ -704,7 +704,7 @@ impl PGMQueue {
     ///         .await
     ///         .expect("Failed to create queue");
     ///
-    ///     let msgs = vec![  
+    ///     let msgs = vec![
     ///         serde_json::json!({"foo": "bar1"}),
     ///         serde_json::json!({"foo": "bar2"}),
     ///         serde_json::json!({"foo": "bar3"}),

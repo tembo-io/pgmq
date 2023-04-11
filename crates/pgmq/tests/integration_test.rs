@@ -543,11 +543,11 @@ async fn test_database_error_modes() {
                 panic!("expected a url parsing error, got {:?}", e);
             }
         }
-        // didnt get an error. bad.
+        // didn't get an error. bad.
         _ => panic!("expected a url parsing error, got {:?}", read_msg),
     }
 
-    // connect to a postgres instance that doesnt exist should error
+    // connect to a postgres instance that doesn't exist should error
     let queue = pgmq::PGMQueue::new("postgres://user:pass@badhost:5432".to_owned()).await;
     // we expect a database error
     match queue {
@@ -559,7 +559,7 @@ async fn test_database_error_modes() {
                 panic!("expected a db error, got {:?}", e);
             }
         }
-        // didnt get an error. bad.
+        // didn't get an error. bad.
         _ => panic!("expected a db error, got {:?}", read_msg),
     }
 }
@@ -585,7 +585,7 @@ async fn test_parsing_error_modes() {
                 panic!("expected a parse error, got {:?}", e);
             }
         }
-        // didnt get an error. bad.
+        // didn't get an error. bad.
         _ => panic!("expected a parse error, got {:?}", read_msg),
     }
 }

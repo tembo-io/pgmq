@@ -57,7 +57,7 @@ fn pgmq_send(queue_name: &str, message: pgx::JsonB) -> Result<Option<i64>, PgmqE
 
 fn enqueue_str(name: &str, message: &str) -> Result<String, PgmqError> {
     check_input(name)?;
-    // TOOO: vt should be now() + delay
+    // TODO: vt should be now() + delay
     Ok(format!(
         "
         INSERT INTO {TABLE_PREFIX}_{name} (vt, message)

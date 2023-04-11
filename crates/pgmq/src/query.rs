@@ -15,7 +15,7 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     ])
 }
 
-pub fn destory_queue(name: &str) -> Result<Vec<String>, PgmqError> {
+pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     check_input(name)?;
     Ok(vec![
         drop_queue(name)?,
@@ -174,7 +174,7 @@ pub fn read(name: &str, vt: &i32, limit: &i32) -> Result<String, PgmqError> {
             FOR UPDATE SKIP LOCKED
         )
     UPDATE {TABLE_PREFIX}_{name}
-    SET 
+    SET
         vt = (now() at time zone 'utc' + interval '{vt} seconds'),
         read_ct = read_ct + 1
     WHERE msg_id in (select msg_id from cte)
@@ -234,7 +234,7 @@ pub fn archive(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
             RETURNING msg_id, vt, read_ct, enqueued_at, message
         )
         INSERT INTO {TABLE_PREFIX}_{name}_archive (msg_id, vt, read_ct, enqueued_at, message)
-        SELECT msg_id, vt, read_ct, enqueued_at, message 
+        SELECT msg_id, vt, read_ct, enqueued_at, message
         FROM archived;
         "
     ))

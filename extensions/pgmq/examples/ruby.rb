@@ -59,7 +59,7 @@ $stderr.puts '---',
   "### msg ###",
   "msg_id: #{msg_row['msg_id']}, value: #{JSON.parse(msg_row['message']).to_s}"
 
-# delete a mesage (for a given ID)
+# delete a message (for a given ID)
 msg_result = conn.exec( "select pgmq_delete('#{QUEUE_NAME}', #{msg_id})" )
 $stderr.puts '---',
   "### msg delete: #{msg_id} ###",
