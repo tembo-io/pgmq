@@ -1,11 +1,16 @@
 [tool.poetry]
 name = "coredb-pgmq-python"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python client for the PGMQ Postgres extension."
 authors = ["Adam Hendel <adam@coredb.io>"]
 license = "Apache 2.0"
 readme = "README.md"
 packages = [{include = "coredb_pgmq_python"}]
+
+[tool.poetry.urls]
+"Homepage" = "https://github.com/CoreDB-io/coredb"
+"Repository" = "https://github.com/CoreDB-io/coredb/tree/main/extensions/pgmq/coredb-pgmq-python"
+"Documentation" = "https://github.com/CoreDB-io/coredb/tree/main/extensions/pgmq/coredb-pgmq-python"
 
 [tool.poetry.dependencies]
 python = "^3.9"
