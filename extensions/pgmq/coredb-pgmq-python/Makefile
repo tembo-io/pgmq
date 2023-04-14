@@ -1,4 +1,4 @@
-SCOPE=src/
+SCOPE=coredb_pgmq_python/
 
 format:
 	poetry run black ${SCOPE}
@@ -9,3 +9,6 @@ lints:
 	poetry run isort --check-only ${SCOPE}
 	poetry run flake8 ${SCOPE}
 	poetry run mypy ${SCOPE}
+
+test:
+	poetry run pytest
