@@ -1,4 +1,4 @@
-comment = 'pgmq: easy message queues'
+comment = 'pgmq: distributed message queues'
 default_version = '@CARGO_VERSION@'
 module_pathname = '$libdir/pgmq'
 relocatable = false
