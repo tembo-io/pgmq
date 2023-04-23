@@ -130,7 +130,7 @@ pub fn create_index(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        CREATE INDEX IF NOT EXISTS vt_idx_{name} ON {TABLE_PREFIX}_{name} (vt ASC);
+        CREATE INDEX IF NOT EXISTS vt_idx_{name} ON {TABLE_PREFIX}_{name} (vt ASC) INCLUDE (msg_id);
         "
     ))
 }
@@ -166,7 +166,7 @@ pub fn read(name: &str, vt: &i32, limit: &i32) -> Result<String, PgmqError> {
         "
     WITH cte AS
         (
-            SELECT *
+            SELECT msg_id
             FROM {TABLE_PREFIX}_{name}
             WHERE vt <= now() at time zone 'utc'
             ORDER BY msg_id ASC
@@ -246,7 +246,7 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
         "
         WITH cte AS
             (
-                SELECT *
+                SELECT msg_id
                 FROM {TABLE_PREFIX}_{name}
                 WHERE vt <= now() at time zone 'utc'
                 ORDER BY msg_id ASC
