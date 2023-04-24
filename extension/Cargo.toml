@@ -1,6 +1,6 @@
 [package]
 name = "pgmq"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["CoreDB.io"]
 description = "Postgres extension for PGMQ"
@@ -25,12 +25,16 @@ pg_test = []
 [dependencies]
 pgx = "0.7.4"
 serde = "1.0.152"
-pgmq_crate = { package = "pgmq", path = "../core"}
+pgmq_crate = {package = "pgmq", path = "../core"}
 serde_json = "1.0.91"
 thiserror = "1.0.38"
 
 [dev-dependencies]
 pgx-tests = "0.7.4"
+rand = "0.8.5"
+sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls" , "postgres", "chrono" ] }
+tokio = { version = "1", features = ["macros"] }
+whoami = "1.4.0"
 
 [profile.dev]
 panic = "unwind"

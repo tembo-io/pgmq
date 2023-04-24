@@ -881,7 +881,7 @@ impl PGMQueue {
 // Executes a query and returns a single row
 // If the query returns no rows, None is returned
 // This function is intended for internal use.
-async fn fetch_one_message<T: for<'de> Deserialize<'de>>(
+pub async fn fetch_one_message<T: for<'de> Deserialize<'de>>(
     query: &str,
     connection: &Pool<Postgres>,
 ) -> Result<Option<Message<T>>, errors::PgmqError> {
@@ -950,7 +950,8 @@ pub fn conn_options(url: &str) -> Result<PgConnectOptions, ParseError> {
         .host(parsed.host_str().ok_or(ParseError::EmptyHost)?)
         .port(parsed.port().ok_or(ParseError::InvalidPort)?)
         .username(parsed.username())
-        .password(parsed.password().ok_or(ParseError::IdnaError)?);
+        .password(parsed.password().ok_or(ParseError::IdnaError)?)
+        .database(parsed.path().trim_start_matches('/'));
     options.log_statements(LevelFilter::Debug);
     Ok(options)
 }

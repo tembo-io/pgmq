@@ -4,19 +4,20 @@ A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/s
 
 ## Features
 
-- Lightweight - Rust and Postgres only
-- Guaranteed delivery of messages to exactly one consumer within a visibility timeout
+- Lightweight - Built with Rust and Postgres only
+- Guaranteed delivery of messages to `exactly one` consumer within a visibility timeout
 - API parity with [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq)
 - Messages stay in the queue until deleted
 - Messages can be archived, instead of deleted, for long-term retention and replayability
-- Completely asynchronous API
-
+- Table maintenance (bloat) automated with [pg_partman]()
+- High performance operations with index-only scans.
+  
 ## Table of Contents
 - [Postgres Message Queue (PGMQ)](#postgres-message-queue-pgmq)
   - [Features](#features)
   - [Table of Contents](#table-of-contents)
-  - [Start CoreDB Postgres](#start-coredb-postgres)
-  - [Python Examples](#python-examples)
+  - [Installation](#installation)
+  - [Client Libraries](#client-libraries)
   - [SQL Examples](#sql-examples)
     - [Creating a queue](#creating-a-queue)
     - [Send two message](#send-two-message)
@@ -30,19 +31,19 @@ A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/s
 - [Configuration](#configuration)
   - [Partitioned Queues](#partitioned-queues)
 
-## Start CoreDB Postgres
+## Installation
 
-CoreDB Postgres images come with the `pgmq` extension pre-installed.
-
+The fastest way to get started is by running the CoreDB docker image, where PGMQ comes pre-installed.
 
 ```bash
 docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/coredb/postgres:latest
 ```
 
-## Python Examples
+## Client Libraries
 
 
-See python examples in [examples/python.py](examples/python.py)
+- [Rust](https://github.com/CoreDB-io/coredb/tree/main/pgmq/core)
+- [Python](https://github.com/CoreDB-io/coredb/tree/main/pgmq/coredb-pgmq-python)
 
 ## SQL Examples
 
@@ -53,7 +54,7 @@ psql postgres://postgres:postgres@0.0.0.0:5432/postgres
 ```
 
 ```sql
--- create the extension
+-- create the extension, pg_partman is also required
 CREATE EXTENSION pgmq CASCADE;
 ```
 
