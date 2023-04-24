@@ -1,4 +1,3 @@
-use pgx;
 use pgx::prelude::*;
 use pgx::spi;
 use pgx::spi::SpiTupleTable;
@@ -54,18 +53,19 @@ fn pgmq_create(
 
 #[pg_extern]
 fn pgmq_send(queue_name: &str, message: pgx::JsonB) -> Result<Option<i64>, PgmqExtError> {
-    let m = serde_json::to_string(&message.0).unwrap();
-    let query = enqueue_str(queue_name, &m)?;
-    Ok(Spi::get_one(&query)?)
+    let query = enqueue_str(queue_name)?;
+    Ok(Spi::get_one_with_args(
+        &query,
+        vec![(PgBuiltInOids::JSONBOID.oid(), message.into_datum())],
+    )?)
 }
 
-fn enqueue_str(name: &str, message: &str) -> Result<String, PgmqError> {
+fn enqueue_str(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
-    // TODO: vt should be now() + delay
     Ok(format!(
         "
         INSERT INTO {TABLE_PREFIX}_{name} (vt, message)
-        VALUES (now() at time zone 'utc', '{message}'::json)
+        VALUES (now() at time zone 'utc', $1)
         RETURNING msg_id;
         "
     ))
