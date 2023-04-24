@@ -16,7 +16,10 @@ async fn connect(url: &str) -> Pool<Postgres> {
 #[tokio::test]
 async fn test_lifecycle() {
     let username = whoami::username();
-    let conn = connect(&format!("postgres://{username}:postgres@localhost:28815/pgmq")).await;
+    let conn = connect(&format!(
+        "postgres://{username}:postgres@localhost:28815/pgmq"
+    ))
+    .await;
     let mut rng = rand::thread_rng();
     let test_num = rng.gen_range(0..100000);
 
