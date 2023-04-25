@@ -34,7 +34,7 @@ A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/s
 The fastest way to get started is by running the CoreDB docker image, where PGMQ comes pre-installed.
 
 ```bash
-docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/coredb/coredb-pg:latest
+docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/coredb/pgmq-pg:latest
 ```
 
 ## Client Libraries

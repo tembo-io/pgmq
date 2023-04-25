@@ -24,7 +24,6 @@ class PGMQueue:
     database: str = "postgres"
     delay: int = 0
     vt: int = 30
-    partition_size: int = 5000
 
     username: str = "postgres"
     password: str = "postgres"
@@ -53,10 +52,12 @@ class PGMQueue:
         with self.pool.connection() as conn:
             conn.execute("select pgmq_create(%s);", [queue])
 
-    def create_partitioned_queue(self, queue: str, partition_size: Optional[int] = None) -> None:
+    def create_(
+        self, queue: str, partition_interval: Optional[str] = "daily", retention_interval: Optional[str] = "5 days"
+    ) -> None:
         """Create a partitioned queue"""
         with self.pool.connection() as conn:
-            conn.execute("select pgmq_create_partitioned(%s, %s);", [queue, partition_size])
+            conn.execute("select pgmq_create_non_partitioned(%s, %s);", [queue, partition_interval, retention_interval])
 
     def send(self, queue: str, message: dict, delay: Optional[int] = None) -> int:
         """Send a message to a queue"""

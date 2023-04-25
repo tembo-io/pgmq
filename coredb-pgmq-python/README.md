@@ -8,7 +8,7 @@ Install with `pip` from pypi.org
 pip install coredb-pgmq-python
 ```
 
-Dependencies
+Dependencies:
 
 Postgres running the [CoreDB PGMQ extension](https://github.com/CoreDB-io/coredb/tree/main/extensions/pgmq).
 
@@ -17,7 +17,7 @@ Postgres running the [CoreDB PGMQ extension](https://github.com/CoreDB-io/coredb
 ## Start a Postgres Instance with the CoreDB extension installed
 
 ```bash
-docker run -d -p 5432:5432 quay.io/coredb/coredb-pg:latest
+docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/coredb/pgmq-pg:latest
 ```
 
 Initialize a connection to Postgres
