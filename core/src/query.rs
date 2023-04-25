@@ -126,11 +126,12 @@ pub fn insert_meta(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
+// indexes are created ascending to support FIFO
 pub fn create_index(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        CREATE INDEX IF NOT EXISTS vt_idx_{name} ON {TABLE_PREFIX}_{name} (vt ASC) INCLUDE (msg_id);
+        CREATE INDEX IF NOT EXISTS msg_id_vt_idx_{name} ON {TABLE_PREFIX}_{name} (vt ASC, msg_id ASC);
         "
     ))
 }
