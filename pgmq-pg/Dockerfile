@@ -53,7 +53,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY ./postgresql.conf /usr/share/postgresql/${PG_MAJOR}/postgresql.conf.sample
 
-RUN trunk install --version 0.4.1 pgmq
+RUN trunk install --version 0.4.2 pgmq
 
 # install pg_partman
 RUN git clone https://github.com/pgpartman/pg_partman.git && \
