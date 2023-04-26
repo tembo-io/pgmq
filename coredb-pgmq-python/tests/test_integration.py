@@ -1,8 +1,6 @@
 # these tests require an externally running Postgres instance
 # with the PGMQ Extension installed
 
-from datetime import datetime
-
 from coredb_pgmq_python import Message, PGMQueue
 
 

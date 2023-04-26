@@ -20,11 +20,13 @@ orjson = "^3.8.10"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "1.1.1"
+pandas = "^2.0.1"
 pytest = "^7.3.0"
 debugpy = "^1.6.7"
 black = "^23.3.0"
 isort = "^5.12.0"
 flake8 = "^6.0.0"
+numpy = "^1.24.3"
 
 [tool.black]
 line-length = 120
