@@ -149,9 +149,9 @@ pgmq=#  SELECT * from pgmq_my_queue_archive;
 ### Delete a message
 
 ```sql
--- Delete a message id `1` from queue named `my_queue`.
+-- Delete a message id `3` from queue named `my_queue`.
 pgmq=# SELECT * from pgmq_send('my_queue', '{"foo": "bar3"}');
-pgmq=# SELECT pgmq_delete('my_queue', 1);
+pgmq=# SELECT pgmq_delete('my_queue', 3);
  pgmq_delete
 -------------
  t
