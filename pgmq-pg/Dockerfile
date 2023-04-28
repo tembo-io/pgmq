@@ -2,7 +2,7 @@ FROM quay.io/coredb/ubuntu:22.04 as builder
 
 RUN apt-get update && apt-get install -y curl pkg-config libssl-dev build-essential libclang-dev clang software-properties-common
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-RUN /root/.cargo/bin/cargo install --version 0.3.2 pg-trunk
+RUN /root/.cargo/bin/cargo install --version 0.4.0 pg-trunk
 
 FROM quay.io/coredb/ubuntu:22.04
 
