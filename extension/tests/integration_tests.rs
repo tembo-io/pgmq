@@ -52,8 +52,43 @@ async fn test_lifecycle() {
     assert_eq!(msg_id, 1);
 
     // read message
+    // vt=2, limit=1
     let query = &format!("SELECT * from pgmq_read('test_default_{test_num}', 2, 1);");
 
+    let message = fetch_one_message::<serde_json::Value>(query, &conn)
+        .await
+        .expect("failed reading message")
+        .expect("expected message");
+    assert_eq!(message.msg_id, 1);
+
+    // set VT to tomorrow
+    let query = &format!("SELECT * from pgmq_set_vt('test_default_{test_num}', {msg_id}, 84600);");
+    let message = fetch_one_message::<serde_json::Value>(query, &conn)
+        .await
+        .expect("failed reading message")
+        .expect("expected message");
+    assert_eq!(message.msg_id, 1);
+    let now = chrono::offset::Utc::now();
+    // closish to 24 hours from now
+    assert!(message.vt > now + chrono::Duration::seconds(84000));
+
+    // read again, assert no messages because we just set VT to tomorrow
+    let query = &format!("SELECT * from pgmq_read('test_default_{test_num}', 2, 1);");
+    let message = fetch_one_message::<serde_json::Value>(query, &conn)
+        .await
+        .expect("failed reading message");
+    assert!(message.is_none());
+
+    // set VT to now
+    let query = &format!("SELECT * from pgmq_set_vt('test_default_{test_num}', {msg_id}, 0);");
+    let message = fetch_one_message::<serde_json::Value>(query, &conn)
+        .await
+        .expect("failed reading message")
+        .expect("expected message");
+    assert_eq!(message.msg_id, 1);
+
+    // read again, should have msg_id 1 again
+    let query = &format!("SELECT * from pgmq_read('test_default_{test_num}', 2, 1);");
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
         .expect("failed reading message")

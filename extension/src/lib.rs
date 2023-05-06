@@ -8,7 +8,6 @@ pgx::pg_module_magic!();
 pub mod partition;
 use pgmq_crate::errors::PgmqError;
 use pgmq_crate::query::{archive, check_input, delete, init_queue, pop, read, TABLE_PREFIX};
-
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -271,6 +270,63 @@ fn listit() -> Result<Vec<(String, TimestampWithTimeZone)>, spi::Error> {
         Ok(())
     });
     Ok(results)
+}
+
+/// change the visibility time on an existing message
+/// vt_offset is a time relative to now that the message will be visible
+/// accepts positive or negative integers
+#[pg_extern]
+fn pgmq_set_vt(
+    queue_name: &str,
+    msg_id: i64,
+    vt_offset: i32,
+) -> Result<
+    TableIterator<
+        'static,
+        (
+            name!(msg_id, i64),
+            name!(read_ct, i32),
+            name!(enqueued_at, TimestampWithTimeZone),
+            name!(vt, TimestampWithTimeZone),
+            name!(message, pgx::JsonB),
+        ),
+    >,
+    PgmqExtError,
+> {
+    check_input(queue_name)?;
+    let mut results: Vec<(
+        i64,
+        i32,
+        TimestampWithTimeZone,
+        TimestampWithTimeZone,
+        pgx::JsonB,
+    )> = Vec::new();
+
+    let query = format!(
+        "
+        UPDATE {TABLE_PREFIX}_{queue_name}
+        SET vt = (now() at time zone 'utc' + interval '{vt_offset} seconds')
+        WHERE msg_id = $1
+        RETURNING *;
+        "
+    );
+    let args = vec![(PgBuiltInOids::INT8OID.oid(), msg_id.into_datum())];
+    let res: Result<(), spi::Error> = Spi::connect(|mut client| {
+        let tup_table: SpiTupleTable = client.update(&query, None, Some(args))?;
+        for row in tup_table {
+            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
+            let read_ct = row["read_ct"].value::<i32>()?.expect("no read_ct");
+            let vt = row["vt"].value::<TimestampWithTimeZone>()?.expect("no vt");
+            let enqueued_at = row["enqueued_at"]
+                .value::<TimestampWithTimeZone>()?
+                .expect("no enqueue time");
+            let message = row["message"].value::<pgx::JsonB>()?.expect("no message");
+            results.push((msg_id, read_ct, enqueued_at, vt, message));
+        }
+        Ok(())
+    });
+    res?;
+    Ok(TableIterator::new(results.into_iter()))
 }
 
 #[cfg(any(test, feature = "pg_test"))]
