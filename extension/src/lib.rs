@@ -1,9 +1,9 @@
-use pgx::prelude::*;
-use pgx::spi;
-use pgx::spi::SpiTupleTable;
-use pgx::warning;
+use pgrx::prelude::*;
+use pgrx::spi;
+use pgrx::spi::SpiTupleTable;
+use pgrx::warning;
 
-pgx::pg_module_magic!();
+pgrx::pg_module_magic!();
 
 pub mod partition;
 use pgmq_crate::errors::PgmqError;
@@ -13,7 +13,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 enum PgmqExtError {
     #[error("")]
-    SqlError(#[from] pgx::spi::Error),
+    SqlError(#[from] pgrx::spi::Error),
 
     #[error("")]
     QueueError(#[from] PgmqError),
@@ -51,7 +51,7 @@ fn pgmq_create(
 }
 
 #[pg_extern]
-fn pgmq_send(queue_name: &str, message: pgx::JsonB) -> Result<Option<i64>, PgmqExtError> {
+fn pgmq_send(queue_name: &str, message: pgrx::JsonB) -> Result<Option<i64>, PgmqExtError> {
     let query = enqueue_str(queue_name)?;
     Ok(Spi::get_one_with_args(
         &query,
@@ -83,7 +83,7 @@ fn pgmq_read(
             name!(read_ct, i32),
             name!(vt, TimestampWithTimeZone),
             name!(enqueued_at, TimestampWithTimeZone),
-            name!(message, pgx::JsonB),
+            name!(message, pgrx::JsonB),
         ),
     >,
     spi::Error,
@@ -102,7 +102,7 @@ fn readit(
         i32,
         TimestampWithTimeZone,
         TimestampWithTimeZone,
-        pgx::JsonB,
+        pgrx::JsonB,
     )>,
     spi::Error,
 > {
@@ -111,7 +111,7 @@ fn readit(
         i32,
         TimestampWithTimeZone,
         TimestampWithTimeZone,
-        pgx::JsonB,
+        pgrx::JsonB,
     )> = Vec::new();
     let _: Result<(), PgmqExtError> = Spi::connect(|mut client| {
         let query = read(queue_name, &vt, &limit)?;
@@ -123,7 +123,7 @@ fn readit(
             let enqueued_at = row["enqueued_at"]
                 .value::<TimestampWithTimeZone>()?
                 .expect("no enqueue time");
-            let message = row["message"].value::<pgx::JsonB>()?.expect("no message");
+            let message = row["message"].value::<pgrx::JsonB>()?.expect("no message");
             results.push((msg_id, read_ct, vt, enqueued_at, message));
         }
         Ok(())
@@ -194,7 +194,7 @@ fn pgmq_pop(
             name!(read_ct, i32),
             name!(vt, TimestampWithTimeZone),
             name!(enqueued_at, TimestampWithTimeZone),
-            name!(message, pgx::JsonB),
+            name!(message, pgrx::JsonB),
         ),
     >,
     PgmqExtError,
@@ -211,7 +211,7 @@ fn popit(
         i32,
         TimestampWithTimeZone,
         TimestampWithTimeZone,
-        pgx::JsonB,
+        pgrx::JsonB,
     )>,
     PgmqExtError,
 > {
@@ -220,7 +220,7 @@ fn popit(
         i32,
         TimestampWithTimeZone,
         TimestampWithTimeZone,
-        pgx::JsonB,
+        pgrx::JsonB,
     )> = Vec::new();
     let _: Result<(), PgmqExtError> = Spi::connect(|mut client| {
         let query = pop(queue_name)?;
@@ -232,7 +232,7 @@ fn popit(
             let enqueued_at = row["enqueued_at"]
                 .value::<TimestampWithTimeZone>()?
                 .expect("no enqueue time");
-            let message = row["message"].value::<pgx::JsonB>()?.expect("no message");
+            let message = row["message"].value::<pgrx::JsonB>()?.expect("no message");
             results.push((msg_id, read_ct, vt, enqueued_at, message));
         }
         Ok(())
@@ -288,7 +288,7 @@ fn pgmq_set_vt(
             name!(read_ct, i32),
             name!(enqueued_at, TimestampWithTimeZone),
             name!(vt, TimestampWithTimeZone),
-            name!(message, pgx::JsonB),
+            name!(message, pgrx::JsonB),
         ),
     >,
     PgmqExtError,
@@ -299,7 +299,7 @@ fn pgmq_set_vt(
         i32,
         TimestampWithTimeZone,
         TimestampWithTimeZone,
-        pgx::JsonB,
+        pgrx::JsonB,
     )> = Vec::new();
 
     let query = format!(
@@ -320,7 +320,7 @@ fn pgmq_set_vt(
             let enqueued_at = row["enqueued_at"]
                 .value::<TimestampWithTimeZone>()?
                 .expect("no enqueue time");
-            let message = row["message"].value::<pgx::JsonB>()?.expect("no message");
+            let message = row["message"].value::<pgrx::JsonB>()?.expect("no message");
             results.push((msg_id, read_ct, enqueued_at, vt, message));
         }
         Ok(())
@@ -342,7 +342,7 @@ mod tests {
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
             .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
-        let _ = pgmq_send(&qname, pgx::JsonB(serde_json::json!({"x":"y"}))).unwrap();
+        let _ = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"}))).unwrap();
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
             .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
@@ -360,7 +360,7 @@ mod tests {
         assert_eq!(init_count.unwrap(), 0);
 
         // put a message on the queue
-        let _ = pgmq_send(&qname, pgx::JsonB(serde_json::json!({"x":"y"})));
+        let _ = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"})));
 
         // read the message with the pg_extern, sets message invisible
         let _ = pgmq_read(&qname, 10_i32, 1_i32);
@@ -386,10 +386,10 @@ mod tests {
         assert_eq!(queues.len(), 1);
 
         // put two message on the queue
-        let msg_id1 = pgmq_send(&qname, pgx::JsonB(serde_json::json!({"x":1})))
+        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})))
             .unwrap()
             .unwrap();
-        let msg_id2 = pgmq_send(&qname, pgx::JsonB(serde_json::json!({"x":2})))
+        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})))
             .unwrap()
             .unwrap();
         assert_eq!(msg_id1, 1);
@@ -443,10 +443,10 @@ mod tests {
         assert_eq!(queues.len(), 1);
 
         // put two message on the queue
-        let msg_id1 = pgmq_send(&qname, pgx::JsonB(serde_json::json!({"x":1})))
+        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})))
             .unwrap()
             .unwrap();
-        let msg_id2 = pgmq_send(&qname, pgx::JsonB(serde_json::json!({"x":2})))
+        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})))
             .unwrap()
             .unwrap();
         assert_eq!(msg_id1, 1);
@@ -501,7 +501,7 @@ mod tests {
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
         // put a message on the queue
-        let msg_id = pgmq_send(&qname, pgx::JsonB(serde_json::json!({"x":"y"}))).unwrap();
+        let msg_id = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"}))).unwrap();
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
             .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);

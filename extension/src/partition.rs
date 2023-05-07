@@ -1,5 +1,5 @@
-use pgx;
-use pgx::prelude::*;
+use pgrx;
+use pgrx::prelude::*;
 
 use pgmq_crate::{
     errors::PgmqError,

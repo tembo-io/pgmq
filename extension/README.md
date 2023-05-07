@@ -32,7 +32,7 @@ Install:
 
 Update postgresql.conf in the development environment.
 ```
-#  ~/.pgx/data-14/postgresql.conf
+#  ~/.pgrx/data-14/postgresql.conf
 shared_preload_libraries = 'pg_partman_bgw'
 ```
 
