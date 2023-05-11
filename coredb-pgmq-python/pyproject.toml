@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "coredb-pgmq-python"
-version = "0.2.1"
+version = "0.2.2"
 description = "Python client for the PGMQ Postgres extension."
 authors = ["Adam Hendel <adam@coredb.io>"]
 license = "Apache 2.0"
@@ -30,6 +30,7 @@ numpy = "^1.24.3"
 matplotlib = "^3.7.1"
 jupyter = "^1.0.0"
 notebook = "^6.5.4"
+pandas-stubs = "^2.0.1.230501"
 
 [tool.black]
 line-length = 120

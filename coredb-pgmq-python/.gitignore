@@ -2,3 +2,5 @@ poetry.lock
 **/*.pyc
 .vscode
 dist
+*.csv
+*.jpg
