@@ -4,3 +4,4 @@ poetry.lock
 dist
 *.csv
 *.jpg
+*.png

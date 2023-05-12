@@ -3,6 +3,7 @@ import time
 from typing import Optional
 
 import pandas as pd
+from matplotlib import pyplot as plt  # type: ignore
 
 from coredb_pgmq_python import Message, PGMQueue
 
@@ -205,7 +206,9 @@ def consume(queue_name: str, csv_name: str, connection_info: dict):
         archive_duration = time.time() - archive_start
         results.append({"operation": "archive", "duration": archive_duration, "msg_id": message.msg_id})
 
-    print(f"Consumed {len(results)} messages")
+    # divide by 2 because we're appending two results (read/archive) per message
+    num_consumed = len(results) / 2
+    print(f"Consumed {num_consumed} messages")
     df = pd.DataFrame(results)
     print(f"Writing results to {csv_name}")
     df.to_csv(csv_name, index=False)
@@ -221,7 +224,8 @@ def summarize(csv_1: str, csv_2: str, results_file: str, duration_seconds: int, 
     # iteration
     trial = csv_1.replace(".csv", "").split("_")[-1]
 
-    df.to_csv(f"all_results_{trial}_duration_{duration_seconds}_tps_{tps}.csv", index=False)
+    all_results_csv = f"all_results_{trial}_duration_{duration_seconds}_tps_{tps}.csv"
+    df.to_csv(all_results_csv, index=False)
 
     _num_df = df[df["operation"] == "archive"]
     num_messages = _num_df.shape[0]
@@ -246,6 +250,21 @@ def summarize(csv_1: str, csv_2: str, results_file: str, duration_seconds: int, 
         filename = f"{op}_{results_file}"
         bbplot[0].get_figure().savefig(filename)
         print("Saved: ", filename)
+    return all_results_csv
+
+
+def generate_plot(csv_name: str, duration: int, tps: int, window: int = 10_000) -> None:
+    alldf = pd.read_csv(csv_name)
+    alldf["duration_ms"] = alldf["duration"] * 1000
+    wide_df = pd.pivot(alldf, index="msg_id", columns="operation", values="duration_ms")
+    ax = wide_df.rolling(window).mean().plot(figsize=(20, 10))
+    ax.set_xlabel("Message Number")
+    ax.set_ylabel("Duration (ms)")
+    plt.suptitle(f"Rolling Average Operation Duration ({window} message window)")
+    plt.title(f"Duration_seconds: {duration}, TPS: {tps}")
+    output_plot = f"rolling_avg_{duration}_{tps}.png"
+    plt.savefig(output_plot)
+    print(f"Saved plot to: {output_plot}")
 
 
 if __name__ == "__main__":
@@ -256,7 +275,7 @@ if __name__ == "__main__":
     # script merges csvs and summarizes results
     from multiprocessing import Process
 
-    duration_seconds = 60 * 60 * 3  # 3 hour
+    duration_seconds = 60 * 60 * 4
     tps = 600  # max transactions per second (producing)
 
     rnd = random.randint(0, 1000)
@@ -283,6 +302,8 @@ if __name__ == "__main__":
     # once consuming finishes, summarize
     results_file = f"results_{test_queue}.jpg"
     # TODO: organize results in a directory or something, log all the params
-    summarize(
+    filename = summarize(
         csv_1=produce_csv, csv_2=consume_csv, results_file=results_file, duration_seconds=duration_seconds, tps=tps
     )
+
+    generate_plot(filename, duration_seconds, tps, window=10_000)
