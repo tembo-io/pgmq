@@ -156,7 +156,7 @@ def produce(
     start_time = time.time()
 
     all_results = []
-    for _ in range(int(total_messages)):
+    for i in range(int(total_messages)):
         send_start = time.time()
         msg_id: int = queue.send(queue_name, msg)
         send_duration = time.time() - send_start
@@ -169,6 +169,8 @@ def produce(
         )
         # Sleep to maintain the desired tps
         time.sleep(delay - ((time.time() - start_time) % delay))
+        if i % 10000 == 0:
+            print(f"Sent {i} / {int(total_messages)} messages")
 
     df = pd.DataFrame(all_results)
     df.to_csv(csv_name, index=False)
@@ -188,11 +190,13 @@ def consume(queue_name: str, csv_name: str, connection_info: dict):
         message: Optional[Message] = queue.read(queue_name, vt=10)
         if message is None:
             no_message_timeout += 1
-            print(f"No message -- {no_message_timeout}, sleeping 1 second")
-            time.sleep(1)
+            if no_message_timeout > 2:
+                print(f"No messages for {no_message_timeout} consecutive reads")
+            time.sleep(0.500)
             continue
         else:
             no_message_timeout = 0
+
         read_duration = time.time() - read_start
         results.append({"operation": "read", "duration": read_duration, "msg_id": message.msg_id})
 
@@ -213,6 +217,11 @@ def summarize(csv_1: str, csv_2: str, results_file: str, duration_seconds: int, 
     df2 = pd.read_csv(csv_2)
 
     df = pd.concat([df1, df2])
+
+    # iteration
+    trial = csv_1.replace(".csv", "").split("_")[-1]
+
+    df.to_csv(f"all_results_{trial}_duration_{duration_seconds}_tps_{tps}.csv", index=False)
 
     _num_df = df[df["operation"] == "archive"]
     num_messages = _num_df.shape[0]
@@ -247,6 +256,9 @@ if __name__ == "__main__":
     # script merges csvs and summarizes results
     from multiprocessing import Process
 
+    duration_seconds = 60 * 60 * 3  # 3 hour
+    tps = 600  # max transactions per second (producing)
+
     rnd = random.randint(0, 1000)
     test_queue = f"bench_queue_{rnd}"
     connection_info = dict(host="localhost", port=28815, username="postgres", password="postgres", database="postgres")
@@ -258,8 +270,7 @@ if __name__ == "__main__":
     consume_csv = f"consume_{test_queue}.csv"
 
     # run producing and consuming in parallel, separate processes
-    duration_seconds = 60 * 60  # 1 hour
-    tps = 550  # max transactions per second (producing)
+
     proc_produce = Process(target=produce, args=(test_queue, produce_csv, connection_info, duration_seconds, tps))
     proc_produce.start()
 
