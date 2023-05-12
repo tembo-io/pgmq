@@ -162,11 +162,7 @@ def produce(
         msg_id: int = queue.send(queue_name, msg)
         send_duration = time.time() - send_start
         all_results.append(
-            {
-                "operation": "write",
-                "duration": round(send_duration, 4),
-                "msg_id": msg_id,
-            }
+            {"operation": "write", "duration": round(send_duration, 4), "msg_id": msg_id, "epoch": send_start}
         )
         # Sleep to maintain the desired tps
         time.sleep(delay - ((time.time() - start_time) % delay))
@@ -199,12 +195,14 @@ def consume(queue_name: str, csv_name: str, connection_info: dict):
             no_message_timeout = 0
 
         read_duration = time.time() - read_start
-        results.append({"operation": "read", "duration": read_duration, "msg_id": message.msg_id})
+        results.append({"operation": "read", "duration": read_duration, "msg_id": message.msg_id, "epoch": read_start})
 
         archive_start = time.time()
         queue.archive(queue_name, message.msg_id)
         archive_duration = time.time() - archive_start
-        results.append({"operation": "archive", "duration": archive_duration, "msg_id": message.msg_id})
+        results.append(
+            {"operation": "archive", "duration": archive_duration, "msg_id": message.msg_id, "epoch": archive_start}
+        )
 
     # divide by 2 because we're appending two results (read/archive) per message
     num_consumed = len(results) / 2
@@ -277,14 +275,17 @@ if __name__ == "__main__":
     from multiprocessing import Process
 
     parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
-    parser.add_argument("--duration_seconds", type=int, help="how long the benchmark should run, in seconds")
+    parser.add_argument(
+        "--duration_seconds", type=int, required=True, help="how long the benchmark should run, in seconds"
+    )
     parser.add_argument("--tps", type=int, default=400, help="number of messages to produce per second")
     parser.add_argument(
         "--agg_window", type=int, default=10_000, help="number of messages to aggregate for rolling average"
     )
     parser.add_argument("--partition_interval", type=int, default=10_000, help="number of messages per partition")
     parser.add_argument("--message_retention", type=int, default=1_000_000, help="number of messages per partition")
-    parser.add_argument("--bench_name", type=str, help="the name of the benchmark")
+    parser.add_argument("--read_concurrency", type=int, default=1, help="number of concurrent consumers")
+    parser.add_argument("--bench_name", type=str, required=False, help="the name of the benchmark")
 
     args = parser.parse_args()
     print(args)
@@ -314,11 +315,16 @@ if __name__ == "__main__":
     proc_produce = Process(target=produce, args=(test_queue, produce_csv, connection_info, duration_seconds, tps))
     proc_produce.start()
 
-    proc_consume = Process(target=consume, args=(test_queue, consume_csv, connection_info))
-    proc_consume.start()
+    consume_procs = {}
+    for i in range(args.read_concurrency):
+        conumser = f"consumer_{i}"
+        consume_procs[conumser] = Process(target=consume, args=(test_queue, consume_csv, connection_info))
+        consume_procs[conumser].start()
 
-    print("Waiting for processes to finish")
-    proc_consume.join()
+    for consumer, proc in consume_procs.items():
+        print(f"Waiting for {consumer} to finish")
+        proc.join()
+        print(f"{consumer} finished")
 
     # once consuming finishes, summarize
     results_file = f"results_{test_queue}.jpg"
