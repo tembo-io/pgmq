@@ -253,7 +253,7 @@ def summarize(csv_1: str, csv_2: str, results_file: str, duration_seconds: int, 
     return all_results_csv
 
 
-def generate_plot(csv_name: str, duration: int, tps: int, window: int = 10_000) -> None:
+def generate_plot(csv_name: str, bench_name: str, duration: int, tps: int, window: int = 10_000) -> None:
     alldf = pd.read_csv(csv_name)
     alldf["duration_ms"] = alldf["duration"] * 1000
     wide_df = pd.pivot(alldf, index="msg_id", columns="operation", values="duration_ms")
@@ -262,7 +262,7 @@ def generate_plot(csv_name: str, duration: int, tps: int, window: int = 10_000) 
     ax.set_ylabel("Duration (ms)")
     plt.suptitle(f"Rolling Average Operation Duration ({window} message window)")
     plt.title(f"Duration_seconds: {duration}, TPS: {tps}")
-    output_plot = f"rolling_avg_{duration}_{tps}.png"
+    output_plot = f"rolling_avg_{duration}_{tps}_{bench_name}.png"
     plt.savefig(output_plot)
     print(f"Saved plot to: {output_plot}")
 
@@ -273,17 +273,38 @@ if __name__ == "__main__":
     # another process reading and archiving messages
     # both write results to csv
     # script merges csvs and summarizes results
+    import argparse
     from multiprocessing import Process
 
-    duration_seconds = 60 * 60 * 4
-    tps = 600  # max transactions per second (producing)
+    parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
+    parser.add_argument("--duration_seconds", type=int, help="how long the benchmark should run, in seconds")
+    parser.add_argument("--tps", type=int, default=400, help="number of messages to produce per second")
+    parser.add_argument(
+        "--agg_window", type=int, default=10_000, help="number of messages to aggregate for rolling average"
+    )
+    parser.add_argument("--partition_interval", type=int, default=10_000, help="number of messages per partition")
+    parser.add_argument("--message_retention", type=int, default=1_000_000, help="number of messages per partition")
+    parser.add_argument("--bench_name", type=str, help="the name of the benchmark")
 
-    rnd = random.randint(0, 1000)
-    test_queue = f"bench_queue_{rnd}"
+    args = parser.parse_args()
+    print(args)
+
+    duration_seconds = args.duration_seconds
+    tps = args.tps
+    agg_window = args.agg_window
+    partition_interval = args.partition_interval
+    retention_interval = args.message_retention
+    bench_name = args.bench_name
+
+    if bench_name is None:
+        bench_name = random.randint(0, 1000)
+
+    test_queue = f"bench_queue_{bench_name}"
     connection_info = dict(host="localhost", port=28815, username="postgres", password="postgres", database="postgres")
     queue = PGMQueue(**connection_info)  # type: ignore
     print(f"Creating queue: {test_queue}")
-    queue.create_queue(test_queue, partition_interval=10000, retention_interval=100000)
+
+    queue.create_queue(test_queue, partition_interval=partition_interval, retention_interval=retention_interval)
 
     produce_csv = f"produce_{test_queue}.csv"
     consume_csv = f"consume_{test_queue}.csv"
@@ -306,4 +327,4 @@ if __name__ == "__main__":
         csv_1=produce_csv, csv_2=consume_csv, results_file=results_file, duration_seconds=duration_seconds, tps=tps
     )
 
-    generate_plot(filename, duration_seconds, tps, window=10_000)
+    generate_plot(filename, bench_name, duration_seconds, tps, window=agg_window)
