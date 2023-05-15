@@ -31,6 +31,8 @@ matplotlib = "^3.7.1"
 jupyter = "^1.0.0"
 notebook = "^6.5.4"
 pandas-stubs = "^2.0.1.230501"
+sqlalchemy = "^2.0.13"
+psycopg2 = "^2.9.6"
 
 [tool.black]
 line-length = 120

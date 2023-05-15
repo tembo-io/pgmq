@@ -4,6 +4,7 @@ from typing import Optional
 
 import pandas as pd
 from matplotlib import pyplot as plt  # type: ignore
+from sqlalchemy import create_engine
 
 from coredb_pgmq_python import Message, PGMQueue
 
@@ -132,7 +133,6 @@ def bench_line_item(
 
 def produce(
     queue_name: str,
-    csv_name: str,
     connection_info: dict,
     duration_seconds: int = 60,
     tps: int = 500,
@@ -142,7 +142,6 @@ def produce(
 
     Args:
         queue_name: The name of the queue to publish to
-        csv_name: The name of the csv to write results to
         duration_seconds: The number of seconds to publish messages
         tps: The number of messages to publish per second
     """
@@ -170,10 +169,12 @@ def produce(
             print(f"Sent {i} / {int(total_messages)} messages")
 
     df = pd.DataFrame(all_results)
-    df.to_csv(csv_name, index=False)
+    con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
+    df.to_sql(f"bench_results_{queue_name}", con=con, if_exists="append", index=False)
+    # df.to_csv(f"produce_{queue_name}.csv", index=False)
 
 
-def consume(queue_name: str, csv_name: str, connection_info: dict):
+def consume(queue_name: str, connection_info: dict):
     """Consumes messages from a queue and archives them. Writes results to csv.
 
     Halts consumption after 5 seconds of no messages.
@@ -208,21 +209,21 @@ def consume(queue_name: str, csv_name: str, connection_info: dict):
     num_consumed = len(results) / 2
     print(f"Consumed {num_consumed} messages")
     df = pd.DataFrame(results)
-    print(f"Writing results to {csv_name}")
-    df.to_csv(csv_name, index=False)
+    con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
+    df.to_sql(f"bench_results_{queue_name}", con=con, if_exists="append", index=False)
+    # df.to_csv(f"consume_{queue_name}.csv", index=False)
 
 
-def summarize(csv_1: str, csv_2: str, results_file: str, duration_seconds: int, tps: int):
+def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seconds: int, tps: int):
     """summarizes results from two csvs into pdf"""
-    df1 = pd.read_csv(csv_1)
-    df2 = pd.read_csv(csv_2)
 
-    df = pd.concat([df1, df2])
+    con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
+    df = pd.read_sql(f"select * from bench_results_{queue_name}", con=con)
 
     # iteration
-    trial = csv_1.replace(".csv", "").split("_")[-1]
+    trial = queue_name
 
-    all_results_csv = f"all_results_{trial}_duration_{duration_seconds}_tps_{tps}.csv"
+    all_results_csv = f"all_results_{trial}.csv"
     df.to_csv(all_results_csv, index=False)
 
     _num_df = df[df["operation"] == "archive"]
@@ -251,15 +252,15 @@ def summarize(csv_1: str, csv_2: str, results_file: str, duration_seconds: int, 
     return all_results_csv
 
 
-def generate_plot(csv_name: str, bench_name: str, duration: int, tps: int, window: int = 10_000) -> None:
+def generate_plot(csv_name: str, bench_name: str, duration: int, tps: int, params: dict, window: int = 10_000) -> None:
     alldf = pd.read_csv(csv_name)
     alldf["duration_ms"] = alldf["duration"] * 1000
     wide_df = pd.pivot(alldf, index="msg_id", columns="operation", values="duration_ms")
     ax = wide_df.rolling(window).mean().plot(figsize=(20, 10))
     ax.set_xlabel("Message Number")
     ax.set_ylabel("Duration (ms)")
-    plt.suptitle(f"Rolling Average Operation Duration ({window} message window)")
-    plt.title(f"Duration_seconds: {duration}, TPS: {tps}")
+    plt.suptitle("PGMQ Concurrent Produce/Consumer Benchmark")
+    plt.title(params)
     output_plot = f"rolling_avg_{duration}_{tps}_{bench_name}.png"
     plt.savefig(output_plot)
     print(f"Saved plot to: {output_plot}")
@@ -312,13 +313,13 @@ if __name__ == "__main__":
 
     # run producing and consuming in parallel, separate processes
 
-    proc_produce = Process(target=produce, args=(test_queue, produce_csv, connection_info, duration_seconds, tps))
+    proc_produce = Process(target=produce, args=(test_queue, connection_info, duration_seconds, tps))
     proc_produce.start()
 
     consume_procs = {}
     for i in range(args.read_concurrency):
         conumser = f"consumer_{i}"
-        consume_procs[conumser] = Process(target=consume, args=(test_queue, consume_csv, connection_info))
+        consume_procs[conumser] = Process(target=consume, args=(test_queue, connection_info))
         consume_procs[conumser].start()
 
     for consumer, proc in consume_procs.items():
@@ -329,8 +330,16 @@ if __name__ == "__main__":
     # once consuming finishes, summarize
     results_file = f"results_{test_queue}.jpg"
     # TODO: organize results in a directory or something, log all the params
-    filename = summarize(
-        csv_1=produce_csv, csv_2=consume_csv, results_file=results_file, duration_seconds=duration_seconds, tps=tps
-    )
+    filename = summarize(test_queue, queue, results_file=results_file, duration_seconds=duration_seconds, tps=tps)
 
-    generate_plot(filename, bench_name, duration_seconds, tps, window=agg_window)
+    params = {
+        "duration_seconds": duration_seconds,
+        "tps": tps,
+        "partition_interval": partition_interval,
+        "retention_interval": retention_interval,
+        "read_concurrency": args.read_concurrency,
+        "bench_name": bench_name,
+        "agg_window": agg_window,
+    }
+
+    generate_plot(filename, bench_name, duration_seconds, tps, window=agg_window, params=params)
