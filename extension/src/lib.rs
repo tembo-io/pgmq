@@ -5,7 +5,10 @@ use pgrx::warning;
 
 pgrx::pg_module_magic!();
 
+pub mod api;
+pub mod metrics;
 pub mod partition;
+
 use pgmq_crate::errors::PgmqError;
 use pgmq_crate::query::{archive, check_input, delete, init_queue, pop, read, TABLE_PREFIX};
 use thiserror::Error;
@@ -240,38 +243,6 @@ fn popit(
     Ok(results)
 }
 
-#[pg_extern]
-fn pgmq_list_queues() -> Result<
-    TableIterator<
-        'static,
-        (
-            name!(queue_name, String),
-            name!(created_at, TimestampWithTimeZone),
-        ),
-    >,
-    spi::Error,
-> {
-    let results = listit()?;
-    Ok(TableIterator::new(results.into_iter()))
-}
-
-fn listit() -> Result<Vec<(String, TimestampWithTimeZone)>, spi::Error> {
-    let mut results: Vec<(String, TimestampWithTimeZone)> = Vec::new();
-    let query = "SELECT * FROM pgmq_meta";
-    let _: Result<(), spi::Error> = Spi::connect(|client| {
-        let tup_table: SpiTupleTable = client.select(query, None, None)?;
-        for row in tup_table {
-            let queue_name = row["queue_name"].value::<String>()?.expect("no queue_name");
-            let created_at = row["created_at"]
-                .value::<TimestampWithTimeZone>()?
-                .expect("no created_at");
-            results.push((queue_name, created_at));
-        }
-        Ok(())
-    });
-    Ok(results)
-}
-
 /// change the visibility time on an existing message
 /// vt_offset is a time relative to now that the message will be visible
 /// accepts positive or negative integers
@@ -382,7 +353,7 @@ mod tests {
         let qname = r#"test_internal"#;
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
 
-        let queues = listit().unwrap();
+        let queues = api::listit().unwrap();
         assert_eq!(queues.len(), 1);
 
         // put two message on the queue
@@ -439,7 +410,7 @@ mod tests {
 
         let _ = pgmq_create(&qname, partition_interval, retention_interval).unwrap();
 
-        let queues = listit().unwrap();
+        let queues = api::listit().unwrap();
         assert_eq!(queues.len(), 1);
 
         // put two message on the queue

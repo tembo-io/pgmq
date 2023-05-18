@@ -1,7 +1,7 @@
 use pgmq_crate::{conn_options, fetch_one_message};
 use rand::Rng;
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{Pool, Postgres, Row};
+use sqlx::{FromRow, Pool, Postgres, Row};
 
 async fn connect(url: &str) -> Pool<Postgres> {
     let options = conn_options(url).expect("failed to parse url");
@@ -110,4 +110,30 @@ async fn test_lifecycle() {
     .execute(&conn)
     .await
     .expect("failed creating numeric interval queue");
+
+    #[allow(dead_code)]
+    #[derive(FromRow)]
+    struct MetricsRow {
+        queue_name: String,
+        queue_length: i64,
+        newest_msg_age_sec: Option<i32>,
+        oldest_msg_age_sec: Option<i32>,
+        scrape_time: chrono::DateTime<chrono::Utc>,
+    }
+
+    // get metrics
+    let rows = sqlx::query_as::<_, MetricsRow>(&format!(
+        "SELECT * from pgmq_metrics('test_duration_{test_num}'::text);"
+    ))
+    .fetch_all(&conn)
+    .await
+    .expect("failed creating numeric interval queue");
+    assert_eq!(rows.len(), 1);
+
+    // get metrics
+    let rows = sqlx::query_as::<_, MetricsRow>(&format!("SELECT * from pgmq_metrics_all();"))
+        .fetch_all(&conn)
+        .await
+        .expect("failed creating numeric interval queue");
+    assert!(rows.len() > 1);
 }
