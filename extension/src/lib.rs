@@ -20,6 +20,9 @@ enum PgmqExtError {
 
     #[error("")]
     QueueError(#[from] PgmqError),
+
+    #[error("{0} invalid types")]
+    TypeErrorError(String),
 }
 
 #[pg_extern]
@@ -37,11 +40,10 @@ fn pgmq_create_non_partitioned(queue_name: &str) -> Result<(), PgmqExtError> {
 #[pg_extern]
 fn pgmq_create(
     queue_name: &str,
-    partition_interval: default!(String, "'daily'"),
-    retention_interval: default!(String, "'5 days'"),
+    partition_interval: default!(String, "'10000'"),
+    retention_interval: default!(String, "'100000'"),
 ) -> Result<(), PgmqExtError> {
-    // TODO: data validation on partition_interval and retention_interval
-    // these need to both be parsed as integers, or both parsed as postgres durations
+    validate_same_type(&partition_interval, &retention_interval)?;
     let setup =
         partition::init_partitioned_queue(queue_name, &partition_interval, &retention_interval)?;
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
@@ -51,6 +53,15 @@ fn pgmq_create(
         Ok(())
     });
     Ok(ran?)
+}
+
+fn validate_same_type(a: &str, b: &str) -> Result<(), PgmqExtError> {
+    // either both can be ints, or not not ints
+    match (a.parse::<i32>(), b.parse::<i32>()) {
+        (Ok(_), Ok(_)) => Ok(()),
+        (Err(_), Err(_)) => Ok(()),
+        _ => Err(PgmqExtError::TypeErrorError("".to_owned())),
+    }
 }
 
 #[pg_extern]
@@ -490,6 +501,19 @@ mod tests {
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
+    }
+
+    #[pg_test]
+    fn test_validate_same_type() {
+        let invalid = validate_same_type("10", "daily");
+        assert!(invalid.is_err());
+        let invalid = validate_same_type("daily", "10");
+        assert!(invalid.is_err());
+
+        let valid = validate_same_type("10", "10");
+        assert!(valid.is_ok());
+        let valid = validate_same_type("daily", "weekly");
+        assert!(valid.is_ok());
     }
 }
 

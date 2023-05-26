@@ -136,4 +136,40 @@ async fn test_lifecycle() {
         .await
         .expect("failed creating numeric interval queue");
     assert!(rows.len() > 1);
+
+    // delete all the queues
+    #[allow(dead_code)]
+    #[derive(FromRow)]
+    struct QueueMeta {
+        queue_name: String,
+    }
+    let queues = sqlx::query_as::<_, QueueMeta>("select queue_name from pgmq_list_queues();")
+        .fetch_all(&conn)
+        .await
+        .expect("failed to list queues");
+    for queue in queues {
+        let q = queue.queue_name;
+        sqlx::query(&format!("select pgmq_drop_queue('{}');", &q))
+            .execute(&conn)
+            .await
+            .expect("failed to list queues");
+    }
+
+    let queues = sqlx::query_as::<_, QueueMeta>("select queue_name from pgmq_list_queues();")
+        .fetch_all(&conn)
+        .await
+        .expect("failed to list queues");
+    assert!(queues.is_empty());
+
+    #[allow(dead_code)]
+    #[derive(FromRow)]
+    struct ResultSet {
+        num_partmans: i64,
+    }
+    let partmans =
+        sqlx::query_as::<_, ResultSet>("select count(*) as num_partmans from part_config;")
+            .fetch_one(&conn)
+            .await
+            .expect("failed to query partman config");
+    assert_eq!(partmans.num_partmans, 0);
 }

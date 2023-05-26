@@ -7,8 +7,8 @@ use pgmq_crate::{
 };
 
 // for now, put pg_partman in the public PGMQ_SCHEMA
-const PARTMAN_SCHEMA: &str = "public";
-const PGMQ_SCHEMA: &str = "public";
+pub const PARTMAN_SCHEMA: &str = "public";
+pub const PGMQ_SCHEMA: &str = "public";
 
 pub fn init_partitioned_queue(
     name: &str,
@@ -31,6 +31,8 @@ pub fn init_partitioned_queue(
 
 /// maps the partition column based on partition_interval
 fn map_partition_col(partition_interval: &str) -> String {
+    // map using msg_id when partition_interval is an integer
+    // otherwise use enqueued_at (time based)
     match partition_interval.parse::<i32>() {
         Ok(_) => "msg_id".to_owned(),
         Err(_) => "enqueued_at".to_owned(),
