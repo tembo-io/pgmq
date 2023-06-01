@@ -30,10 +30,10 @@ pub fn create_queue(name: &str) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE TABLE IF NOT EXISTS {TABLE_PREFIX}_{name} (
-            msg_id BIGSERIAL,
-            read_ct INT DEFAULT 0,
-            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc'),
-            vt TIMESTAMP WITH TIME ZONE,
+            msg_id BIGSERIAL NOT NULL,
+            read_ct INT DEFAULT 0 NOT NULL,
+            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
+            vt TIMESTAMP WITH TIME ZONE NOT NULL,
             message JSONB
         );
         "
@@ -45,11 +45,11 @@ pub fn create_archive(name: &str) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE TABLE IF NOT EXISTS {TABLE_PREFIX}_{name}_archive (
-            msg_id BIGSERIAL,
-            read_ct INT DEFAULT 0,
-            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc'),
-            deleted_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc'),
-            vt TIMESTAMP WITH TIME ZONE,
+            msg_id BIGSERIAL NOT NULL,
+            read_ct INT DEFAULT 0 NOT NULL,
+            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
+            deleted_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
+            vt TIMESTAMP WITH TIME ZONE NOT NULL,
             message JSONB
         );
         "
@@ -60,8 +60,8 @@ pub fn create_meta() -> String {
     format!(
         "
         CREATE TABLE IF NOT EXISTS {TABLE_PREFIX}_meta (
-            queue_name VARCHAR UNIQUE,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc')
+            queue_name VARCHAR UNIQUE NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL
         );
         "
     )
