@@ -7,8 +7,9 @@ use sqlx::{Pool, Postgres, Row};
 use std::env;
 
 async fn init_queue(qname: &str) -> pgmq::PGMQueue {
-    let pgpass = env::var("POSTGRES_PASSWORD").unwrap_or_else(|_| "postgres".to_owned());
-    let queue = pgmq::PGMQueue::new(format!("postgres://postgres:{}@0.0.0.0:5432", pgpass))
+    let db_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_owned());
+    let queue = pgmq::PGMQueue::new(db_url)
         .await
         .expect("failed to connect to postgres");
     // make sure queue doesn't exist before the test
@@ -20,7 +21,23 @@ async fn init_queue(qname: &str) -> pgmq::PGMQueue {
     queue
 }
 
-#[derive(Serialize, Debug, Deserialize)]
+async fn init_queue_ext(qname: &str) -> pgmq::PGMQueueExt {
+    let db_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/pgmq".to_owned());
+    let queue = pgmq::PGMQueueExt::new(db_url, 2)
+        .await
+        .expect("failed to connect to postgres");
+    queue.init().await.expect("failed to init pgmq");
+    // make sure queue doesn't exist before the test
+    let _ = queue.drop_queue(qname).await;
+    // CREATE QUEUE
+    let q_success = queue.create(qname).await;
+    println!("q_success: {:?}", q_success);
+    assert!(q_success.is_ok());
+    queue
+}
+
+#[derive(Serialize, Debug, Deserialize, Eq, PartialEq)]
 struct MyMessage {
     foo: String,
     num: u64,
@@ -519,8 +536,9 @@ async fn test_archive() {
 /// test db operations that should produce errors
 #[tokio::test]
 async fn test_database_error_modes() {
-    let pgpass = env::var("POSTGRES_PASSWORD").unwrap_or_else(|_| "postgres".to_owned());
-    let queue = pgmq::PGMQueue::new(format!("postgres://postgres:{}@0.0.0.0:5432", pgpass))
+    let db_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_owned());
+    let queue = pgmq::PGMQueue::new(db_url)
         .await
         .expect("failed to connect to postgres");
     // let's not create the queues and make sure we get an error
@@ -682,4 +700,123 @@ async fn test_set_vt() {
 
     let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
     assert_eq!(num_rows_queue, 1);
+}
+
+#[tokio::test]
+async fn test_extension_api() {
+    let test_queue = format!("test_ext_api_{}", rand::thread_rng().gen_range(0..100000));
+
+    let queue = init_queue_ext(&test_queue).await;
+    let msg = MyMessage::default();
+    let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
+    println!("num_rows_queue: {:?}", num_rows_queue);
+    assert_eq!(num_rows_queue, 0);
+
+    let qs = queue
+        .list_queues()
+        .await
+        .expect("error listing queues")
+        .expect("test queue was not created");
+    let q_names = qs
+        .iter()
+        .map(|q| q.queue_name.clone())
+        .collect::<Vec<String>>();
+    assert!(q_names.contains(&test_queue));
+
+    let msg_id = queue.send(&test_queue, &msg).await.unwrap();
+    assert!(msg_id >= 1);
+
+    let read_message = queue
+        .read::<MyMessage>(&test_queue, 100)
+        .await
+        .expect("error reading message");
+    assert!(read_message.is_some());
+    let read_message = read_message.unwrap();
+    assert_eq!(read_message.msg_id, msg_id);
+    assert_eq!(read_message.message, msg);
+
+    // read again, assert no messages visible
+    let read_message = queue
+        .read::<MyMessage>(&test_queue, 2)
+        .await
+        .expect("error reading message");
+    assert!(read_message.is_none());
+
+    // change the VT to now
+    let _vt_set = queue
+        .set_vt::<MyMessage>(&test_queue, msg_id, 0)
+        .await
+        .expect("failed to set VT");
+    let read_message = queue
+        .read::<MyMessage>(&test_queue, 1)
+        .await
+        .expect("error reading message")
+        .expect("expected a message");
+    assert_eq!(read_message.msg_id, msg_id);
+
+    // archive message
+    let archived = queue
+        .archive(&test_queue, msg_id)
+        .await
+        .expect("failed to archive");
+    assert!(archived);
+
+    // pop message
+    let pmsg = MyMessage {
+        foo: "pop".to_owned(),
+        num: 123,
+    };
+    let msg_id_pop = queue.send(&test_queue, &pmsg).await.unwrap();
+    assert!(msg_id_pop > msg_id);
+    let popped = queue
+        .pop::<MyMessage>(&test_queue)
+        .await
+        .expect("failed to pop")
+        .expect("no message to pop");
+    assert_eq!(popped.message, pmsg);
+
+    // delete message
+    let del_msg = MyMessage {
+        foo: "delete".to_owned(),
+        num: 123,
+    };
+    let msg_id_del = queue.send(&test_queue, &del_msg).await.unwrap();
+    assert!(msg_id_del > msg_id_pop);
+    let deleted = queue
+        .delete(&test_queue, msg_id_del)
+        .await
+        .expect("failed to delete");
+    assert!(deleted);
+    // try delete a message that doesnt exist
+    let deleted = queue
+        .delete(&test_queue, msg_id_del)
+        .await
+        .expect("failed to delete");
+    assert!(!deleted);
+}
+
+#[tokio::test]
+async fn test_pgmq_init() {
+    let db_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/pgmq".to_owned());
+    let queue = pgmq::PGMQueueExt::new(db_url.clone(), 2)
+        .await
+        .expect("failed to connect to postgres");
+    let init = queue.init().await.expect("failed to create extension");
+    assert!(init);
+
+    // error mode on queue create but already exists
+    let qname = format!("test_dup_{}", rand::thread_rng().gen_range(0..100));
+    println!("db_url: {}, qname: {:?}", db_url, qname);
+    let created = queue
+        .create(&qname)
+        .await
+        .expect("failed attempting to create queue");
+    assert!(created, "did not create queue");
+    // create again
+    let created = queue
+        .create(&qname)
+        .await
+        .expect("failed attempting to create the duplicate queue");
+    assert!(!created)
 }

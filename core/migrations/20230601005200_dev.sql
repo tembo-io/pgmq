@@ -1,0 +1,1 @@
+CREATE EXTENSION pgmq cascade;

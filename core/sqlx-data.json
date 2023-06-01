@@ -1,0 +1,470 @@
+{
+  "db": "PostgreSQL",
+  "0e13957cc5c1f96a07ec242ce393f0738d62d79d34182e3c9333e9f9712d4cbb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "read_ct",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "vt",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "enqueued_at",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 4,
+          "type_info": "Jsonb"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_pop($1::text)"
+  },
+  "10ea79c92326fbee074db2d9629f60abb320be01d069b12b2360816267a64e3a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "queue_name",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 1,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT * from pgmq_list_queues();"
+  },
+  "164457cb5001029f73e5c691c3722215f2377e6415f8189ba4e724b38d4ead0a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "parent_table",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "control",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "partition_type",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "partition_interval",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "constraint_cols",
+          "ordinal": 4,
+          "type_info": "TextArray"
+        },
+        {
+          "name": "premake",
+          "ordinal": 5,
+          "type_info": "Int4"
+        },
+        {
+          "name": "optimize_trigger",
+          "ordinal": 6,
+          "type_info": "Int4"
+        },
+        {
+          "name": "optimize_constraint",
+          "ordinal": 7,
+          "type_info": "Int4"
+        },
+        {
+          "name": "epoch",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "inherit_fk",
+          "ordinal": 9,
+          "type_info": "Bool"
+        },
+        {
+          "name": "retention",
+          "ordinal": 10,
+          "type_info": "Text"
+        },
+        {
+          "name": "retention_schema",
+          "ordinal": 11,
+          "type_info": "Text"
+        },
+        {
+          "name": "retention_keep_table",
+          "ordinal": 12,
+          "type_info": "Bool"
+        },
+        {
+          "name": "retention_keep_index",
+          "ordinal": 13,
+          "type_info": "Bool"
+        },
+        {
+          "name": "infinite_time_partitions",
+          "ordinal": 14,
+          "type_info": "Bool"
+        },
+        {
+          "name": "datetime_string",
+          "ordinal": 15,
+          "type_info": "Text"
+        },
+        {
+          "name": "automatic_maintenance",
+          "ordinal": 16,
+          "type_info": "Text"
+        },
+        {
+          "name": "jobmon",
+          "ordinal": 17,
+          "type_info": "Bool"
+        },
+        {
+          "name": "sub_partition_set_full",
+          "ordinal": 18,
+          "type_info": "Bool"
+        },
+        {
+          "name": "undo_in_progress",
+          "ordinal": 19,
+          "type_info": "Bool"
+        },
+        {
+          "name": "trigger_exception_handling",
+          "ordinal": 20,
+          "type_info": "Bool"
+        },
+        {
+          "name": "upsert",
+          "ordinal": 21,
+          "type_info": "Text"
+        },
+        {
+          "name": "trigger_return_null",
+          "ordinal": 22,
+          "type_info": "Bool"
+        },
+        {
+          "name": "template_table",
+          "ordinal": 23,
+          "type_info": "Text"
+        },
+        {
+          "name": "publications",
+          "ordinal": 24,
+          "type_info": "TextArray"
+        },
+        {
+          "name": "inherit_privileges",
+          "ordinal": 25,
+          "type_info": "Bool"
+        },
+        {
+          "name": "constraint_valid",
+          "ordinal": 26,
+          "type_info": "Bool"
+        },
+        {
+          "name": "subscription_refresh",
+          "ordinal": 27,
+          "type_info": "Text"
+        },
+        {
+          "name": "drop_cascade_fk",
+          "ordinal": 28,
+          "type_info": "Bool"
+        },
+        {
+          "name": "ignore_default_data",
+          "ordinal": 29,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * from part_config where parent_table = $1::text;"
+  },
+  "213c722c2cab09b2042dc989130c4131b322b5d0b616dbb91f8e8e8f411406f9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_create",
+          "ordinal": 0,
+          "type_info": "Void"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_create($1::text);"
+  },
+  "3a3440841fba7d0f8744f5873cdb93a64b6e2f6481c3b14af701c5189f5e73f0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;"
+  },
+  "595dd830c53f4560378cfadcf8a1cc6f566307e3d76fea4c84e35e70649a7f17": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_archive",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_archive($1::text, $2)"
+  },
+  "9919286cee87946b387f69e67df94f94eb0acdd3b5f4848faf092c55d484b61a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_drop_queue",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_drop_queue($1::text);"
+  },
+  "b42aa546a8e1f83b4da63a6a20aaa51778e01d8525b4b9b307576b2921eec305": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "read_ct",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "enqueued_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "vt",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 4,
+          "type_info": "Jsonb"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8",
+          "Int4"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_set_vt($1::text, $2::bigint, $3::integer);"
+  },
+  "c38b0cc48a6744bdb28ad1fa637223b6427eda19c0a52dc8881750d6a50ac0ef": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_delete",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_delete($1::text, $2)"
+  },
+  "c89ad5584222a1f9c0d505fe58bf035d68d033047176b106e289ad6842f49972": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "read_ct",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "vt",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "enqueued_at",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 4,
+          "type_info": "Jsonb"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_read($1::text, $2, $3)"
+  },
+  "cd7b28f6bd348038e7c26d89292f2445841e7c13143b453277a010390699d1fc": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Jsonb"
+        ]
+      }
+    },
+    "query": "SELECT pgmq_send as msg_id from pgmq_send($1::text, $2::jsonb);"
+  }
+}

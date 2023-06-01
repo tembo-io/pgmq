@@ -147,19 +147,21 @@
 
 #![doc(html_root_url = "https://docs.rs/pgmq/")]
 
+use chrono::serde::ts_seconds::deserialize as from_ts;
 use errors::PgmqError;
-use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use sqlx::error::Error;
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgRow};
+use sqlx::postgres::PgRow;
 use sqlx::types::chrono::Utc;
-use sqlx::{ConnectOptions, FromRow};
-use sqlx::{Pool, Postgres, Row};
-use url::{ParseError, Url};
+use sqlx::{FromRow, Pool, Postgres, Row};
 
 pub mod errors;
+pub mod pg_ext;
 pub mod query;
-use chrono::serde::ts_seconds::deserialize as from_ts;
+pub mod util;
+
+pub use pg_ext::PGMQueueExt;
+use util::fetch_one_message;
 
 const VT_DEFAULT: i32 = 30;
 const READ_LIMIT_DEFAULT: i32 = 1;
@@ -192,22 +194,11 @@ pub struct PGMQueue {
 
 impl PGMQueue {
     pub async fn new(url: String) -> Result<PGMQueue, errors::PgmqError> {
-        let con = PGMQueue::connect(&url).await?;
+        let con = util::connect(&url, 5).await?;
         Ok(PGMQueue {
             url,
             connection: con,
         })
-    }
-
-    /// Connect to the database
-    async fn connect(url: &str) -> Result<Pool<Postgres>, errors::PgmqError> {
-        let options = conn_options(url)?;
-        let pgp = PgPoolOptions::new()
-            .acquire_timeout(std::time::Duration::from_secs(10))
-            .max_connections(5)
-            .connect_with(options)
-            .await?;
-        Ok(pgp)
     }
 
     /// Create a queue. This sets up the queue's tables, indexes, and metadata.
@@ -878,36 +869,6 @@ impl PGMQueue {
     }
 }
 
-// Executes a query and returns a single row
-// If the query returns no rows, None is returned
-// This function is intended for internal use.
-pub async fn fetch_one_message<T: for<'de> Deserialize<'de>>(
-    query: &str,
-    connection: &Pool<Postgres>,
-) -> Result<Option<Message<T>>, errors::PgmqError> {
-    // explore: .fetch_optional()
-    let row: Result<PgRow, Error> = sqlx::query(query).fetch_one(connection).await;
-    match row {
-        Ok(row) => {
-            // happy path - successfully read a message
-            let raw_msg = row.get("message");
-            let parsed_msg = serde_json::from_value::<T>(raw_msg);
-            match parsed_msg {
-                Ok(parsed_msg) => Ok(Some(Message {
-                    msg_id: row.get("msg_id"),
-                    vt: row.get("vt"),
-                    read_ct: row.get("read_ct"),
-                    enqueued_at: row.get("enqueued_at"),
-                    message: parsed_msg,
-                })),
-                Err(e) => Err(errors::PgmqError::JsonParsingError(e)),
-            }
-        }
-        Err(sqlx::error::Error::RowNotFound) => Ok(None),
-        Err(e) => Err(e)?,
-    }
-}
-
 // Executes a query and returns multiple rows
 // If the query returns no rows, None is returned
 // This function is intended for internal use.
@@ -940,18 +901,4 @@ async fn fetch_messages<T: for<'de> Deserialize<'de>>(
         }
     }
     Ok(Some(messages))
-}
-
-// Configure connection options
-pub fn conn_options(url: &str) -> Result<PgConnectOptions, ParseError> {
-    // Parse url
-    let parsed = Url::parse(url)?;
-    let mut options = PgConnectOptions::new()
-        .host(parsed.host_str().ok_or(ParseError::EmptyHost)?)
-        .port(parsed.port().ok_or(ParseError::InvalidPort)?)
-        .username(parsed.username())
-        .password(parsed.password().ok_or(ParseError::IdnaError)?)
-        .database(parsed.path().trim_start_matches('/'));
-    options.log_statements(LevelFilter::Debug);
-    Ok(options)
 }
