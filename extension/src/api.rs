@@ -44,9 +44,9 @@ fn pgmq_list_queues() -> Result<
 
 pub fn listit() -> Result<Vec<(String, TimestampWithTimeZone)>, spi::Error> {
     let mut results: Vec<(String, TimestampWithTimeZone)> = Vec::new();
-    let query = "SELECT * FROM pgmq_meta";
+    let query = format!("SELECT * FROM {PGMQ_SCHEMA}.pgmq_meta");
     let _: Result<(), spi::Error> = Spi::connect(|client| {
-        let tup_table: SpiTupleTable = client.select(query, None, None)?;
+        let tup_table: SpiTupleTable = client.select(&query, None, None)?;
         for row in tup_table {
             let queue_name = row["queue_name"].value::<String>()?.expect("no queue_name");
             let created_at = row["created_at"]
