@@ -5,6 +5,7 @@ use pgrx::spi::SpiTupleTable;
 use pgrx::warning;
 
 use crate::api::listit;
+use crate::partition::PGMQ_SCHEMA;
 use pgmq_crate::query::TABLE_PREFIX;
 
 type MetricResult = Vec<(String, i64, Option<i32>, Option<i32>, TimestampWithTimeZone)>;
@@ -91,7 +92,7 @@ fn build_summary_query(queue_name: &str) -> String {
             (EXTRACT(epoch FROM (SELECT (NOW() at time zone 'utc' -  max(enqueued_at)))))::int as newest_msg_age_sec,
             (EXTRACT(epoch FROM (SELECT (NOW() at time zone 'utc' -  min(enqueued_at)))))::int as oldest_msg_age_sec,
             (NOW() at time zone 'utc')::timestamp at time zone 'utc' as scrape_time
-        FROM {TABLE_PREFIX}_{queue_name};
+        FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name};
         "
     )
 }
