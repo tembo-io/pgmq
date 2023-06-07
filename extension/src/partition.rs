@@ -3,12 +3,14 @@ use pgrx::prelude::*;
 
 use pgmq_crate::{
     errors::PgmqError,
-    query::{check_input, create_archive, create_index, create_meta, insert_meta, TABLE_PREFIX},
+    query::{
+        check_input, create_archive, create_index, create_meta, grant_pgmon_meta,
+        grant_pgmon_queue, insert_meta, PGMQ_SCHEMA, TABLE_PREFIX,
+    },
 };
 
 // for now, put pg_partman in the public PGMQ_SCHEMA
 pub const PARTMAN_SCHEMA: &str = "public";
-pub const PGMQ_SCHEMA: &str = "public";
 
 pub fn init_partitioned_queue(
     name: &str,
@@ -19,6 +21,7 @@ pub fn init_partitioned_queue(
     let partition_col = map_partition_col(partition_interval);
     Ok(vec![
         create_meta(),
+        grant_pgmon_meta(),
         create_partitioned_queue(name, &partition_col)?,
         create_partitioned_index(name, &partition_col)?,
         create_index(name)?,
@@ -26,6 +29,7 @@ pub fn init_partitioned_queue(
         create_partitioned_table(name, &partition_col, partition_interval)?,
         insert_meta(name)?,
         set_retention_config(name, retention_interval)?,
+        grant_pgmon_queue(name)?,
     ])
 }
 

@@ -5,8 +5,7 @@ use pgrx::spi::SpiTupleTable;
 use pgrx::warning;
 
 use crate::api::listit;
-use crate::partition::PGMQ_SCHEMA;
-use pgmq_crate::query::TABLE_PREFIX;
+use pgmq_crate::query::{PGMQ_SCHEMA, TABLE_PREFIX};
 
 type MetricResult = Vec<(String, i64, Option<i32>, Option<i32>, TimestampWithTimeZone)>;
 

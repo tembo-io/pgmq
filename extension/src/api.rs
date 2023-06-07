@@ -2,8 +2,8 @@ use pgrx::prelude::*;
 use pgrx::spi;
 use pgrx::spi::SpiTupleTable;
 
-use crate::partition::{PARTMAN_SCHEMA, PGMQ_SCHEMA};
-use pgmq_crate::query::TABLE_PREFIX;
+use crate::partition::PARTMAN_SCHEMA;
+use pgmq_crate::query::{PGMQ_SCHEMA, TABLE_PREFIX};
 
 #[pg_extern]
 fn pgmq_drop_queue(queue_name: String) -> Result<bool, spi::Error> {

@@ -1,5 +1,5 @@
 ARG PG_VERSION=15
-ARG PGRX_VERSION=0.7.4
+ARG PGRX_VERSION=0.8.4
 
 FROM quay.io/coredb/pgrx-builder:pg${PG_VERSION}-pgrx${PGRX_VERSION}
 
