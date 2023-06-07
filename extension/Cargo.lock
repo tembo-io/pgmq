@@ -482,6 +482,9 @@ name = "either"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "errno"
@@ -1175,10 +1178,10 @@ dependencies = [
 
 [[package]]
 name = "pgmq"
-version = "0.7.3"
+version = "0.7.4"
 dependencies = [
  "chrono",
- "pgmq 0.11.4",
+ "pgmq 0.12.1",
  "pgrx",
  "pgrx-tests",
  "rand",
@@ -1192,9 +1195,7 @@ dependencies = [
 
 [[package]]
 name = "pgmq"
-version = "0.11.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b43b62fd87379b8d3161cc1c1cab9767130934ebe9069c6034f47e370843de9b"
+version = "0.12.1"
 dependencies = [
  "chrono",
  "log",
@@ -1877,9 +1878,12 @@ dependencies = [
  "dotenvy",
  "either",
  "heck",
+ "hex",
  "once_cell",
  "proc-macro2",
  "quote",
+ "serde",
+ "serde_json",
  "sha2",
  "sqlx-core",
  "sqlx-rt",

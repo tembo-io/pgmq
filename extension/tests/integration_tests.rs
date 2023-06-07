@@ -1,4 +1,4 @@
-use pgmq_crate::{conn_options, fetch_one_message};
+use pgmq_crate::util::{conn_options, fetch_one_message};
 use rand::Rng;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{FromRow, Pool, Postgres, Row};

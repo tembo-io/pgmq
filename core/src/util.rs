@@ -10,7 +10,7 @@ use sqlx::{Pool, Postgres};
 use url::{ParseError, Url};
 
 // Configure connection options
-fn conn_options(url: &str) -> Result<PgConnectOptions, ParseError> {
+pub fn conn_options(url: &str) -> Result<PgConnectOptions, ParseError> {
     // Parse url
     let parsed = Url::parse(url)?;
     let mut options = PgConnectOptions::new()
