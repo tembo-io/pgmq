@@ -13,6 +13,7 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
         create_queue(name)?,
         create_index(name)?,
         create_archive(name)?,
+        create_archive_index(name)?,
         insert_meta(name)?,
         grant_pgmon_queue(name)?,
     ])
@@ -144,6 +145,15 @@ pub fn insert_meta(name: &str) -> Result<String, PgmqError> {
         VALUES ('{name}')
         ON CONFLICT
         DO NOTHING;
+        "
+    ))
+}
+
+pub fn create_archive_index(name: &str) -> Result<String, PgmqError> {
+    check_input(name)?;
+    Ok(format!(
+        "
+        CREATE INDEX IF NOT EXISTS deleted_at_idx_{name} ON {TABLE_PREFIX}_{name}_archive (deleted_at);
         "
     ))
 }
