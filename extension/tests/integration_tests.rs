@@ -118,6 +118,7 @@ async fn test_lifecycle() {
         queue_length: i64,
         newest_msg_age_sec: Option<i32>,
         oldest_msg_age_sec: Option<i32>,
+        num_archived: i64,
         scrape_time: chrono::DateTime<chrono::Utc>,
     }
 

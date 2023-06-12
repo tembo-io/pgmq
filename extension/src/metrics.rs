@@ -7,7 +7,14 @@ use pgrx::warning;
 use crate::api::listit;
 use pgmq_crate::query::{PGMQ_SCHEMA, TABLE_PREFIX};
 
-type MetricResult = Vec<(String, i64, Option<i32>, Option<i32>, TimestampWithTimeZone)>;
+type MetricResult = Vec<(
+    String,
+    i64,
+    Option<i32>,
+    Option<i32>,
+    i64,
+    TimestampWithTimeZone,
+)>;
 
 #[pg_extern]
 fn pgmq_metrics(
@@ -20,6 +27,7 @@ fn pgmq_metrics(
             name!(queue_length, i64),
             name!(newest_msg_age_sec, Option<i32>),
             name!(oldest_msg_age_sec, Option<i32>),
+            name!(num_archived, i64),
             name!(scrape_time, TimestampWithTimeZone),
         ),
     >,
@@ -38,6 +46,7 @@ fn pgmq_metrics_all() -> Result<
             name!(queue_length, i64),
             name!(newest_msg_age_sec, Option<i32>),
             name!(oldest_msg_age_sec, Option<i32>),
+            name!(num_archived, i64),
             name!(scrape_time, TimestampWithTimeZone),
         ),
     >,
@@ -62,6 +71,9 @@ fn query_summary(queue_name: &str) -> Result<MetricResult, crate::PgmqExtError> 
             let queue_length = row["queue_length"].value::<i64>()?.expect("no msg_id");
             let newest_msg_sec = row["newest_msg_age_sec"].value::<i32>()?;
             let oldest_msg_sec = row["oldest_msg_age_sec"].value::<i32>()?;
+            let num_archived = row["num_archived"]
+                .value::<i64>()?
+                .expect("failed to get num_archived");
             let scrape_time = row["scrape_time"]
                 .value::<TimestampWithTimeZone>()?
                 .expect("scrape timestamp missing");
@@ -70,6 +82,7 @@ fn query_summary(queue_name: &str) -> Result<MetricResult, crate::PgmqExtError> 
                 queue_length,
                 newest_msg_sec,
                 oldest_msg_sec,
+                num_archived,
                 scrape_time,
             ));
         }
@@ -86,12 +99,17 @@ fn query_summary(queue_name: &str) -> Result<MetricResult, crate::PgmqExtError> 
 
 fn build_summary_query(queue_name: &str) -> String {
     format!(
-        "SELECT
-            count(*) as queue_length,
-            (EXTRACT(epoch FROM (SELECT (NOW() at time zone 'utc' -  max(enqueued_at)))))::int as newest_msg_age_sec,
-            (EXTRACT(epoch FROM (SELECT (NOW() at time zone 'utc' -  min(enqueued_at)))))::int as oldest_msg_age_sec,
-            (NOW() at time zone 'utc')::timestamp at time zone 'utc' as scrape_time
-        FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name};
+        "SELECT * FROM
+            (SELECT
+                count(*) as queue_length,
+                (EXTRACT(epoch FROM (SELECT (NOW() at time zone 'utc' -  max(enqueued_at)))))::int as newest_msg_age_sec,
+                (EXTRACT(epoch FROM (SELECT (NOW() at time zone 'utc' -  min(enqueued_at)))))::int as oldest_msg_age_sec,
+                (NOW() at time zone 'utc')::timestamp at time zone 'utc' as scrape_time
+            FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}) as q_summary
+        CROSS JOIN
+            (SELECT
+                count(*) as num_archived
+            from {PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}_archive) as q_archive_summary
         "
     )
 }
