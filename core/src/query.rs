@@ -90,6 +90,15 @@ pub fn grant_pgmon_queue(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
+pub fn grant_pgmon_queue_archive(name: &str) -> Result<String, PgmqError> {
+    check_input(name)?;
+    Ok(format!(
+        "
+        GRANT SELECT ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive to pg_monitor;
+        "
+    ))
+}
+
 pub fn drop_queue(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
