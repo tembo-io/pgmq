@@ -90,11 +90,11 @@ pub fn grant_pgmon_queue(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn grant_pgmon_queue_archive(name: &str) -> Result<String, PgmqError> {
+pub fn grant_pgmon_queue_seq(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        GRANT SELECT ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive to pg_monitor;
+        GRANT SELECT ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_msg_id_seq to pg_monitor;
         "
     ))
 }

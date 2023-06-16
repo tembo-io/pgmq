@@ -5,7 +5,7 @@ use pgmq_crate::{
     errors::PgmqError,
     query::{
         check_input, create_archive, create_index, create_meta, grant_pgmon_meta,
-        grant_pgmon_queue, grant_pgmon_queue_archive, insert_meta, PGMQ_SCHEMA, TABLE_PREFIX,
+        grant_pgmon_queue, grant_pgmon_queue_seq, insert_meta, PGMQ_SCHEMA, TABLE_PREFIX,
     },
 };
 
@@ -30,7 +30,7 @@ pub fn init_partitioned_queue(
         insert_meta(name)?,
         set_retention_config(name, retention_interval)?,
         grant_pgmon_queue(name)?,
-        grant_pgmon_queue_archive(name)?,
+        grant_pgmon_queue_seq(name)?,
     ])
 }
 

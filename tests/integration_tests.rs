@@ -37,13 +37,14 @@ async fn test_lifecycle() {
         .expect("failed to create extension");
 
     // CREATE with default retention and partition strategy
-    let _ = sqlx::query(&format!("SELECT pgmq_create('test_default_{test_num}');"))
+    let test_default_queue = format!("test_default_{test_num}");
+    let _ = sqlx::query(&format!("SELECT pgmq_create('{test_default_queue}');"))
         .execute(&conn)
         .await
         .expect("failed to create queue");
 
     let msg_id = sqlx::query(&format!(
-        "SELECT * from pgmq_send('test_default_{test_num}', '{{\"hello\": \"world\"}}');"
+        "SELECT * from pgmq_send('{test_default_queue}', '{{\"hello\": \"world\"}}');"
     ))
     .fetch_one(&conn)
     .await
@@ -53,7 +54,7 @@ async fn test_lifecycle() {
 
     // read message
     // vt=2, limit=1
-    let query = &format!("SELECT * from pgmq_read('test_default_{test_num}', 2, 1);");
+    let query = &format!("SELECT * from pgmq_read('{test_default_queue}', 2, 1);");
 
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
@@ -62,7 +63,7 @@ async fn test_lifecycle() {
     assert_eq!(message.msg_id, 1);
 
     // set VT to tomorrow
-    let query = &format!("SELECT * from pgmq_set_vt('test_default_{test_num}', {msg_id}, 84600);");
+    let query = &format!("SELECT * from pgmq_set_vt('{test_default_queue}', {msg_id}, 84600);");
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
         .expect("failed reading message")
@@ -73,14 +74,14 @@ async fn test_lifecycle() {
     assert!(message.vt > now + chrono::Duration::seconds(84000));
 
     // read again, assert no messages because we just set VT to tomorrow
-    let query = &format!("SELECT * from pgmq_read('test_default_{test_num}', 2, 1);");
+    let query = &format!("SELECT * from pgmq_read('{test_default_queue}', 2, 1);");
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
         .expect("failed reading message");
     assert!(message.is_none());
 
     // set VT to now
-    let query = &format!("SELECT * from pgmq_set_vt('test_default_{test_num}', {msg_id}, 0);");
+    let query = &format!("SELECT * from pgmq_set_vt('{test_default_queue}', {msg_id}, 0);");
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
         .expect("failed reading message")
@@ -88,7 +89,7 @@ async fn test_lifecycle() {
     assert_eq!(message.msg_id, 1);
 
     // read again, should have msg_id 1 again
-    let query = &format!("SELECT * from pgmq_read('test_default_{test_num}', 2, 1);");
+    let query = &format!("SELECT * from pgmq_read('{test_default_queue}', 2, 1);");
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
         .expect("failed reading message")
@@ -96,16 +97,17 @@ async fn test_lifecycle() {
     assert_eq!(message.msg_id, 1);
 
     // CREATE with 5 seconds per partition, 10 seconds retention
-    let q = format!("SELECT \"pgmq_create\"('test_duration_{test_num}'::text, '5 seconds'::text, '10 seconds'::text);");
-    println!("q: {q}");
+    let test_duration_queue = format!("test_duration_{test_num}");
+    let q = format!("SELECT \"pgmq_create\"('{test_duration_queue}'::text, '5 seconds'::text, '10 seconds'::text);");
     let _ = sqlx::query(&q)
         .execute(&conn)
         .await
         .expect("failed creating duration queue");
 
     // CREATE with 10 messages per partition, 20 messages retention
+    let test_numeric_queue = format!("test_numeric_{test_num}");
     let _ = sqlx::query(&format!(
-        "SELECT \"pgmq_create\"('test_numeric_{test_num}'::text, '10'::text, '20'::text);"
+        "SELECT \"pgmq_create\"('{test_numeric_queue}'::text, '10'::text, '20'::text);"
     ))
     .execute(&conn)
     .await
@@ -118,20 +120,20 @@ async fn test_lifecycle() {
         queue_length: i64,
         newest_msg_age_sec: Option<i32>,
         oldest_msg_age_sec: Option<i32>,
-        num_archived: i64,
+        total_messages: i64,
         scrape_time: chrono::DateTime<chrono::Utc>,
     }
 
     // get metrics
     let rows = sqlx::query_as::<_, MetricsRow>(&format!(
-        "SELECT * from pgmq_metrics('test_duration_{test_num}'::text);"
+        "SELECT * from pgmq_metrics('{test_duration_queue}'::text);"
     ))
     .fetch_all(&conn)
     .await
     .expect("failed creating numeric interval queue");
     assert_eq!(rows.len(), 1);
 
-    // get metrics
+    // get metrics all
     let rows = sqlx::query_as::<_, MetricsRow>(&format!("SELECT * from pgmq_metrics_all();"))
         .fetch_all(&conn)
         .await
