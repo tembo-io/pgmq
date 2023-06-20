@@ -1,7 +1,7 @@
 # these tests require an externally running Postgres instance
 # with the PGMQ Extension installed
 
-from coredb_pgmq_python import Message, PGMQueue
+from tembo_pgmq_python import Message, PGMQueue
 
 
 def test_lifecycle() -> None:

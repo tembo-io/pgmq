@@ -6,7 +6,7 @@ import pandas as pd
 from matplotlib import pyplot as plt  # type: ignore
 from sqlalchemy import create_engine
 
-from coredb_pgmq_python import Message, PGMQueue
+from tembo_pgmq_python import Message, PGMQueue
 
 
 def bench_send(queue: PGMQueue, queue_name: str, msg: dict, num_messages: int) -> list[dict]:

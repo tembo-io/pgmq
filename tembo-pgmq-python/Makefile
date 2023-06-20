@@ -1,4 +1,4 @@
-SCOPE=coredb_pgmq_python/ benches/
+SCOPE=tembo_pgmq_python/ benches/
 
 format:
 	poetry run black ${SCOPE}

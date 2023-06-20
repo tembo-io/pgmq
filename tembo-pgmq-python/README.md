@@ -1,20 +1,20 @@
-# Coredb's Python Client for PGMQ
+# Tembo's Python Client for PGMQ
 
 ## Installation
 
 Install with `pip` from pypi.org
 
 ```bash
-pip install coredb-pgmq-python
+pip install tembo-pgmq-python
 ```
 
 Dependencies:
 
-Postgres running the [CoreDB PGMQ extension](https://github.com/CoreDB-io/coredb/tree/main/extensions/pgmq).
+Postgres running the [Tembo PGMQ extension](https://github.com/tembo-io/tembo/tree/main/pgmq).
 
 ## Usage
 
-## Start a Postgres Instance with the CoreDB extension installed
+## Start a Postgres Instance with the Tembo extension installed
 
 ```bash
 docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/coredb/pgmq-pg:latest
@@ -23,8 +23,7 @@ docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io
 Initialize a connection to Postgres
 
 ```python
-
-from coredb_pgmq_python import PGMQueue, Message
+from tembo_pgmq_python import PGMQueue, Message
 
 queue = PGMQueue(host="0.0.0.0")
 ```

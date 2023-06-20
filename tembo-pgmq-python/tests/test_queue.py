@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from coredb_pgmq_python import Message
+from tembo_pgmq_python import Message
 
 
 def test_message() -> None:
