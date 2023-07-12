@@ -33,7 +33,7 @@ pub fn create_queue(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        CREATE TABLE IF NOT EXISTS {TABLE_PREFIX}_{name} (
+        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (
             msg_id BIGSERIAL NOT NULL,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
@@ -48,7 +48,7 @@ pub fn create_archive(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        CREATE TABLE IF NOT EXISTS {TABLE_PREFIX}_{name}_archive (
+        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (
             msg_id BIGSERIAL NOT NULL,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
@@ -63,7 +63,7 @@ pub fn create_archive(name: &str) -> Result<String, PgmqError> {
 pub fn create_meta() -> String {
     format!(
         "
-        CREATE TABLE IF NOT EXISTS {TABLE_PREFIX}_meta (
+        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (
             queue_name VARCHAR UNIQUE NOT NULL,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL
         );
@@ -103,7 +103,7 @@ pub fn drop_queue(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        DROP TABLE IF EXISTS {TABLE_PREFIX}_{name};
+        DROP TABLE IF EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name};
         "
     ))
 }
@@ -112,7 +112,7 @@ pub fn delete_queue_index(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        DROP INDEX IF EXISTS {TABLE_PREFIX}_{name}.vt_idx_{name};
+        DROP INDEX IF EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}.vt_idx_{name};
         "
     ))
 }
@@ -129,7 +129,7 @@ pub fn delete_queue_metadata(name: &str) -> Result<String, PgmqError> {
                 WHERE table_name = '{TABLE_PREFIX}_meta')
             THEN
               DELETE
-              FROM {TABLE_PREFIX}_meta
+              FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta
               WHERE queue_name = '{name}';
            END IF;
         END $$;
@@ -141,7 +141,7 @@ pub fn drop_queue_archive(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        DROP TABLE IF EXISTS {TABLE_PREFIX}_{name}_archive;
+        DROP TABLE IF EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive;
         "
     ))
 }
@@ -150,7 +150,7 @@ pub fn insert_meta(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        INSERT INTO {TABLE_PREFIX}_meta (queue_name)
+        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (queue_name)
         VALUES ('{name}')
         ON CONFLICT
         DO NOTHING;
@@ -162,7 +162,7 @@ pub fn create_archive_index(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        CREATE INDEX IF NOT EXISTS deleted_at_idx_{name} ON {TABLE_PREFIX}_{name}_archive (deleted_at);
+        CREATE INDEX IF NOT EXISTS deleted_at_idx_{name} ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (deleted_at);
         "
     ))
 }
@@ -172,7 +172,7 @@ pub fn create_index(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        CREATE INDEX IF NOT EXISTS msg_id_vt_idx_{name} ON {TABLE_PREFIX}_{name} (vt ASC, msg_id ASC);
+        CREATE INDEX IF NOT EXISTS msg_id_vt_idx_{name} ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt ASC, msg_id ASC);
         "
     ))
 }
@@ -195,7 +195,7 @@ pub fn enqueue(
     values.pop();
     Ok(format!(
         "
-        INSERT INTO {TABLE_PREFIX}_{name} (vt, message)
+        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt, message)
         VALUES {values}
         RETURNING msg_id;
         "
@@ -209,13 +209,13 @@ pub fn read(name: &str, vt: &i32, limit: &i32) -> Result<String, PgmqError> {
     WITH cte AS
         (
             SELECT msg_id
-            FROM {TABLE_PREFIX}_{name}
+            FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
             WHERE vt <= now() at time zone 'utc'
             ORDER BY msg_id ASC
             LIMIT {limit}
             FOR UPDATE SKIP LOCKED
         )
-    UPDATE {TABLE_PREFIX}_{name}
+    UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
     SET
         vt = (now() at time zone 'utc' + interval '{vt} seconds'),
         read_ct = read_ct + 1
@@ -229,7 +229,7 @@ pub fn delete(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        DELETE FROM {TABLE_PREFIX}_{name}
+        DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
         WHERE msg_id = {msg_id};
         "
     ))
@@ -239,7 +239,7 @@ pub fn set_vt(name: &str, msg_id: &i64, vt: &chrono::DateTime<Utc>) -> Result<St
     check_input(name)?;
     Ok(format!(
         "
-        UPDATE {TABLE_PREFIX}_{name}
+        UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
         SET vt = '{t}'::timestamp
         WHERE msg_id = {msg_id}
         RETURNING *;
@@ -260,7 +260,7 @@ pub fn delete_batch(name: &str, msg_ids: &[i64]) -> Result<String, PgmqError> {
     msg_id_list.pop();
     Ok(format!(
         "
-        DELETE FROM {TABLE_PREFIX}_{name}
+        DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
         WHERE msg_id in ({msg_id_list});
         "
     ))
@@ -271,11 +271,11 @@ pub fn archive(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
     Ok(format!(
         "
         WITH archived AS (
-            DELETE FROM {TABLE_PREFIX}_{name}
+            DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
             WHERE msg_id = {msg_id}
             RETURNING msg_id, vt, read_ct, enqueued_at, message
         )
-        INSERT INTO {TABLE_PREFIX}_{name}_archive (msg_id, vt, read_ct, enqueued_at, message)
+        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (msg_id, vt, read_ct, enqueued_at, message)
         SELECT msg_id, vt, read_ct, enqueued_at, message
         FROM archived;
         "
@@ -289,13 +289,13 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
         WITH cte AS
             (
                 SELECT msg_id
-                FROM {TABLE_PREFIX}_{name}
+                FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
                 WHERE vt <= now() at time zone 'utc'
                 ORDER BY msg_id ASC
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED
             )
-        DELETE from {TABLE_PREFIX}_{name}
+        DELETE from {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
         WHERE msg_id = (select msg_id from cte)
         RETURNING *;
         "
