@@ -38,7 +38,7 @@ fn pgmq_create_non_partitioned(queue_name: &str) -> Result<(), PgmqExtError> {
 }
 
 #[pg_extern]
-fn pgmq_create(
+fn pgmq_create_partitioned(
     queue_name: &str,
     partition_interval: default!(String, "'10000'"),
     retention_interval: default!(String, "'100000'"),
@@ -53,6 +53,11 @@ fn pgmq_create(
         Ok(())
     });
     Ok(ran?)
+}
+
+#[pg_extern]
+fn pgmq_create(queue_name: &str) -> Result<(), PgmqExtError> {
+    pgmq_create_non_partitioned(queue_name)
 }
 
 fn validate_same_type(a: &str, b: &str) -> Result<(), PgmqExtError> {
@@ -419,7 +424,7 @@ mod tests {
         let partition_interval = "2".to_owned();
         let retention_interval = "2".to_owned();
 
-        let _ = pgmq_create(&qname, partition_interval, retention_interval).unwrap();
+        let _ = pgmq_create_partitioned(&qname, partition_interval, retention_interval).unwrap();
 
         let queues = api::listit().unwrap();
         assert_eq!(queues.len(), 1);

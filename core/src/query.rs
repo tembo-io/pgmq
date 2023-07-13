@@ -9,12 +9,12 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     check_input(name)?;
     Ok(vec![
         create_meta(),
-        grant_pgmon_meta(),
         create_queue(name)?,
         create_index(name)?,
         create_archive(name)?,
         create_archive_index(name)?,
         insert_meta(name)?,
+        grant_pgmon_meta(),
         grant_pgmon_queue(name)?,
     ])
 }
@@ -71,32 +71,40 @@ pub fn create_meta() -> String {
     )
 }
 
-// pg_monitor needs to query queue metadata
-pub fn grant_pgmon_meta() -> String {
+fn grant_stmt(table: &str) -> String {
     format!(
         "
-        GRANT SELECT ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta to pg_monitor;
-        "
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    WHERE has_table_privilege('pg_monitor', '{table}', 'SELECT')
+  ) THEN
+    EXECUTE 'GRANT SELECT ON {table} TO pg_monitor';
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+"
     )
+}
+
+// pg_monitor needs to query queue metadata
+pub fn grant_pgmon_meta() -> String {
+    let table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_meta");
+    grant_stmt(&table)
 }
 
 // pg_monitor needs to query queue tables
 pub fn grant_pgmon_queue(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
-    Ok(format!(
-        "
-        GRANT SELECT ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} to pg_monitor;
-        "
-    ))
+    let table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}");
+    Ok(grant_stmt(&table))
 }
 
 pub fn grant_pgmon_queue_seq(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
-    Ok(format!(
-        "
-        GRANT SELECT ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_msg_id_seq to pg_monitor;
-        "
-    ))
+    let table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_msg_id_seq");
+    Ok(grant_stmt(&table))
 }
 
 pub fn drop_queue(name: &str) -> Result<String, PgmqError> {
@@ -112,7 +120,7 @@ pub fn delete_queue_index(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        DROP INDEX IF EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}.vt_idx_{name};
+        DROP INDEX IF EXISTS {TABLE_PREFIX}_{name}.vt_idx_{name};
         "
     ))
 }
@@ -378,12 +386,16 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_check_input() {
         let invalids = vec!["bad;queue_name", "bad name", "bad--name"];
         for i in invalids.iter() {
             let is_valid = check_input(i);
-            assert!(!is_valid.is_err())
+            assert!(is_valid.is_err())
+        }
+        let valids = vec!["good_queue", "greatqueue", "my_great_queue"];
+        for i in valids.iter() {
+            let is_valid = check_input(i);
+            assert!(is_valid.is_ok())
         }
     }
 }

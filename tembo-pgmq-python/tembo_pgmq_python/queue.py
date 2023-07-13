@@ -47,7 +47,9 @@ class PGMQueue:
         with self.pool.connection() as conn:
             conn.execute("create extension if not exists pgmq cascade;")
 
-    def create_queue(self, queue: str, partition_interval: int = 10000, retention_interval: int = 100000) -> None:
+    def create_partitioned_queue(
+        self, queue: str, partition_interval: int = 10000, retention_interval: int = 100000
+    ) -> None:
         """Create a new queue
 
         Note: Partitions are created pg_partman which must be configured in postgresql.conf
@@ -64,6 +66,15 @@ class PGMQueue:
 
         with self.pool.connection() as conn:
             conn.execute("select pgmq_create(%s, %s::text, %s::text);", [queue, partition_interval, retention_interval])
+
+    def create_queue(self, queue: str) -> None:
+        """Create a new queue
+        Args:
+            queue: The name of the queue.
+        """
+
+        with self.pool.connection() as conn:
+            conn.execute("select pgmq_create(%s);", [queue])
 
     def send(self, queue: str, message: dict, delay: Optional[int] = None) -> int:
         """Send a message to a queue"""

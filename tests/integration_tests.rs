@@ -98,7 +98,7 @@ async fn test_lifecycle() {
 
     // CREATE with 5 seconds per partition, 10 seconds retention
     let test_duration_queue = format!("test_duration_{test_num}");
-    let q = format!("SELECT \"pgmq_create\"('{test_duration_queue}'::text, '5 seconds'::text, '10 seconds'::text);");
+    let q = format!("SELECT \"pgmq_create_partitioned\"('{test_duration_queue}'::text, '5 seconds'::text, '10 seconds'::text);");
     let _ = sqlx::query(&q)
         .execute(&conn)
         .await
@@ -107,7 +107,7 @@ async fn test_lifecycle() {
     // CREATE with 10 messages per partition, 20 messages retention
     let test_numeric_queue = format!("test_numeric_{test_num}");
     let _ = sqlx::query(&format!(
-        "SELECT \"pgmq_create\"('{test_numeric_queue}'::text, '10'::text, '20'::text);"
+        "SELECT \"pgmq_create_partitioned\"('{test_numeric_queue}'::text, '10'::text, '20'::text);"
     ))
     .execute(&conn)
     .await
