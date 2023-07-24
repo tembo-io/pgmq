@@ -104,14 +104,14 @@ jobs:
          sudo mv stoml /usr/local/bin/
          cargo install pg-trunk
       - name: trunk build
-        working-directory: pgmq/
+        working-directory: ./
         run: trunk build
         # use below when trunk build supports --dockerfile for pgrx
         # run: |
         #   pgmq_ver=$(stoml extension/Cargo.toml package.version)
         #   trunk build --path . --dockerfile ./Dockerfile.build --install-command "cd extension && cargo pgrx install" --name pgmq --version ${pgmq_ver}
       - name: trunk publish
-        working-directory: pgmq/
+        working-directory: ./
         env:
           TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
         run: |
