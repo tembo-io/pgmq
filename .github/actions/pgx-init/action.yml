@@ -1,0 +1,46 @@
+name: 'pgrx initialization'
+description: 'Initialize PGRX if it is a dependency, otherwise do nothing.'
+inputs:
+  working-directory:
+    description: 'The directory in which there is a pgrx extension project'
+    required: true
+outputs: {}
+runs:
+  using: "composite"
+  steps:
+      - name: Install TOML parser
+        shell: bash
+        run: |
+         set -xe
+         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+         mv stoml_linux_amd64 stoml
+         chmod +x stoml
+         sudo mv stoml /usr/local/bin/
+      - name: setup pgrx
+        shell: bash
+        id: pgrx_install
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          pgrx_version=$(stoml Cargo.toml dependencies.pgrx)
+          if [ -z "${pgrx_version}" ]; then
+            echo "pgrx is not a dependency: skipping"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            cargo install --version ${pgrx_version} cargo-pgrx
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+      - name: pgrx init
+        shell: bash
+        if: steps.pgrx_install.outputs.skip == 'false'
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          set -x
+          pg_version=$(stoml Cargo.toml features.default)
+          # pgrx init can take a long time, and it re-compiles postgres even when there
+          # is a cached version. So, we can just check for the directory and
+          cat /home/runner/.pgrx/config.toml || true
+          if find /home/runner/.pgrx | grep $(awk -F "=" '/${pg_version}/ {print $2}' /home/runner/.pgrx/config.toml | tr -d '"'); then
+            echo "Already found pgrx is initialized. Skipping 'cargo pgrx init' command."
+          else
+            cargo pgrx init --${pg_version} download || true
+          fi
