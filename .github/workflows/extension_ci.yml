@@ -36,7 +36,7 @@ jobs:
             /home/runner/.pgrx
       - uses: ./.github/actions/pgx-init
         with:
-          working-directory: pgmq/
+          working-directory: ./
       - name: Cargo format
         run: cargo +nightly fmt --all --check
       - name: Clippy
@@ -61,7 +61,7 @@ jobs:
             /home/runner/.pgrx
       - uses: ./.github/actions/pgx-init
         with:
-          working-directory: pgmq/
+          working-directory: ./
       - name: test
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
