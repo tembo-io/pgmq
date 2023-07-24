@@ -1,0 +1,121 @@
+name: PGMQ Extension
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: Run linters
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust minimal nightly with clippy and rustfmt
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "pgmq-extension-lint"
+          workspaces: |
+            pgmq/
+          # Additional directories to cache
+          cache-directories: |
+            /home/runner/.pgrx
+      - uses: ./.github/actions/pgx-init
+        with:
+          working-directory: ./
+      - name: Cargo format
+        run: cargo +nightly fmt --all --check
+      - name: Clippy
+        run: cargo clippy
+
+  test:
+    name: Run tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "pgmq-extension-test"
+          workspaces: |
+            pgmq
+          # Additional directories to cache
+          cache-directories: |
+            /home/runner/.pgrx
+      - uses: ./.github/actions/pgx-init
+        with:
+          working-directory: ./
+      - name: test
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
+          git clone https://github.com/pgpartman/pg_partman.git && \
+          cd pg_partman && \
+          sudo make install && cd ../
+          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.3/pgrx-install/share/postgresql/extension/
+          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.3/pgrx-install/lib/postgresql/
+          rm -rf ./target/pgrx-test-data-* || true
+          pg_version=$(stoml Cargo.toml features.default)
+          cargo pgrx run ${pg_version} --pgcli || true
+          cargo pgrx test ${pg_version}
+
+  publish:
+    # only publish off main branch
+    if: github.ref == 'refs/heads/main'
+    name: trunk publish
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "pgmq-extension-test"
+          workspaces: |
+              pgmq/extension
+          # Additional directories to cache
+          cache-directories: |
+            /home/runner/.pgrx
+      - name: Install stoml and pg-trunk
+        shell: bash
+        run: |
+         set -xe
+         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+         mv stoml_linux_amd64 stoml
+         chmod +x stoml
+         sudo mv stoml /usr/local/bin/
+         cargo install pg-trunk
+      - name: trunk build
+        working-directory: pgmq/
+        run: trunk build
+        # use below when trunk build supports --dockerfile for pgrx
+        # run: |
+        #   pgmq_ver=$(stoml extension/Cargo.toml package.version)
+        #   trunk build --path . --dockerfile ./Dockerfile.build --install-command "cd extension && cargo pgrx install" --name pgmq --version ${pgmq_ver}
+      - name: trunk publish
+        working-directory: pgmq/
+        env:
+          TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
+        run: |
+          pgmq_ver=$(stoml Cargo.toml package.version)
+          pgmq_descr=$(stoml Cargo.toml package.description)
+          pgmq_repo=$(stoml Cargo.toml package.repository)
+          trunk publish pgmq --version ${pgmq_ver} --file .trunk/pgmq-${pgmq_ver}.tar.gz --description "Message Queue for postgres" --homepage "https://github.com/CoreDB-io/coredb/pgmq" --repository "https://github.com/CoreDB-io/coredb/pgmq" --license "Apache-2.0"

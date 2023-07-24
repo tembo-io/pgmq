@@ -1,0 +1,71 @@
+name: tembo-pgmq-python CI workflow
+
+defaults:
+  run:
+    shell: bash
+    working-directory: tembo-pgmq-python
+
+on:
+  pull_request:
+    branches:
+     - main
+    paths:
+      - '.github/workflows/pgmq-python.yml'
+      - 'tembo-pgmq-python/**'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/pgmq-python.yml'
+      - 'tembo-pgmq-python/**'
+
+jobs:
+  lints:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.11.0
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.11.0
+    - name: Install dependencies
+      run: |
+        curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.2.2 python3 -
+        poetry install
+    - name: Lints / Type Checking
+      run: make lints
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.11.0
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.11.0
+    - name: Install dependencies
+      run: |
+        curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.2.2 python3 -
+        poetry install
+    - name: Unit and Integration Tests
+      run: make test
+
+  publish:
+    runs-on: ubuntu-latest
+    # only publish off main branch
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.11.0
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.11.0
+    - name: Install dependencies
+      run: |
+        curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.2.2 python3 -
+        poetry install
+    - name: Publish
+      env:
+        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+      run: |
+        poetry publish --build --skip-existing

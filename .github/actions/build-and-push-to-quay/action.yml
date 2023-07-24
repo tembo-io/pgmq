@@ -1,0 +1,152 @@
+name: 'Build and push to Quay'
+description: 'Builds a container image and pushes it to our Quay organization'
+inputs:
+  image_name:
+    description: 'The name of the image, not including the registry or the tag, for example "postgres"'
+    required: true
+  registry:
+    description: 'The name of the image, not including the registry or the tag, for example "postgres"'
+    required: false
+    default: "quay.io/coredb"
+  registry_tembo:
+    description: 'The name of the image, not including the registry or the tag, for example "postgres"'
+    required: false
+    default: "quay.io/tembo"
+  docker_directory:
+    description: 'The relative path to a directory in which there is a Dockerfile'
+    required: false
+    default: '.'
+  quay_user:
+    required: true
+    description: "Quay 'robot user' user name"
+  quay_password:
+    required: true
+    description: "Quay 'robot user' access token"
+  quay_user_tembo:
+    required: true
+    description: "Quay 'robot user' user name for Tembo org"
+  quay_password_tembo:
+    required: true
+    description: "Quay 'robot user' access token for Tembo org"
+  publish_calver:
+    description: 'Should we tag with calendar versioning?'
+    required: false
+    default: false
+  calver_suffix:
+    description: 'Optional suffix to the calendar version'
+    required: false
+    default: ""
+  publish_latest:
+    description: "Should we tag with 'latest'?"
+    required: false
+    default: false
+  tag_cargo_version_if_present:
+    description: "Should we tag with the version found in Cargo.toml, if found?"
+    required: false
+    default: false
+  tags:
+    description: "Whitespace-separated tags, not including the registry, for example 'v1' or 'v1 release-1.0'. There are also some default tags provided, please see the other options of this action."
+    required: false
+    default: ""
+outputs: {}
+runs:
+  using: "composite"
+  steps:
+    - name: Install TOML parser
+      shell: bash
+      run: |
+       set -xe
+       wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64
+       mv stoml_linux_amd64 stoml
+       chmod +x stoml
+       sudo mv stoml /usr/local/bin/
+    - name: Create whitespace-separated tags list
+      shell: bash
+      id: tags
+      run: |
+        set -e
+
+        # input tags
+        TAGS='${{ inputs.tags }}'
+        SHORT_SHA=$(git rev-parse --short HEAD)
+
+        cd ${{ inputs.docker_directory }}
+
+        if [ "${{ inputs.tag_cargo_version_if_present }}" == "true" ] && test -f "Cargo.toml"; then
+            echo "Cargo file detected, adding to tags"
+            VERSION=$(stoml Cargo.toml package.version)-${SHORT_SHA}
+            TAGS="$TAGS $VERSION"
+        fi
+
+        # Calendar version
+        if [ "${{ inputs.publish_calver }}" == "true" ]; then
+          # A date without leading zeros, for example:
+          # 2023.1.26
+          CAL_VER=$(date '+%Y.%-m.%-d')
+          TAGS="$TAGS ${CAL_VER}${{ inputs.calver_suffix }}"
+        fi
+
+        # latest
+        if [ "${{ inputs.publish_latest }}" == "true" ]; then
+          TAGS="$TAGS latest"
+        fi
+
+        # Short Git hash
+        TAGS="$TAGS ${SHORT_SHA}"
+
+        echo "TAGS=$TAGS" >> $GITHUB_OUTPUT
+    - name: Run pre-build hooks
+      shell: bash
+      run: |
+        cd ${{ inputs.docker_directory }}
+        if [[ -f pre-build-hook.sh ]]; then
+          echo "detected pre-build hook, running"
+          /bin/bash pre-build-hook.sh
+        else
+          echo "no pre build hook detected"
+        fi
+    - name: Build image and tag
+      shell: bash
+      run: |
+        set -xe
+        # Build the image
+        docker build -t ${{ inputs.image_name }} ${{ inputs.docker_directory }}
+        # Tag with each tag in the comma-separate list
+        IFS=' ' read -ra TAG_ARRAY <<< "${{ steps.tags.outputs.TAGS }}"
+        for tag in "${TAG_ARRAY[@]}"; do
+          docker tag ${{ inputs.image_name }} ${{ inputs.image_name }}:$tag
+        done
+    - name: Login to CoreDB Quay
+      if: inputs.image_name != 'tembo-pg-cnpg'
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ inputs.quay_user }}
+        password: ${{ inputs.quay_password }}
+    - name: Push to Quay
+      if: inputs.image_name != 'tembo-pg-cnpg'
+      shell: bash
+      run: |
+        set -xe
+        IFS=' ' read -ra TAG_ARRAY <<< "${{ steps.tags.outputs.TAGS }}"
+        for tag in "${TAG_ARRAY[@]}"; do
+          docker tag ${{ inputs.image_name }}:$tag ${{ inputs.registry}}/${{ inputs.image_name }}:$tag
+          docker push ${{ inputs.registry}}/${{ inputs.image_name }}:$tag
+        done
+    - name: Login to Tembo Quay
+      if: inputs.image_name == 'tembo-pg-cnpg'
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ inputs.registry_tembo }}
+        username: ${{ inputs.quay_user_tembo}}
+        password: ${{ inputs.quay_password_tembo }}
+    - name: Push to Quay
+      if: inputs.image_name == 'tembo-pg-cnpg'
+      shell: bash
+      run: |
+        set -xe
+        IFS=' ' read -ra TAG_ARRAY <<< "${{ steps.tags.outputs.TAGS }}"
+        for tag in "${TAG_ARRAY[@]}"; do
+          docker tag ${{ inputs.image_name }}:$tag ${{ inputs.registry_tembo}}/${{ inputs.image_name }}:$tag
+          docker push ${{ inputs.registry_tembo}}/${{ inputs.image_name }}:$tag
+        done

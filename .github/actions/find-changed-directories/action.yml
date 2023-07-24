@@ -1,0 +1,53 @@
+name: 'Find changed directories'
+description: 'Finds directories containing a specific filename in the root of that directory, filtering out directories that are unchanged relative to a given branch name'
+inputs:
+  contains_the_file:
+    description: 'Look for directories with this file in the root of that directory. For example, Dockerfile or Cargo.toml'
+    required: true
+  fetch_branch_to_compare:
+    description: 'The branch to fetch when looking to compare a ref, typically main'
+    default: "main"
+    required: true
+  changed_relative_to_ref:
+    description: 'The ref on the fetched branch to compare with to determine if this directory has changed. For example "origin/main" or a git commit hash.'
+    required: true
+  ignore_dirs:
+    description: A list of directories to ignore.
+    required: false
+    default: ''
+outputs:
+  build_matrix:
+    description: "Input this output to your matrix build in a following job, like this 'fromJson(needs.find_directories.outputs.build_matrix)'"
+    value: ${{ steps.find_directories.outputs.build_matrix }}
+runs:
+  using: "composite"
+  steps:
+    - name: Find directories with a given file name
+      shell: bash
+      id: find_directories
+      run: |
+        set -xe
+        git fetch origin ${{ inputs.fetch_branch_to_compare }} || true
+        # Get directories with a Dockerfile that have not changed
+        # relative to the branch we are pulling into
+        echo "${{inputs.ignore_dirs}}"
+        IFS=', ' read -r -a array <<< "${{inputs.ignore_dirs}}"
+        EXCLUDE_OPTS=()
+        for exclude_dir in "${array[@]}"; do
+          EXCLUDE_OPTS+=("-not" "-path" "*/$exclude_dir/*")
+        done
+        directories=$(
+        find . -name ${{ inputs.contains_the_file }} -not -path "*/target/*" -not -path "*/.github/*" "${EXCLUDE_OPTS[@]}" -exec dirname {} \; | while read dir; do
+          # This will check if the directory has changed relative to the branch we are PRing
+          # into, and if it's not a PR, in the case of main or release/**, then it will
+          # build all docker directories
+          if git diff --quiet HEAD ${{ inputs.changed_relative_to_ref }} -- "$dir"; then
+            echo ""
+          else
+            echo "$dir"
+          fi
+        done)
+        # Format directories into a build matrix
+        matrix_include=$(echo "${directories}" | awk 'NF{print $NF};' | while read dir; do dir_without_dot=$(basename ${dir}); echo "{\"path\": \"$dir\", \"name\": \"$dir_without_dot\"}"; done | jq -scM '{"include": .}')
+        echo "${matrix_include}"
+        echo "build_matrix=${matrix_include}" >> $GITHUB_OUTPUT

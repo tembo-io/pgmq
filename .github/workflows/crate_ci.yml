@@ -1,0 +1,76 @@
+name: pgmq crate CI workflow
+
+defaults:
+  run:
+    shell: bash
+    working-directory: core/
+
+on:
+  pull_request:
+    branches:
+     - main
+    paths:
+      - '.github/workflows/pgmq.yml'
+      - 'core/**'
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: Run linters
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install minimal nightly with clippy and rustfmt
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Cargo format
+        run: cargo +nightly fmt --all --check
+      - name: Clippy
+        run: cargo clippy
+
+  tests:
+    name: Run tests
+    runs-on: ubuntu-22.04
+    needs: lint
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@0.0.0.0:5432/postgres"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - name: install dependencies
+        run: cargo install sqlx-cli
+      - name: run all tests
+        run: make test
+      - name: Migrations
+        # ensure migration cache is up to date
+        run: cargo sqlx prepare --check
+      - name: teardown
+        run: make test.cleanup
+
+  publish:
+    # only run when tag release
+    if: startsWith(github.ref, 'refs/tags/')
+    name: Publish Crate & Extension
+    runs-on: ubuntu-22.04
+    needs: [lint, tests]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - name: publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish
