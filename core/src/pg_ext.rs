@@ -5,7 +5,7 @@ use crate::Message;
 use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::types::chrono::Utc;
-use sqlx::{Pool, Postgres, Executor};
+use sqlx::{Executor, Pool, Postgres};
 
 /// Main controller for interacting with a managed by the PGMQ Postgres extension.
 #[derive(Clone, Debug)]
@@ -68,7 +68,11 @@ impl PGMQueueExt {
     /// Drop an existing queue table.
     pub async fn drop_queue(&self, queue_name: &str) -> Result<(), PgmqError> {
         check_input(queue_name)?;
-        self.connection.execute(sqlx::query!("SELECT * from pgmq_drop_queue($1::text);", queue_name)) 
+        self.connection
+            .execute(sqlx::query!(
+                "SELECT * from pgmq_drop_queue($1::text);",
+                queue_name
+            ))
             .await?;
 
         Ok(())
