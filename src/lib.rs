@@ -132,10 +132,13 @@ fn readit(
         TimestampWithTimeZone,
         pgrx::JsonB,
     )> = Vec::new();
+
     let _: Result<(), PgmqExtError> = Spi::connect(|mut client| {
         let query = read(queue_name, &vt, &limit)?;
-        let mut tup_table: SpiTupleTable = client.update(&query, None, None)?;
-        while let Some(row) = tup_table.next() {
+        let tup_table: SpiTupleTable = client.update(&query, None, None)?;
+        results.reserve_exact(tup_table.len());
+
+        for row in tup_table {
             let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
             let read_ct = row["read_ct"].value::<i32>()?.expect("no read_ct");
             let vt = row["vt"].value::<TimestampWithTimeZone>()?.expect("no vt");
