@@ -40,8 +40,8 @@ docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io
 ## Client Libraries
 
 
-- [Rust](https://github.com/CoreDB-io/coredb/tree/main/pgmq/core)
-- [Python](https://github.com/CoreDB-io/coredb/tree/main/pgmq/coredb-pgmq-python)
+- [Rust](https://github.com/tembo-io/pgmq/tree/main/core)
+- [Python](https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python)
 
 ## SQL Examples
 
