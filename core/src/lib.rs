@@ -9,11 +9,11 @@
 //! Send, store, and receive messages between components scalably, without dropping messages or
 //! needing other services to be available.
 //!
-//! PGMQ was created by CoreDB. Our goal is to make the full Postgres ecosystem accessible to everyone.
+//! PGMQ was created by Tembo. Our goal is to make the full Postgres ecosystem accessible to everyone.
 //! We're building a radically simplified Postgres platform designed to be developer-first and easily extensible.
 //! PGMQ is a part of that project.
 //!
-//! Not building in Rust? Try the [CoreDB pgmq Postgres extension](https://github.com/CoreDB-io/coredb/tree/main/extensions/pgmq).
+//! Not building in Rust? Try the [CoreDB pgmq Postgres extension](https://pgt.dev/extensions/pgmq).
 //!
 //! ## Features
 //!
