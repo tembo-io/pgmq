@@ -22,11 +22,11 @@ pub fn init_partitioned_queue(
     Ok(vec![
         create_meta(),
         grant_pgmon_meta(),
-        create_partitioned_queue(name, &partition_col)?,
-        create_partitioned_index(name, &partition_col)?,
+        create_partitioned_queue(name, partition_col)?,
+        create_partitioned_index(name, partition_col)?,
         create_index(name)?,
         create_archive(name)?,
-        create_partitioned_table(name, &partition_col, partition_interval)?,
+        create_partitioned_table(name, partition_col, partition_interval)?,
         insert_meta(name)?,
         set_retention_config(name, retention_interval)?,
         grant_pgmon_queue(name)?,
@@ -35,12 +35,12 @@ pub fn init_partitioned_queue(
 }
 
 /// maps the partition column based on partition_interval
-fn map_partition_col(partition_interval: &str) -> String {
+fn map_partition_col(partition_interval: &str) -> &'static str {
     // map using msg_id when partition_interval is an integer
     // otherwise use enqueued_at (time based)
     match partition_interval.parse::<i32>() {
-        Ok(_) => "msg_id".to_owned(),
-        Err(_) => "enqueued_at".to_owned(),
+        Ok(_) => "msg_id",
+        Err(_) => "enqueued_at",
     }
 }
 
@@ -111,14 +111,14 @@ mod tests {
         assert!(query.contains("enqueued_at"));
         let query = map_partition_col("1 day");
         assert!(query.contains("enqueued_at"));
-        let query: String = map_partition_col("10 days");
+        let query = map_partition_col("10 days");
         assert!(query.contains("enqueued_at"));
 
-        let query: String = map_partition_col("100");
+        let query = map_partition_col("100");
         assert!(query.contains("msg_id"));
-        let query: String = map_partition_col("1");
+        let query = map_partition_col("1");
         assert!(query.contains("msg_id"));
-        let query: String = map_partition_col("99");
+        let query = map_partition_col("99");
         assert!(query.contains("msg_id"));
     }
 }
