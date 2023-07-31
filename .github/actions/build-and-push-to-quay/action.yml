@@ -7,10 +7,6 @@ inputs:
   registry:
     description: 'The name of the image, not including the registry or the tag, for example "postgres"'
     required: false
-    default: "quay.io/coredb"
-  registry_tembo:
-    description: 'The name of the image, not including the registry or the tag, for example "postgres"'
-    required: false
     default: "quay.io/tembo"
   docker_directory:
     description: 'The relative path to a directory in which there is a Dockerfile'
@@ -22,12 +18,6 @@ inputs:
   quay_password:
     required: true
     description: "Quay 'robot user' access token"
-  quay_user_tembo:
-    required: true
-    description: "Quay 'robot user' user name for Tembo org"
-  quay_password_tembo:
-    required: true
-    description: "Quay 'robot user' access token for Tembo org"
   publish_calver:
     description: 'Should we tag with calendar versioning?'
     required: false
@@ -117,7 +107,6 @@ runs:
           docker tag ${{ inputs.image_name }} ${{ inputs.image_name }}:$tag
         done
     - name: Login to CoreDB Quay
-      if: inputs.image_name != 'tembo-pg-cnpg'
       uses: docker/login-action@v2
       with:
         registry: ${{ inputs.registry }}
@@ -132,21 +121,4 @@ runs:
         for tag in "${TAG_ARRAY[@]}"; do
           docker tag ${{ inputs.image_name }}:$tag ${{ inputs.registry}}/${{ inputs.image_name }}:$tag
           docker push ${{ inputs.registry}}/${{ inputs.image_name }}:$tag
-        done
-    - name: Login to Tembo Quay
-      if: inputs.image_name == 'tembo-pg-cnpg'
-      uses: docker/login-action@v2
-      with:
-        registry: ${{ inputs.registry_tembo }}
-        username: ${{ inputs.quay_user_tembo}}
-        password: ${{ inputs.quay_password_tembo }}
-    - name: Push to Quay
-      if: inputs.image_name == 'tembo-pg-cnpg'
-      shell: bash
-      run: |
-        set -xe
-        IFS=' ' read -ra TAG_ARRAY <<< "${{ steps.tags.outputs.TAGS }}"
-        for tag in "${TAG_ARRAY[@]}"; do
-          docker tag ${{ inputs.image_name }}:$tag ${{ inputs.registry_tembo}}/${{ inputs.image_name }}:$tag
-          docker push ${{ inputs.registry_tembo}}/${{ inputs.image_name }}:$tag
         done
