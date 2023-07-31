@@ -803,20 +803,20 @@ async fn test_pgmq_init() {
         .await
         .expect("failed to connect to postgres");
     let init = queue.init().await.expect("failed to create extension");
-    assert!(init);
+    assert!(init, "failed to create extension");
 
-    // error mode on queue create but already exists
+    // error mode on queue partitioned create but already exists
     let qname = format!("test_dup_{}", rand::thread_rng().gen_range(0..100));
     println!("db_url: {}, qname: {:?}", db_url, qname);
     let created = queue
-        .create(&qname)
+        .create_partitioned(&qname)
         .await
         .expect("failed attempting to create queue");
     assert!(created, "did not create queue");
     // create again
     let created = queue
-        .create(&qname)
+        .create_partitioned(&qname)
         .await
         .expect("failed attempting to create the duplicate queue");
-    assert!(!created)
+    assert!(!created, "failed to detect duplicate queue");
 }
