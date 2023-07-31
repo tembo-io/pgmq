@@ -76,8 +76,6 @@ jobs:
           publish_latest: ${{ steps.tags.outputs.tag_latest }}
           # If we are publishing latest, also tag it with calver
           publish_calver: ${{ steps.tags_outputs.tag_latest }}
-          quay_user: ${{ secrets.QUAY_USER }}
-          quay_password: ${{ secrets.QUAY_PASSWORD }}
-          quay_user_tembo: ${{ secrets.QUAY_USER_TEMBO }}
-          quay_password_tembo: ${{ secrets.QUAY_PASSWORD_TEMBO }}
+          quay_user: ${{ secrets.QUAY_USER_TEMBO }}
+          quay_password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
