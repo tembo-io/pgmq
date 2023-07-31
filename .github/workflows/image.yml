@@ -1,0 +1,81 @@
+name: Build and push images
+
+on:
+  pull_request: {}
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  find_directories:
+    name: Find directories with Dockerfiles
+    runs-on: ubuntu-20.04
+    outputs:
+      build_images: ${{ steps.find_directories.outputs.build_matrix }}
+      short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
+      branch_name: ${{ steps.versions.outputs.BRANCH_NAME }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Set version strings
+        id: versions
+        run: |
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
+      - name: Find directories with Dockerfiles that changed
+        id: find_directories
+        uses: ./.github/actions/find-changed-directories
+        with:
+          contains_the_file: Dockerfile
+          # If the branch does not exist, then it will not
+          # filter any directories containing the file.
+          # This allows for filtering out unchanged directories
+          # in a pull request, and using all directories on the release
+          # or main branches.
+          changed_relative_to_ref: origin/${{ github.base_ref || 'not-a-branch' }}
+
+  build_and_push_images:
+    name: Build and push images
+    runs-on:
+      - self-hosted
+      - dind
+      - large-8x8
+    needs:
+      - find_directories
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.find_directories.outputs.build_images) }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Determine which tags to publish
+        id: tags
+        run: |
+          BRANCH_NAME="${{ needs.find_directories.outputs.branch_name }}"
+          if [ "${BRANCH_NAME}" == "main" ]; then
+            echo "tag_latest=true" >> $GITHUB_OUTPUT
+            echo "tag_cargo=true" >> $GITHUB_OUTPUT
+          elif [[ "${BRANCH_NAME}" == release/* ]]; then
+            echo "tag_cargo=true" >> $GITHUB_OUTPUT
+            echo "tag_latest=false" >> $GITHUB_OUTPUT
+          else
+            echo "tag_latest=false" >> $GITHUB_OUTPUT
+            echo "tag_cargo=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Build and upload image
+        uses: ./.github/actions/build-and-push-to-quay
+        with:
+          image_name: ${{ matrix.name }}
+          docker_directory: ${{ matrix.path }}
+          # Tag with version in Cargo.toml
+          # if that file is present
+          # and if the branch is 'main' or starts with 'release/'
+          tag_cargo_version_if_present: ${{ steps.tags.outputs.tag_cargo }}
+          # Tag with 'latest'
+          # if the branch is 'main'
+          publish_latest: ${{ steps.tags.outputs.tag_latest }}
+          # If we are publishing latest, also tag it with calver
+          publish_calver: ${{ steps.tags_outputs.tag_latest }}
+          quay_user: ${{ secrets.QUAY_USER_TEMBO }}
+          quay_password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
+
