@@ -106,7 +106,7 @@ runs:
         for tag in "${TAG_ARRAY[@]}"; do
           docker tag ${{ inputs.image_name }} ${{ inputs.image_name }}:$tag
         done
-    - name: Login to CoreDB Quay
+    - name: Login to Quay
       uses: docker/login-action@v2
       with:
         registry: ${{ inputs.registry }}
