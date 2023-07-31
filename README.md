@@ -7,11 +7,11 @@ A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/s
 - Lightweight - Built with Rust and Postgres only
 - Guaranteed "exactly once" delivery of messages consumer within a visibility timeout
 - API parity with [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq)
-- Messages stay in the queue until deleted
+- Messages stay in the queue until explicitly deleted
 - Messages can be archived, instead of deleted, for long-term retention and replayability
 - Table (bloat) maintenance automated with [pg_partman](https://github.com/pgpartman/pg_partman)
 - High performance operations with index-only scans.
-  
+
 ## Table of Contents
 - [Postgres Message Queue (PGMQ)](#postgres-message-queue-pgmq)
   - [Features](#features)
@@ -67,10 +67,13 @@ Every queue is its own table in Postgres. The table name is the queue name prefi
 -- params
 -- queue_name: text
 SELECT pgmq_create('my_queue');
+```
 
- pgmq_create
+```text
+ pgmq_create 
 -------------
-t
+ 
+(1 row)
 ```
 
 ### Send two messages
@@ -82,8 +85,9 @@ SELECT * from pgmq_send('my_queue', '{"foo": "bar1"}');
 SELECT * from pgmq_send('my_queue', '{"foo": "bar2"}');
 ```
 
+The message id is returned from the send function
+
 ```text
--- the message id is returned from the send function
  pgmq_send 
 -----------
          1
@@ -116,6 +120,9 @@ If the queue is empty, or if all messages are currently invisible, no rows will 
 
 ```sql
 pgmq=# SELECT * from pgmq_read('my_queue', 30, 1);
+```
+
+```text
  msg_id | read_ct | vt | enqueued_at | message
 --------+---------+----+-------------+---------
 ```
@@ -125,7 +132,9 @@ pgmq=# SELECT * from pgmq_read('my_queue', 30, 1);
 ```sql
 -- Read a message and immediately delete it from the queue. Returns `None` if the queue is empty.
 pgmq=# SELECT * from pgmq_pop('my_queue');
+```
 
+```text
  msg_id | read_ct |              vt               |          enqueued_at          |    message
 --------+---------+-------------------------------+-------------------------------+---------------
       1 |       2 | 2023-02-07 04:56:00.650342-06 | 2023-02-07 04:54:51.530818-06 | {"foo":"bar1"}
@@ -133,14 +142,26 @@ pgmq=# SELECT * from pgmq_pop('my_queue');
 
 ### Archive a message
 
+Archiving a message removes it from the queue, and inserts it to the archive table.
+
+Archive message with msg_id=2
 
 ```sql
--- Archiving a message removes it from the queue, and inserts it to the archive table.
--- archive message with msg_id=2
 pgmq=# SELECT * from pgmq_archive('my_queue', 2);
 ```
+
+```text
+ pgmq_archive 
+--------------
+ t
+(1 row)
+```
+
 ```sql
 pgmq=#  SELECT * from pgmq_my_queue_archive;
+```
+
+```text
  msg_id | read_ct |         enqueued_at          |          deleted_at           |              vt               |     message     
 --------+---------+------------------------------+-------------------------------+-------------------------------+-----------------
       2 |       1 | 2023-04-25 00:55:40.68417-05 | 2023-04-25 00:56:35.937594-05 | 2023-04-25 00:56:20.532012-05 | {"foo": "bar2"}```
@@ -148,13 +169,30 @@ pgmq=#  SELECT * from pgmq_my_queue_archive;
 
 ### Delete a message
 
+Send another message, so that we can delete it.
+
 ```sql
--- Delete a message id `3` from queue named `my_queue`.
 pgmq=# SELECT * from pgmq_send('my_queue', '{"foo": "bar3"}');
+```
+
+```text
+ pgmq_send 
+-----------
+        3
+(1 row)
+```
+
+Delete tha message with id `3` from queue named `my_queue`.
+
+```sql
 pgmq=# SELECT pgmq_delete('my_queue', 3);
- pgmq_delete
+```
+
+```text
+ pgmq_delete 
 -------------
  t
+(1 row)
 ```
 
 # Configuration
