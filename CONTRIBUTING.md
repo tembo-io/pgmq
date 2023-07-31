@@ -21,7 +21,7 @@ Then, clone this repo and change into this directory.
 
 ```bash
 git clone git@https://github.com/tembo-io/pgmq.git
-cd coredb/extensions/pgmq/
+cd pgmq
 ```
 
 ### Setup dependencies

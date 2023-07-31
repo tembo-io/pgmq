@@ -18,7 +18,7 @@ QUEUE_NAME = "myqueue"
 LOCK_TIMEOUT = 1
 NUM_MSGS = 1
 
-# Connect to the CoreDB postgres (update port number to match how you are running it locally)
+# Connect to the Tembo postgres (update port number to match how you are running it locally)
 conn = PG.connect(host: "localhost", port: 5434, user: "postgres", password: "postgres")
 
 # Output versions to stdout (for debugging)

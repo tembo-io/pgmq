@@ -177,7 +177,7 @@ Partitions behavior is configured at the time queues are created, via `pgmq_crea
 
 In order for automatic partition maintenance to take place, several settings must be added to the `postgresql.conf` file, which is typically located in the postgres `DATADIR`.
  `pg_partman_bgw.interval` 
-in `postgresql.conf`. Below are the default configuration values set in CoreDB docker images.
+in `postgresql.conf`. Below are the default configuration values set in Tembo docker images.
 
 Add the following to `postgresql.conf`. Note, changing `shared_preload_libraries` requires a restart of Postgres.
 

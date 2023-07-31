@@ -2,14 +2,14 @@
 name = "pgmq"
 version = "0.13.0"
 edition = "2021"
-authors = ["CoreDB.io"]
+authors = ["Tembo.io"]
 description = "A distributed message queue for Rust applications, on Postgres."
 documentation = "https://docs.rs/pgmq"
-homepage = "https://github.com/CoreDB-io/coredb"
+homepage = "https://github.com/tembo-io/pgmq"
 keywords = ["messaging", "queues", "postgres"]
 license = "Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/CoreDB-io/coredb/tree/main/pgmq/core"
+repository = "https://github.com/tembo-io/pgmq"
 
 [dependencies]
 chrono = { version = "0.4.23", features = [ "serde" ] }
