@@ -31,10 +31,10 @@ A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/s
 
 ## Installation
 
-The fastest way to get started is by running the CoreDB docker image, where PGMQ comes pre-installed.
+The fastest way to get started is by running the Tembo docker image, where PGMQ comes pre-installed.
 
 ```bash
-docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/coredb/pgmq-pg:latest
+docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest
 ```
 
 ## Client Libraries
