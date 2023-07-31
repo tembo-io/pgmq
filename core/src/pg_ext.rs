@@ -35,9 +35,18 @@ impl PGMQueueExt {
             .map_err(PgmqError::from)
     }
 
-    /// Create a new partitioned queue.
     /// Errors when there is any database error and Ok(false) when the queue already exists.
     pub async fn create(&self, queue_name: &str) -> Result<bool, PgmqError> {
+        check_input(queue_name)?;
+        sqlx::query!("SELECT * from pgmq_create($1::text);", queue_name)
+            .execute(&self.connection)
+            .await?;
+        Ok(true)
+    }
+
+    /// Create a new partitioned queue.
+    /// Errors when there is any database error and Ok(false) when the queue already exists.
+    pub async fn create_partitioned(&self, queue_name: &str) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
         let queue_table = format!("public.{TABLE_PREFIX}_{queue_name}");
         // we need to check whether the queue exists first
@@ -58,9 +67,12 @@ impl PGMQueueExt {
         if exists {
             Ok(false)
         } else {
-            sqlx::query!("SELECT * from pgmq_create($1::text);", queue_name)
-                .execute(&self.connection)
-                .await?;
+            sqlx::query!(
+                "SELECT * from pgmq_create_partitioned($1::text);",
+                queue_name
+            )
+            .execute(&self.connection)
+            .await?;
             Ok(true)
         }
     }
