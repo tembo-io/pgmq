@@ -20,7 +20,7 @@ cargo pgrx init
 Then, clone this repo and change into this directory.
 
 ```bash
-git clone git@github.com:CoreDB-io/coredb.git
+git clone git@https://github.com/tembo-io/pgmq.git
 cd coredb/extensions/pgmq/
 ```
 

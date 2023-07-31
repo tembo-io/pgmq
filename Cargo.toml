@@ -2,12 +2,12 @@
 name = "pgmq"
 version = "0.10.0"
 edition = "2021"
-authors = ["CoreDB.io"]
+authors = ["Tembo.io"]
 description = "Postgres extension for PGMQ"
-homepage = "https://www.coredb.io"
+homepage = "https://www.tembo.io"
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/CoreDB-io/coredb"
+repository = "https://github.com/tembo-io/pgmq/"
 publish = false
 
 [lib]

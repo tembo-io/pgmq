@@ -118,4 +118,4 @@ jobs:
           pgmq_ver=$(stoml Cargo.toml package.version)
           pgmq_descr=$(stoml Cargo.toml package.description)
           pgmq_repo=$(stoml Cargo.toml package.repository)
-          trunk publish pgmq --version ${pgmq_ver} --file .trunk/pgmq-${pgmq_ver}.tar.gz --description "Message Queue for postgres" --homepage "https://github.com/CoreDB-io/coredb/pgmq" --repository "https://github.com/CoreDB-io/coredb/pgmq" --license "Apache-2.0"
+          trunk publish pgmq --version ${pgmq_ver} --file .trunk/pgmq-${pgmq_ver}.tar.gz --description "Message Queue for postgres" --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "Apache-2.0" --category featured --category orchestration
