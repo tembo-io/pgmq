@@ -61,18 +61,16 @@ CREATE EXTENSION pgmq CASCADE;
 Every queue is its own table in Postgres. The table name is the queue name prefixed with `pgmq_`.
  For example, `pgmq_my_queue` is the table for the queue `my_queue`.
 
-Optionally, the `partition_interval` and `retention_interval` can be configured. See [Configuration](#configuration).
 ```sql
 -- creates the queue
 
 -- params
 -- queue_name: text
--- partition_interval: text DEFAULT 'daily'::text
--- retention_interval: text DEFAULT '5 days'::text
 SELECT pgmq_create('my_queue');
 
  pgmq_create
 -------------
+t
 ```
 
 ### Send two messages
@@ -84,7 +82,7 @@ SELECT * from pgmq_send('my_queue', '{"foo": "bar1"}');
 SELECT * from pgmq_send('my_queue', '{"foo": "bar2"}');
 ```
 
-```sql
+```text
 -- the message id is returned from the send function
  pgmq_send 
 -----------
@@ -105,7 +103,9 @@ Read `2` message from the queue. Make them invisible for `30` seconds.
 
 ```sql
 pgmq=# SELECT * from pgmq_read('my_queue', 30, 2);
+```
 
+```text
  msg_id | read_ct |              vt               |          enqueued_at          |    message
 --------+---------+-------------------------------+-------------------------------+---------------
       1 |       1 | 2023-02-07 04:56:00.650342-06 | 2023-02-07 04:54:51.530818-06 | {"foo":"bar1"}
@@ -161,10 +161,10 @@ pgmq=# SELECT pgmq_delete('my_queue', 3);
 
 ## Partitioned Queues
 
-`pgmq` queue tables are partitioned by default. [pg_partman](https://github.com/pgpartman/pg_partman/)
+`pgmq` queue tables can be created as a paritioned table by using pgmq_create_partitioned(). [pg_partman](https://github.com/pgpartman/pg_partman/)
 handles all maintenance of queue tables. This includes creating new partitions and dropping old partitions.
 
-Partitions behavior is configured at the time queues are created, via `pgmq_create()`. This function has a three parameters:
+Partitions behavior is configured at the time queues are created, via `pgmq_create_partitioned()`. This function has a three parameters:
 
 `queue_name: text` : The name of the queue. Queues are Postgres tables prepended with `pgmq_`. For example, `pgmq_my_queue`.
 
