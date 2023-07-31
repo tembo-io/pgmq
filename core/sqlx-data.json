@@ -466,5 +466,25 @@
       }
     },
     "query": "SELECT pgmq_send as msg_id from pgmq_send($1::text, $2::jsonb);"
+  },
+  "ed8b7aacd0d94fe647899b6d2fe61a29372cd7d6dbc28bf59ac6bb3118e3fe6c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_create_partitioned",
+          "ordinal": 0,
+          "type_info": "Void"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_create_partitioned($1::text);"
   }
 }
