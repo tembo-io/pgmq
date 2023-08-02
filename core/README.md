@@ -13,6 +13,22 @@ PGMQ was created by [Tembo](https://tembo.io/). Our goal is to make the full Pos
 We're building a radically simplified Postgres platform designed to be developer-first and easily extensible.
 PGMQ is a part of that project.
 
+This project contains two APIs, a pure Rust client side library and the Rust SDK wrapped around the Postgres extrension. The APIs aim to be identical, but the extension wrapper has advantages including;
+- performance
+- support for partitioned queues
+- metrics
+
+The pure Rust client
+```rust
+use pgmq::PGMQueue;
+```
+
+And a Rust SDK wrapped around the Postgres extension.
+
+```rust
+use pgmq::PGMQueueExt;
+```
+
 Not building in Rust? Try the [Tembo pgmq Postgres extension](https://pgt.dev/extensions/pgmq).
 
 ## Features
