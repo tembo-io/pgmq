@@ -201,6 +201,15 @@ impl PGMQueue {
         })
     }
 
+    /// BYOP  - bring your own pool
+    /// initialize a PGMQ connection with your own SQLx Postgres connection pool
+    pub async fn new_with_pool(pool: Pool<Postgres>) -> Result<PGMQueue, errors::PgmqError> {
+        Ok(PGMQueue {
+            url: "".to_owned(),
+            connection: pool,
+        })
+    }
+
     /// Create a queue. This sets up the queue's tables, indexes, and metadata.
     /// It is idempotent, but does not check if the queue already exists.
     /// Amounts to `IF NOT EXISTS` statements in Postgres.
