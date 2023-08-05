@@ -10,7 +10,9 @@ pub mod metrics;
 pub mod partition;
 
 use pgmq_crate::errors::PgmqError;
-use pgmq_crate::query::{archive, check_input, delete, init_queue, pop, read, TABLE_PREFIX, PGMQ_SCHEMA};
+use pgmq_crate::query::{
+    archive, check_input, delete, init_queue, pop, read, PGMQ_SCHEMA, TABLE_PREFIX,
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
