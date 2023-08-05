@@ -1,4 +1,4 @@
-# Postgres Message Queue (PGMQ)
+# Contributing to Postgres Message Queue (PGMQ)
 
 ## Installation
 
@@ -15,7 +15,7 @@ PGMQ is written as a Rust extension and requires [pgrx](https://github.com/pgcen
 To build pgmq from source, you need
 * A toolchain capable of building Postgres
 * Rust toolchain
-* [pg_partman] (https://github.com/pgpartman/pg_partman).
+* [pg_partman](https://github.com/pgpartman/pg_partman).
 
 Once you have those pre-requisites, you need to setup `pgrx`:
 
@@ -33,12 +33,12 @@ cd pgmq
 After this point the steps differ slightly based on if you'd like to build
 and install against an existing Postgres setup or develop against pgrx managed
 development environment (which installs and allows you to test against multiple
-Postgres versions)
+Postgres versions).
 
 ### Install to a pre-existing Postgres
 
 Initialize `cargo-pgrx`, and tell it the path to the your `pg_config`. For example,
-if `pg_config is on your $PATH and you have Postgres 15, you can run:
+if `pg_config` is on your $PATH and you have Postgres 15, you can run:
 
 ```bash
 cargo pgrx init --pg15=`which pg_config`
@@ -56,7 +56,7 @@ Initialize `cargo-pgrx` development environment
 cargo pgrx init
 ```
 
-Note: Make sure you build and install pg_partman against the postgres installation
+**Note**: Make sure you build and install `pg_partman` against the postgres installation
 you want to build against (`PG_CONFIG` in `~/.pgrx/PG_VERSION/pgrx-install/bin/pg_config`
 and `PGDATA` in `/Users/samaysharma/.pgrx/data-PG_MAJOR_VERSION`)
 
