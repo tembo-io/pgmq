@@ -37,6 +37,8 @@ The fastest way to get started is by running the Tembo docker image, where PGMQ 
 docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest
 ```
 
+If you'd like to build from source, you can follow the instructions in [CONTRIBUTING.md] (CONTRIBUTING.md)
+
 ## Client Libraries
 
 
@@ -222,7 +224,7 @@ Add the following to `postgresql.conf`. Note, changing `shared_preload_libraries
 `pg_partman_bgw.interval` sets the interval at which `pg_partman` conducts maintenance. This creates new partitions and dropping of partitions falling out of the `retention_interval`. By default, `pg_partman` will keep 4 partitions "ahead" of the currently active partition.
 
 ```
-shared_preload_libraries = 'pg_partman_bgw' # requires restart of Postgrs
+shared_preload_libraries = 'pg_partman_bgw' # requires restart of Postgres
 pg_partman_bgw.interval = 60
 pg_partman_bgw.role = 'postgres'
 pg_partman_bgw.dbname = 'postgres'
