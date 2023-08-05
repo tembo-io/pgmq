@@ -1,8 +1,9 @@
 use chrono::{Duration, Utc};
-use pgmq::{self, query::TABLE_PREFIX, Message};
+use pgmq::{self, query::TABLE_PREFIX, util::connect, Message};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres, Row};
 use std::env;
 
@@ -819,4 +820,26 @@ async fn test_pgmq_init() {
         .await
         .expect("failed attempting to create the duplicate queue");
     assert!(!created, "failed to detect duplicate queue");
+}
+
+/// test "bring your own pool"
+#[tokio::test]
+async fn test_byop() {
+    let db_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/pgmq".to_owned());
+
+    let conn = connect(&db_url, 2).await.expect("failed to connect");
+
+    let queue = pgmq::PGMQueueExt::new_with_pool(conn)
+        .await
+        .expect("failed to connect to postgres");
+
+    let init = queue.init().await.expect("failed to create extension");
+    assert!(init, "failed to create extension");
+
+    let created = queue
+        .create("test_byop")
+        .await
+        .expect("failed to create queue");
+    assert!(created);
 }
