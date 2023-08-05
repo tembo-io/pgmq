@@ -10,7 +10,7 @@ pub mod metrics;
 pub mod partition;
 
 use pgmq_crate::errors::PgmqError;
-use pgmq_crate::query::{archive, check_input, delete, init_queue, pop, read, TABLE_PREFIX};
+use pgmq_crate::query::{archive, check_input, delete, init_queue, pop, read, TABLE_PREFIX, PGMQ_SCHEMA};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -82,7 +82,7 @@ fn enqueue_str(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
-        INSERT INTO {TABLE_PREFIX}_{name} (vt, message)
+        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt, message)
         VALUES (now() at time zone 'utc', $1)
         RETURNING msg_id;
         "
