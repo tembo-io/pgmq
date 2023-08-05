@@ -27,6 +27,15 @@ impl PGMQueueExt {
         })
     }
 
+    /// BYOP  - bring your own pool
+    /// initialize a PGMQ connection with your own SQLx Postgres connection pool
+    pub async fn new_with_pool(pool: Pool<Postgres>) -> Result<PGMQueueExt, PgmqError> {
+        Ok(PGMQueueExt {
+            url: "".to_owned(),
+            connection: pool,
+        })
+    }
+
     pub async fn init(&self) -> Result<bool, PgmqError> {
         sqlx::query!("CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;")
             .execute(&self.connection)
