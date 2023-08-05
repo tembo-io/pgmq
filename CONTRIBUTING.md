@@ -17,20 +17,20 @@ To build pgmq from source, you need
 * Rust toolchain
 * [pg_partman](https://github.com/pgpartman/pg_partman).
 
-Once you have those pre-requisites, you need to setup `pgrx`:
+Once you have those pre-requisites, you need to setup `pgrx`.
 
 ```bash
 cargo install --locked cargo-pgrx --version 0.9.8
 ```
 
-Clone the repo and change into the directory
+Clone the repo and change into the directory.
 
 ```bash
 git clone https://github.com/tembo-io/pgmq.git
 cd pgmq
 ```
 
-After this point the steps differ slightly based on if you'd like to build
+After this point, the steps differ slightly based on if you'd like to build
 and install against an existing Postgres setup or develop against pgrx managed
 development environment (which installs and allows you to test against multiple
 Postgres versions).
@@ -38,7 +38,7 @@ Postgres versions).
 ### Install to a pre-existing Postgres
 
 Initialize `cargo-pgrx`, and tell it the path to the your `pg_config`. For example,
-if `pg_config` is on your $PATH and you have Postgres 15, you can run:
+if `pg_config` is on your `$PATH` and you have Postgres 15, you can run:
 
 ```bash
 cargo pgrx init --pg15=`which pg_config`
@@ -50,7 +50,7 @@ cargo pgrx install --release
 
 ### Install against pgrx managed Postgres (Recommended for Development)
 
-Initialize `cargo-pgrx` development environment
+Initialize `cargo-pgrx` development environment:
 
 ```bash
 cargo pgrx init
@@ -61,13 +61,13 @@ you want to build against (`PG_CONFIG` in `~/.pgrx/PG_VERSION/pgrx-install/bin/p
 and `PGDATA` in `/Users/samaysharma/.pgrx/data-PG_MAJOR_VERSION`)
 
 Then, you can use the run command, which will build and install the extension
-and drop you into psql
+and drop you into psql:
 
 ```bash
 cargo pgrx run pg15
 ```
 
-Then, you can create the extension and get started with the example in the [README.md](README.md).
+Finally, you can create the extension and get started with the example in the [README.md](README.md).
 
 ```psql
 CREATE EXTENSION pgmq cascade;
