@@ -9,7 +9,6 @@ A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/s
 - API parity with [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq)
 - Messages stay in the queue until explicitly deleted
 - Messages can be archived, instead of deleted, for long-term retention and replayability
-- Table (bloat) maintenance automated with [pg_partman](https://github.com/pgpartman/pg_partman)
 - High performance operations with index-only scans.
 
 ## Table of Contents
@@ -52,8 +51,8 @@ psql postgres://postgres:postgres@0.0.0.0:5432/postgres
 ```
 
 ```sql
--- create the extension, pg_partman is also required
-CREATE EXTENSION pgmq CASCADE;
+-- create the extension
+CREATE EXTENSION pgmq;
 ```
 
 ### Creating a queue
@@ -199,7 +198,9 @@ pgmq=# SELECT pgmq_delete('my_queue', 3);
 
 ## Partitioned Queues
 
-`pgmq` queue tables can be created as a paritioned table by using pgmq_create_partitioned(). [pg_partman](https://github.com/pgpartman/pg_partman/)
+You will need to install [pg_partman](https://github.com/pgpartman/pg_partman/) if you want to use `pgmq` paritioned queues.
+
+`pgmq` queue tables can be created as a partitioned table by using pgmq_create_partitioned(). [pg_partman](https://github.com/pgpartman/pg_partman/)
 handles all maintenance of queue tables. This includes creating new partitions and dropping old partitions.
 
 Partitions behavior is configured at the time queues are created, via `pgmq_create_partitioned()`. This function has a three parameters:
