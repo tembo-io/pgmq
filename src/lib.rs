@@ -442,6 +442,16 @@ mod tests {
         let partition_interval = "2".to_owned();
         let retention_interval = "2".to_owned();
 
+        let _ = Spi::run("DROP EXTENSION IF EXISTS pg_partman").expect("SQL select failed");
+
+        let failed = pgmq_create_partitioned(
+            &qname,
+            partition_interval.clone(),
+            retention_interval.clone(),
+        );
+        assert!(failed.is_err());
+
+        let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman").expect("SQL select failed");
         let _ = pgmq_create_partitioned(&qname, partition_interval, retention_interval).unwrap();
 
         let queues = api::listit().unwrap();
@@ -494,6 +504,7 @@ mod tests {
     #[pg_test]
     fn test_archive() {
         let qname = r#"test_archive"#;
+        let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman").expect("SQL select failed");
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
         // no messages in the queue
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
