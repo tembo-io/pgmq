@@ -3,7 +3,6 @@ use pgmq::{self, query::TABLE_PREFIX, util::connect, Message};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres, Row};
 use std::env;
 
