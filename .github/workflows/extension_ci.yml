@@ -9,10 +9,12 @@ on:
   pull_request:
     branches:
       - main
-
   push:
     branches:
       - main
+  release:
+    types: 
+      - created
 
 jobs:
   lint:
@@ -76,8 +78,9 @@ jobs:
           cargo pgrx test ${pg_version}
 
   publish:
-    # only publish off main branch
-    if: github.ref == 'refs/heads/main'
+    # only publish on tagged release events
+    # if: github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/')
     name: trunk publish
     runs-on: ubuntu-22.04
     steps:

@@ -16,6 +16,9 @@ async fn init_queue(qname: &str) -> pgmq::PGMQueue {
     // make sure queue doesn't exist before the test
     let _ = queue.destroy(qname).await.unwrap();
     // CREATE QUEUE
+    // jiggle to mitigate race condition in concurrent `create if not exists` statements
+    let random_sleep_ms = rand::thread_rng().gen_range(0..1000);
+    tokio::time::sleep(std::time::Duration::from_millis(random_sleep_ms)).await;
     let q_success = queue.create(qname).await;
     println!("q_success: {:?}", q_success);
     assert!(q_success.is_ok());
