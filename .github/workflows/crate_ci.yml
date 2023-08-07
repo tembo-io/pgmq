@@ -10,7 +10,7 @@ on:
     branches:
      - main
     paths:
-      - '.github/workflows/pgmq.yml'
+      - '.github/workflows/crate_ci.yml'
       - 'core/**'
   push:
     branches:
