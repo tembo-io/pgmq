@@ -23,6 +23,9 @@ enum PgmqExtError {
 
     #[error("{0} invalid types")]
     TypeErrorError(String),
+
+    #[error("missing dependency: {0}")]
+    MissingDependency(String),
 }
 
 #[pg_extern]
@@ -43,6 +46,16 @@ fn pgmq_create_partitioned(
     partition_interval: default!(String, "'10000'"),
     retention_interval: default!(String, "'100000'"),
 ) -> Result<(), PgmqExtError> {
+    // validate pg_partman is installed
+    let _ = match Spi::get_one::<bool>(&partition::partman_installed())?
+        .expect("could not query extensions table")
+    {
+        true => (),
+        false => {
+            warning!("pg_partman not installed. Install with `CREATE EXTENSION pg_partman;`");
+            return Err(PgmqExtError::MissingDependency("pg_partman".to_owned()));
+        }
+    };
     validate_same_type(&partition_interval, &retention_interval)?;
     let setup =
         partition::init_partitioned_queue(queue_name, &partition_interval, &retention_interval)?;
