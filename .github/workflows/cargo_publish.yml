@@ -1,0 +1,83 @@
+name: Cargo publish or validate
+
+on:
+  pull_request:
+    branches:
+      - main
+      - "release/[0-9]+.[0-9]+"
+  push:
+    branches:
+      - 'main'
+      - 'release/[0-9]+.[0-9]+'
+
+jobs:
+  find_directories:
+    name: Find crates that changed
+    runs-on: ubuntu-20.04
+    outputs:
+      changed_crates: ${{ steps.find_directories.outputs.build_matrix }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Find directories including Cargo.toml that changed
+        id: find_directories
+        uses: ./.github/actions/find-changed-directories
+        with:
+          contains_the_file: Cargo.toml
+          # If the branch does not exist, then it will not
+          # filter any directories containing the file.
+          # This allows for filtering out unchanged directories
+          # in a pull request, and using all directories on the release
+          # or main branches.
+          changed_relative_to_ref: origin/${{ github.base_ref || 'not-a-branch' }}
+
+
+  cargo_publish:
+    # On a pull request, this is validating that the version
+    # is not already published to crates.io, and on a push to
+    # main or release branches, it is publishing if the version
+    # does not exist, ignoring if the version is already
+    # published.
+    name: Cargo publish or validate
+    runs-on: ubuntu-20.04
+    needs:
+      - find_directories
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.find_directories.outputs.changed_crates) }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Determine which flags to use on cargo publish
+        id: cargo_flags
+        run: |
+          set -x
+          BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
+          if [ "${BRANCH_NAME}" == "main" ]; then
+            echo "dry_run=false" >> $GITHUB_OUTPUT
+            echo "fail_if_version_published=false" >> $GITHUB_OUTPUT
+          elif [[ "${BRANCH_NAME}" == release/* ]]; then
+            echo "dry_run=false" >> $GITHUB_OUTPUT
+            echo "fail_if_version_published=false" >> $GITHUB_OUTPUT
+          else
+            echo "dry_run=true" >> $GITHUB_OUTPUT
+            echo "fail_if_version_published=true" >> $GITHUB_OUTPUT
+          fi
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: ${{ matrix.name }}
+          workspaces: |
+            ${{ matrix.path }}
+          # Additional directories to cache
+          cache-directories: |
+            /home/runner/.pgrx
+      - uses: ./.github/actions/pgx-init
+        with:
+          working-directory: ${{ matrix.path }}
+      - name: Publish or validate
+        uses: ./.github/actions/publish-crate
+        with:
+          working-directory: ${{ matrix.path }}
+          dry-run: ${{ steps.cargo_flags.outputs.dry_run }}
+          fail-if-version-published: ${{ steps.cargo_flags.outputs.fail_if_version_published }}
+          cargo-registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
