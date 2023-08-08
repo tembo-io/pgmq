@@ -1,12 +1,12 @@
 //! Query constructors
 
-use crate::errors::PgmqError;
+use crate::{errors::PgmqError, util::CheckedName};
 use sqlx::types::chrono::Utc;
 pub const TABLE_PREFIX: &str = r#"pgmq"#;
 pub const PGMQ_SCHEMA: &str = "public";
 
 pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
-    check_input(name)?;
+    let name = CheckedName::new(name)?;
     Ok(vec![
         create_meta(),
         create_queue(name)?,
@@ -20,7 +20,7 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
 }
 
 pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
-    check_input(name)?;
+    let name = CheckedName::new(name)?;
     Ok(vec![
         drop_queue(name)?,
         delete_queue_index(name)?,
@@ -29,8 +29,7 @@ pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     ])
 }
 
-pub fn create_queue(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
+pub fn create_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (
@@ -44,8 +43,7 @@ pub fn create_queue(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn create_archive(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
+pub fn create_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (
@@ -95,20 +93,17 @@ pub fn grant_pgmon_meta() -> String {
 }
 
 // pg_monitor needs to query queue tables
-pub fn grant_pgmon_queue(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
+pub fn grant_pgmon_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     let table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}");
     Ok(grant_stmt(&table))
 }
 
-pub fn grant_pgmon_queue_seq(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
+pub fn grant_pgmon_queue_seq(name: CheckedName<'_>) -> Result<String, PgmqError> {
     let table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_msg_id_seq");
     Ok(grant_stmt(&table))
 }
 
-pub fn drop_queue(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
+pub fn drop_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         DROP TABLE IF EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name};
@@ -116,8 +111,7 @@ pub fn drop_queue(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn delete_queue_index(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
+pub fn delete_queue_index(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         DROP INDEX IF EXISTS {TABLE_PREFIX}_{name}.vt_idx_{name};
@@ -125,8 +119,7 @@ pub fn delete_queue_index(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn delete_queue_metadata(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
+pub fn delete_queue_metadata(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         DO $$
@@ -145,8 +138,7 @@ pub fn delete_queue_metadata(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn drop_queue_archive(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
+pub fn drop_queue_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         DROP TABLE IF EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive;
@@ -154,8 +146,7 @@ pub fn drop_queue_archive(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn insert_meta(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
+pub fn insert_meta(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (queue_name)
@@ -166,8 +157,7 @@ pub fn insert_meta(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn create_archive_index(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
+pub fn create_archive_index(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE INDEX IF NOT EXISTS deleted_at_idx_{name} ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (deleted_at);
@@ -176,8 +166,7 @@ pub fn create_archive_index(name: &str) -> Result<String, PgmqError> {
 }
 
 // indexes are created ascending to support FIFO
-pub fn create_index(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
+pub fn create_index(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE INDEX IF NOT EXISTS msg_id_vt_idx_{name} ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt ASC, msg_id ASC);
@@ -192,7 +181,7 @@ pub fn enqueue(
 ) -> Result<String, PgmqError> {
     // construct string of comma separated messages
     check_input(name)?;
-    let mut values: String = "".to_owned();
+    let mut values = "".to_owned();
     for message in messages.iter() {
         let full_msg = format!(
             "((now() at time zone 'utc' + interval '{delay} seconds'), '{message}'::json),"
@@ -330,7 +319,8 @@ mod tests {
 
     #[test]
     fn test_create() {
-        let query = create_queue("yolo");
+        let queue_name = CheckedName::new("yolo").unwrap();
+        let query = create_queue(queue_name);
         assert!(query.unwrap().contains("pgmq_yolo"));
     }
 
