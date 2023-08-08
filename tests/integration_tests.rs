@@ -5,12 +5,13 @@ use sqlx::{FromRow, Pool, Postgres, Row};
 
 async fn connect(url: &str) -> Pool<Postgres> {
     let options = conn_options(url).expect("failed to parse url");
+    println!("URL: {}", url);
     PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(10))
         .max_connections(5)
         .connect_with(options)
         .await
-        .unwrap()
+        .expect("failed to connect to pg")
 }
 
 #[tokio::test]

@@ -13,6 +13,7 @@ use pgmq_crate::{
 // for now, put pg_partman in the public PGMQ_SCHEMA
 pub const PARTMAN_SCHEMA: &str = "public";
 
+/// partitioned queues require pg_partman to be installed
 pub fn init_partitioned_queue(
     name: &str,
     partition_interval: &str,
@@ -103,6 +104,17 @@ fn set_retention_config(queue: CheckedName<'_>, retention: &str) -> Result<Strin
         WHERE parent_table = '{PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue}';
         "
     ))
+}
+
+pub fn partman_installed() -> String {
+    "
+        SELECT EXISTS (
+            SELECT 1
+            FROM pg_extension
+            WHERE extname = 'pg_partman'
+        );
+        "
+    .to_owned()
 }
 
 #[cfg(any(test, feature = "pg_test"))]

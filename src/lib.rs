@@ -25,6 +25,9 @@ enum PgmqExtError {
 
     #[error("{0} invalid types")]
     TypeErrorError(String),
+
+    #[error("missing dependency: {0}")]
+    MissingDependency(String),
 }
 
 #[pg_extern]
@@ -45,6 +48,16 @@ fn pgmq_create_partitioned(
     partition_interval: default!(String, "'10000'"),
     retention_interval: default!(String, "'100000'"),
 ) -> Result<(), PgmqExtError> {
+    // validate pg_partman is installed
+    match Spi::get_one::<bool>(&partition::partman_installed())?
+        .expect("could not query extensions table")
+    {
+        true => (),
+        false => {
+            warning!("pg_partman not installed. Install https://github.com/pgpartman/pg_partman and then run `CREATE EXTENSION pg_partman;`");
+            return Err(PgmqExtError::MissingDependency("pg_partman".to_owned()));
+        }
+    };
     validate_same_type(&partition_interval, &retention_interval)?;
     let setup =
         partition::init_partitioned_queue(queue_name, &partition_interval, &retention_interval)?;
@@ -110,7 +123,7 @@ fn pgmq_read(
     spi::Error,
 > {
     let results = readit(queue_name, vt, limit)?;
-    Ok(TableIterator::new(results.into_iter()))
+    Ok(TableIterator::new(results))
 }
 
 fn readit(
@@ -224,7 +237,7 @@ fn pgmq_pop(
     PgmqExtError,
 > {
     let results = popit(queue_name)?;
-    Ok(TableIterator::new(results.into_iter()))
+    Ok(TableIterator::new(results))
 }
 
 fn popit(
@@ -318,7 +331,7 @@ fn pgmq_set_vt(
         Ok(())
     });
     res?;
-    Ok(TableIterator::new(results.into_iter()))
+    Ok(TableIterator::new(results))
 }
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -429,6 +442,16 @@ mod tests {
         let partition_interval = "2".to_owned();
         let retention_interval = "2".to_owned();
 
+        let _ = Spi::run("DROP EXTENSION IF EXISTS pg_partman").expect("SQL select failed");
+
+        let failed = pgmq_create_partitioned(
+            &qname,
+            partition_interval.clone(),
+            retention_interval.clone(),
+        );
+        assert!(failed.is_err());
+
+        let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman").expect("SQL select failed");
         let _ = pgmq_create_partitioned(&qname, partition_interval, retention_interval).unwrap();
 
         let queues = api::listit().unwrap();
@@ -481,6 +504,7 @@ mod tests {
     #[pg_test]
     fn test_archive() {
         let qname = r#"test_archive"#;
+        let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman").expect("SQL select failed");
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
         // no messages in the queue
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
