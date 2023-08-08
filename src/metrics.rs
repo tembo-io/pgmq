@@ -33,8 +33,8 @@ fn pgmq_metrics(
     >,
     crate::PgmqExtError,
 > {
-    let results = query_summary(&queue_name)?;
-    Ok(TableIterator::new(results.into_iter()))
+    let results = query_summary(queue_name)?;
+    Ok(TableIterator::new(results))
 }
 
 #[pg_extern]
@@ -58,7 +58,7 @@ fn pgmq_metrics_all() -> Result<
         let q_results = query_summary(&q.0)?;
         results.extend(q_results);
     }
-    Ok(TableIterator::new(results.into_iter()))
+    Ok(TableIterator::new(results))
 }
 
 fn query_summary(queue_name: &str) -> Result<MetricResult, crate::PgmqExtError> {

@@ -49,12 +49,12 @@ fn pgmq_create_partitioned(
     retention_interval: default!(String, "'100000'"),
 ) -> Result<(), PgmqExtError> {
     // validate pg_partman is installed
-    let _ = match Spi::get_one::<bool>(&partition::partman_installed())?
+    match Spi::get_one::<bool>(&partition::partman_installed())?
         .expect("could not query extensions table")
     {
         true => (),
         false => {
-            warning!("pg_partman not installed. Install with `CREATE EXTENSION pg_partman;`");
+            warning!("pg_partman not installed. Install https://github.com/pgpartman/pg_partman and then run `CREATE EXTENSION pg_partman;`");
             return Err(PgmqExtError::MissingDependency("pg_partman".to_owned()));
         }
     };
@@ -123,7 +123,7 @@ fn pgmq_read(
     spi::Error,
 > {
     let results = readit(queue_name, vt, limit)?;
-    Ok(TableIterator::new(results.into_iter()))
+    Ok(TableIterator::new(results))
 }
 
 fn readit(
@@ -237,7 +237,7 @@ fn pgmq_pop(
     PgmqExtError,
 > {
     let results = popit(queue_name)?;
-    Ok(TableIterator::new(results.into_iter()))
+    Ok(TableIterator::new(results))
 }
 
 fn popit(
@@ -331,7 +331,7 @@ fn pgmq_set_vt(
         Ok(())
     });
     res?;
-    Ok(TableIterator::new(results.into_iter()))
+    Ok(TableIterator::new(results))
 }
 
 #[cfg(any(test, feature = "pg_test"))]

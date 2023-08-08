@@ -39,7 +39,7 @@ fn pgmq_list_queues() -> Result<
     spi::Error,
 > {
     let results = listit()?;
-    Ok(TableIterator::new(results.into_iter()))
+    Ok(TableIterator::new(results))
 }
 
 pub fn listit() -> Result<Vec<(String, TimestampWithTimeZone)>, spi::Error> {
