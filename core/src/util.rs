@@ -1,3 +1,6 @@
+use std::fmt::Display;
+
+use crate::query::check_input;
 use crate::{Message, PgmqError};
 use log::LevelFilter;
 use serde::Deserialize;
@@ -61,5 +64,30 @@ pub async fn fetch_one_message<T: for<'de> Deserialize<'de>>(
         }
         Err(sqlx::error::Error::RowNotFound) => Ok(None),
         Err(e) => Err(e)?,
+    }
+}
+
+/// A string that is known to be formed of only ASCII alphanumeric or an underscore;
+#[derive(Clone, Copy)]
+pub struct CheckedName<'a>(&'a str);
+
+impl<'a> CheckedName<'a> {
+    /// Accepts `input` as a CheckedName if it is a valid queue identifier
+    pub fn new(input: &'a str) -> Result<Self, PgmqError> {
+        check_input(input)?;
+
+        Ok(Self(input))
+    }
+}
+
+impl AsRef<str> for CheckedName<'_> {
+    fn as_ref(&self) -> &str {
+        self.0
+    }
+}
+
+impl Display for CheckedName<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0)
     }
 }

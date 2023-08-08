@@ -4,9 +4,10 @@ use pgrx::prelude::*;
 use pgmq_crate::{
     errors::PgmqError,
     query::{
-        check_input, create_archive, create_index, create_meta, grant_pgmon_meta,
-        grant_pgmon_queue, grant_pgmon_queue_seq, insert_meta, PGMQ_SCHEMA, TABLE_PREFIX,
+        create_archive, create_index, create_meta, grant_pgmon_meta, grant_pgmon_queue,
+        grant_pgmon_queue_seq, insert_meta, PGMQ_SCHEMA, TABLE_PREFIX,
     },
+    util::CheckedName,
 };
 
 // for now, put pg_partman in the public PGMQ_SCHEMA
@@ -17,7 +18,7 @@ pub fn init_partitioned_queue(
     partition_interval: &str,
     retention_interval: &str,
 ) -> Result<Vec<String>, PgmqError> {
-    check_input(name)?;
+    let name = CheckedName::new(name)?;
     let partition_col = map_partition_col(partition_interval);
     Ok(vec![
         create_meta(),
@@ -44,8 +45,10 @@ fn map_partition_col(partition_interval: &str) -> &'static str {
     }
 }
 
-fn create_partitioned_queue(queue: &str, partition_col: &str) -> Result<String, PgmqError> {
-    check_input(queue)?;
+fn create_partitioned_queue(
+    queue: CheckedName<'_>,
+    partition_col: &str,
+) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue} (
@@ -59,8 +62,10 @@ fn create_partitioned_queue(queue: &str, partition_col: &str) -> Result<String, 
     ))
 }
 
-pub fn create_partitioned_index(queue: &str, partiton_col: &str) -> Result<String, PgmqError> {
-    check_input(queue)?;
+pub fn create_partitioned_index(
+    queue: CheckedName<'_>,
+    partiton_col: &str,
+) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE INDEX IF NOT EXISTS pgmq_partition_idx_{queue} ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue} ({partiton_col});
@@ -69,7 +74,7 @@ pub fn create_partitioned_index(queue: &str, partiton_col: &str) -> Result<Strin
 }
 
 fn create_partitioned_table(
-    queue: &str,
+    queue: CheckedName<'_>,
     partition_col: &str,
     partition_interval: &str,
 ) -> Result<String, PgmqError> {
@@ -86,8 +91,7 @@ fn create_partitioned_table(
 // messages .archived() will be retained forever on the `<queue_name>_archive` table
 // https://github.com/pgpartman/pg_partman/blob/ca212077f66af19c0ca317c206091cd31d3108b8/doc/pg_partman.md#retention
 // integer value will set that any partitions with an id value less than the current maximum id value minus the retention value will be dropped
-fn set_retention_config(queue: &str, retention: &str) -> Result<String, PgmqError> {
-    check_input(queue)?;
+fn set_retention_config(queue: CheckedName<'_>, retention: &str) -> Result<String, PgmqError> {
     Ok(format!(
         "
         UPDATE {PGMQ_SCHEMA}.part_config
