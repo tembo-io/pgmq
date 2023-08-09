@@ -6,18 +6,25 @@ use crate::partition::PARTMAN_SCHEMA;
 use pgmq_crate::query::{PGMQ_SCHEMA, TABLE_PREFIX};
 
 #[pg_extern]
-fn pgmq_drop_queue(queue_name: String) -> Result<bool, spi::Error> {
-    delete_queue(queue_name)?;
+fn pgmq_drop_queue(
+    queue_name: String,
+    partitioned: default!(bool, false),
+) -> Result<bool, spi::Error> {
+    delete_queue(queue_name, partitioned)?;
     Ok(true)
 }
 
-pub fn delete_queue(queue_name: String) -> Result<(), spi::Error> {
+pub fn delete_queue(queue_name: String, partitioned: bool) -> Result<(), spi::Error> {
     let queue_table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}");
-    let queries = vec![
+    let mut queries = vec![
         format!("DELETE from {PGMQ_SCHEMA}.pgmq_meta WHERE queue_name = '{queue_name}';"),
         format!("DROP TABLE {queue_table};"),
-        format!("DELETE FROM {PARTMAN_SCHEMA}.part_config where parent_table = '{queue_table}';"),
     ];
+    if partitioned {
+        queries.push(format!(
+            "DELETE FROM {PARTMAN_SCHEMA}.part_config where parent_table = '{queue_table}';"
+        ))
+    }
     let _: Result<(), spi::Error> = Spi::connect(|mut client| {
         for q in queries {
             client.update(q.as_str(), None, None)?;
