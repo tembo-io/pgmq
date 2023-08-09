@@ -147,16 +147,27 @@ async fn test_lifecycle() {
     struct QueueMeta {
         queue_name: String,
     }
+
+    // delete partitioned queues
+    for queue in [test_duration_queue, test_numeric_queue].iter() {
+        sqlx::query(&format!("select pgmq_drop_queue('{}', true);", &queue))
+            .execute(&conn)
+            .await
+            .expect("failed to drop partitioned queues");
+    }
+
     let queues = sqlx::query_as::<_, QueueMeta>("select queue_name from pgmq_list_queues();")
         .fetch_all(&conn)
         .await
         .expect("failed to list queues");
+
+    // drop the rest of the queues
     for queue in queues {
         let q = queue.queue_name;
         sqlx::query(&format!("select pgmq_drop_queue('{}');", &q))
             .execute(&conn)
             .await
-            .expect("failed to list queues");
+            .expect("failed to drop standard queues");
     }
 
     let queues = sqlx::query_as::<_, QueueMeta>("select queue_name from pgmq_list_queues();")
