@@ -26,6 +26,7 @@ A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/s
     - [Pop a message](#pop-a-message)
     - [Archive a message](#archive-a-message)
     - [Delete a message](#delete-a-message)
+    - [Drop a queue](#drop-a-queue)
 - [Configuration](#configuration)
   - [Partitioned Queues](#partitioned-queues)
   - [Visibility Timeout (vt)](#visibility-timeout-vt)
@@ -76,9 +77,9 @@ SELECT pgmq_create('my_queue');
 ```
 
 ```text
- pgmq_create 
+ pgmq_create
 -------------
- 
+
 (1 row)
 ```
 
@@ -86,7 +87,7 @@ SELECT pgmq_create('my_queue');
 
 ```sql
 -- messages are sent as JSON
-pgmq=# 
+pgmq=#
 SELECT * from pgmq_send('my_queue', '{"foo": "bar1"}');
 SELECT * from pgmq_send('my_queue', '{"foo": "bar2"}');
 ```
@@ -94,12 +95,12 @@ SELECT * from pgmq_send('my_queue', '{"foo": "bar2"}');
 The message id is returned from the send function.
 
 ```text
- pgmq_send 
+ pgmq_send
 -----------
          1
 (1 row)
 
- pgmq_send 
+ pgmq_send
 -----------
          2
 (1 row)
@@ -107,7 +108,7 @@ The message id is returned from the send function.
 
 ### Read messages
 
-Read `2` message from the queue. Make them invisible for `30` seconds. 
+Read `2` message from the queue. Make them invisible for `30` seconds.
  If the messages are not deleted or archived within 30 seconds, they will become visible again
     and can be read by another consumer.
 
@@ -157,7 +158,7 @@ pgmq=# SELECT * from pgmq_archive('my_queue', 2);
 ```
 
 ```text
- pgmq_archive 
+ pgmq_archive
 --------------
  t
 (1 row)
@@ -168,7 +169,7 @@ pgmq=#  SELECT * from pgmq_my_queue_archive;
 ```
 
 ```text
- msg_id | read_ct |         enqueued_at          |          deleted_at           |              vt               |     message     
+ msg_id | read_ct |         enqueued_at          |          deleted_at           |              vt               |     message
 --------+---------+------------------------------+-------------------------------+-------------------------------+-----------------
       2 |       1 | 2023-04-25 00:55:40.68417-05 | 2023-04-25 00:56:35.937594-05 | 2023-04-25 00:56:20.532012-05 | {"foo": "bar2"}```
 ```
@@ -182,7 +183,7 @@ pgmq=# SELECT * from pgmq_send('my_queue', '{"foo": "bar3"}');
 ```
 
 ```text
- pgmq_send 
+ pgmq_send
 -----------
         3
 (1 row)
@@ -195,8 +196,23 @@ pgmq=# SELECT pgmq_delete('my_queue', 3);
 ```
 
 ```text
- pgmq_delete 
+ pgmq_delete
 -------------
+ t
+(1 row)
+```
+
+### Drop a queue
+
+Delete the queue `my_queue`.
+
+```sql
+pgmq=# SELECT pgmq_drop_queue('my_queue');
+```
+
+```text
+ pgmq_drop_queue
+-----------------
  t
 (1 row)
 ```
@@ -222,7 +238,7 @@ Partitions behavior is configured at the time queues are created, via `pgmq_crea
 
 
 In order for automatic partition maintenance to take place, several settings must be added to the `postgresql.conf` file, which is typically located in the postgres `DATADIR`.
- `pg_partman_bgw.interval` 
+ `pg_partman_bgw.interval`
 in `postgresql.conf`. Below are the default configuration values set in Tembo docker images.
 
 Add the following to `postgresql.conf`. Note, changing `shared_preload_libraries` requires a restart of Postgres.
