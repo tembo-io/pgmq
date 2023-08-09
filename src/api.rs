@@ -15,6 +15,9 @@ fn pgmq_drop_queue(
 }
 
 pub fn delete_queue(queue_name: String, partitioned: bool) -> Result<(), spi::Error> {
+    // TODO: we should keep track whether queue is partitioned in pgmq_meta
+    // then read that to determine we want to delete the part_config entries
+    // this should go out before 1.0
     let queue_table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}");
     let mut queries = vec![
         format!("DELETE from {PGMQ_SCHEMA}.pgmq_meta WHERE queue_name = '{queue_name}';"),
