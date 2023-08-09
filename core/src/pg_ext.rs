@@ -60,20 +60,15 @@ impl PGMQueueExt {
         let queue_table = format!("public.{TABLE_PREFIX}_{queue_name}");
         // we need to check whether the queue exists first
         // pg_partman create operations are currently unable to be idempotent
-        let exists = match sqlx::query!(
-            "SELECT * from part_config where parent_table = $1::text;",
-            queue_table
-        )
-        .fetch_one(&self.connection)
-        .await
-        {
-            Ok(_) => {
-                info!("queue: {} already exists", queue_name);
-                true
-            }
-            Err(_) => false,
-        };
+        let exists_stmt = format!(
+            "SELECT EXISTS(SELECT * from part_config where parent_table = '{queue_table}');",
+            queue_table = queue_table
+        );
+        let exists = sqlx::query_scalar(&exists_stmt)
+            .fetch_one(&self.connection)
+            .await?;
         if exists {
+            info!("queue: {} already exists", queue_name);
             Ok(false)
         } else {
             sqlx::query!(
