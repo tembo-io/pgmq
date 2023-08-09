@@ -9,7 +9,7 @@ A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/s
 - API parity with [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq)
 - Messages stay in the queue until explicitly deleted
 - Messages can be archived, instead of deleted, for long-term retention and replayability
-- High performance operations with index-only scans.
+- High performance operations with index-only scans
 
 ## Table of Contents
 - [Postgres Message Queue (PGMQ)](#postgres-message-queue-pgmq)
@@ -36,7 +36,7 @@ The fastest way to get started is by running the Tembo docker image, where PGMQ 
 docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest
 ```
 
-If you'd like to build from source, you can follow the instructions in [CONTRIBUTING.md](CONTRIBUTING.md)
+If you'd like to build from source, you can follow the instructions in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Client Libraries
 
@@ -86,7 +86,7 @@ SELECT * from pgmq_send('my_queue', '{"foo": "bar1"}');
 SELECT * from pgmq_send('my_queue', '{"foo": "bar2"}');
 ```
 
-The message id is returned from the send function
+The message id is returned from the send function.
 
 ```text
  pgmq_send 
@@ -145,7 +145,7 @@ pgmq=# SELECT * from pgmq_pop('my_queue');
 
 Archiving a message removes it from the queue, and inserts it to the archive table.
 
-Archive message with msg_id=2
+Archive message with msg_id=2.
 
 ```sql
 pgmq=# SELECT * from pgmq_archive('my_queue', 2);
@@ -183,7 +183,7 @@ pgmq=# SELECT * from pgmq_send('my_queue', '{"foo": "bar3"}');
 (1 row)
 ```
 
-Delete tha message with id `3` from queue named `my_queue`.
+Delete the message with id `3` from the queue named `my_queue`.
 
 ```sql
 pgmq=# SELECT pgmq_delete('my_queue', 3);
@@ -200,20 +200,20 @@ pgmq=# SELECT pgmq_delete('my_queue', 3);
 
 ## Partitioned Queues
 
-You will need to install [pg_partman](https://github.com/pgpartman/pg_partman/) if you want to use `pgmq` paritioned queues.
+You will need to install [pg_partman](https://github.com/pgpartman/pg_partman/) if you want to use `pgmq` partitioned queues.
 
-`pgmq` queue tables can be created as a partitioned table by using pgmq_create_partitioned(). [pg_partman](https://github.com/pgpartman/pg_partman/)
+`pgmq` queue tables can be created as a partitioned table by using `pgmq_create_partitioned()`. [pg_partman](https://github.com/pgpartman/pg_partman/)
 handles all maintenance of queue tables. This includes creating new partitions and dropping old partitions.
 
-Partitions behavior is configured at the time queues are created, via `pgmq_create_partitioned()`. This function has a three parameters:
+Partitions behavior is configured at the time queues are created, via `pgmq_create_partitioned()`. This function has three parameters:
 
-`queue_name: text` : The name of the queue. Queues are Postgres tables prepended with `pgmq_`. For example, `pgmq_my_queue`.
-
-
-`partition_interval: text` - The interval at which partitions are created. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, queues are partitioned by the time at which messages are sent to the table (`enqueued_at`). A value of `daily'` would create a new partition each day. When it is an integer value, queues are partitioned by the `msg_id`. A value of `'100'` will create a new partition every 100 messages. The value must agree with `retention_interval` (time based or numeric). The default value is `daily`.
+`queue_name: text`: The name of the queue. Queues are Postgres tables prepended with `pgmq_`. For example, `pgmq_my_queue`.
 
 
-`retention_interval: text` - The interval for retaining partitions. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, partitions containing data greater than the duration will be dropped. When it is an integer value,any messages that have a `msg_id` less than `max(msg_id) - retention_interval` will be dropped. For example, if the max `msg_id` is 100 and the `retention_interval` is 60, any partitions with `msg_id` values less than 40 will be dropped. The value must agree with `partition_interval` (time based or numeric). The default is `'5 days'`. Note: `retention_interval` does not apply to messages that have been deleted via `pgmq_delete()` or archived with `pgmq_archive()`. `pgmq_delete()` removes messages forever and `pgmq_archive()` moves messages to a the corresponding archive table forever (for example, `pgmq_my_queue_archive`).
+`partition_interval: text` - The interval at which partitions are created. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, queues are partitioned by the time at which messages are sent to the table (`enqueued_at`). A value of `'daily'` would create a new partition each day. When it is an integer value, queues are partitioned by the `msg_id`. A value of `'100'` will create a new partition every 100 messages. The value must agree with `retention_interval` (time based or numeric). The default value is `daily`.
+
+
+`retention_interval: text` - The interval for retaining partitions. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, partitions containing data greater than the duration will be dropped. When it is an integer value, any messages that have a `msg_id` less than `max(msg_id) - retention_interval` will be dropped. For example, if the max `msg_id` is 100 and the `retention_interval` is 60, any partitions with `msg_id` values less than 40 will be dropped. The value must agree with `partition_interval` (time based or numeric). The default is `'5 days'`. Note: `retention_interval` does not apply to messages that have been deleted via `pgmq_delete()` or archived with `pgmq_archive()`. `pgmq_delete()` removes messages forever and `pgmq_archive()` moves messages to the corresponding archive table forever (for example, `pgmq_my_queue_archive`).
 
 
 In order for automatic partition maintenance to take place, several settings must be added to the `postgresql.conf` file, which is typically located in the postgres `DATADIR`.
