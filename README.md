@@ -40,9 +40,12 @@ If you'd like to build from source, you can follow the instructions in [CONTRIBU
 
 ## Client Libraries
 
-
 - [Rust](https://github.com/tembo-io/pgmq/tree/main/core)
 - [Python](https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python)
+
+Community
+
+- [Go](https://github.com/craigpastro/pgmq-go)
 
 ## SQL Examples
 
@@ -235,3 +238,11 @@ pg_partman_bgw.dbname = 'postgres'
 ## Visibility Timeout (vt)
 
 pgmq guarantees exactly once delivery of a message within a visibility timeout. The visibility timeout is the amount of time a message is invisible to other consumers after it has been read by a consumer. If the message is NOT deleted or archived within the visibility timeout, it will become visible again and can be read by another consumer. The visibility timeout is set when a message is read from the queue, via `pgmq_read()`. It is recommended to set a `vt` value that is greater than the expected time it takes to process a message. After the application successfully processes the message, it should call `pgmq_delete()` to completely remove the message from the queue or `pgmq_archive()` to move it to the archive table for the queue.
+
+## ✨ Contributors
+
+Thanks goes to these incredible people:
+
+<a href="https://github.com/tembo-io/pgmq/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=tembo-io/pgmq" />
+</a>
