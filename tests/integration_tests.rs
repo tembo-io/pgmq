@@ -105,6 +105,11 @@ async fn test_lifecycle() {
         .await
         .expect("failed creating duration queue");
 
+    let _ = sqlx::query("CREATE EXTENSION pg_partman")
+        .execute(&conn)
+        .await
+        .expect("failed to create extension");
+
     // CREATE with 10 messages per partition, 20 messages retention
     let test_numeric_queue = format!("test_numeric_{test_num}");
     let _ = sqlx::query(&format!(
