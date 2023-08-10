@@ -98,7 +98,7 @@ fn enqueue_str(name: &str) -> Result<String, PgmqError> {
     Ok(format!(
         "
         INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt, message)
-        VALUES (now() at time zone 'utc', $1)
+        VALUES (now(), $1)
         RETURNING msg_id;
         "
     ))
@@ -310,7 +310,7 @@ fn pgmq_set_vt(
     let query = format!(
         "
         UPDATE {TABLE_PREFIX}_{queue_name}
-        SET vt = (now() at time zone 'utc' + interval '{vt_offset} seconds')
+        SET vt = (now() + interval '{vt_offset} seconds')
         WHERE msg_id = $1
         RETURNING *;
         "
