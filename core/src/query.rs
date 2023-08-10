@@ -35,7 +35,7 @@ pub fn create_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (
             msg_id BIGSERIAL NOT NULL,
             read_ct INT DEFAULT 0 NOT NULL,
-            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
+            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             vt TIMESTAMP WITH TIME ZONE NOT NULL,
             message JSONB
         );
@@ -49,8 +49,8 @@ pub fn create_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (
             msg_id BIGSERIAL NOT NULL,
             read_ct INT DEFAULT 0 NOT NULL,
-            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
-            deleted_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
+            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+            deleted_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             vt TIMESTAMP WITH TIME ZONE NOT NULL,
             message JSONB
         );
@@ -63,7 +63,7 @@ pub fn create_meta() -> String {
         "
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (
             queue_name VARCHAR UNIQUE NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
         );
         "
     )
@@ -183,9 +183,7 @@ pub fn enqueue(
     check_input(name)?;
     let mut values = "".to_owned();
     for message in messages.iter() {
-        let full_msg = format!(
-            "((now() at time zone 'utc' + interval '{delay} seconds'), '{message}'::json),"
-        );
+        let full_msg = format!("((now() + interval '{delay} seconds'), '{message}'::json),");
         values.push_str(&full_msg)
     }
     // drop trailing comma from constructed string
@@ -207,14 +205,14 @@ pub fn read(name: &str, vt: &i32, limit: &i32) -> Result<String, PgmqError> {
         (
             SELECT msg_id
             FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
-            WHERE vt <= now() at time zone 'utc'
+            WHERE vt <= now()
             ORDER BY msg_id ASC
             LIMIT {limit}
             FOR UPDATE SKIP LOCKED
         )
     UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
     SET
-        vt = (now() at time zone 'utc' + interval '{vt} seconds'),
+        vt = now() + interval '{vt} seconds',
         read_ct = read_ct + 1
     WHERE msg_id in (select msg_id from cte)
     RETURNING *;
@@ -287,7 +285,7 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
             (
                 SELECT msg_id
                 FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
-                WHERE vt <= now() at time zone 'utc'
+                WHERE vt <= now()
                 ORDER BY msg_id ASC
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED
