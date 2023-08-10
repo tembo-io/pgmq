@@ -15,7 +15,8 @@ use pgmq_crate::query::{
 };
 use thiserror::Error;
 
-extension_sql!("
+extension_sql!(
+    "
     CREATE TABLE IF NOT EXISTS public.pgmq_meta (
       queue_name VARCHAR UNIQUE NOT NULL,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL
@@ -32,7 +33,9 @@ extension_sql!("
     END;
     $$ LANGUAGE plpgsql;
 
-", name="pgmq_bootstrap");
+",
+    name = "pgmq_bootstrap"
+);
 
 #[derive(Error, Debug)]
 enum PgmqExtError {
