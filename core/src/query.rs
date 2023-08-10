@@ -8,13 +8,11 @@ pub const PGMQ_SCHEMA: &str = "public";
 pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
-        create_meta(),
         create_queue(name)?,
         create_index(name)?,
         create_archive(name)?,
         create_archive_index(name)?,
         insert_meta(name)?,
-        grant_pgmon_meta(),
         grant_pgmon_queue(name)?,
     ])
 }
@@ -58,17 +56,6 @@ pub fn create_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn create_meta() -> String {
-    format!(
-        "
-        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (
-            queue_name VARCHAR UNIQUE NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL
-        );
-        "
-    )
-}
-
 fn grant_stmt(table: &str) -> String {
     format!(
         "
@@ -84,12 +71,6 @@ END;
 $$ LANGUAGE plpgsql;
 "
     )
-}
-
-// pg_monitor needs to query queue metadata
-pub fn grant_pgmon_meta() -> String {
-    let table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_meta");
-    grant_stmt(&table)
 }
 
 // pg_monitor needs to query queue tables
