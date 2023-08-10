@@ -442,7 +442,7 @@ mod tests {
         let partition_interval = "2".to_owned();
         let retention_interval = "2".to_owned();
 
-        let _ = Spi::run("DROP EXTENSION IF EXISTS pg_partman").expect("SQL select failed");
+        let _ = Spi::run("DROP EXTENSION IF EXISTS pg_partman").expect("Failed dropping pg_partman");
 
         let failed = pgmq_create_partitioned(
             &qname,
@@ -451,7 +451,7 @@ mod tests {
         );
         assert!(failed.is_err());
 
-        let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman").expect("SQL select failed");
+        let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman").expect("Failed creating pg_partman");
         let _ = pgmq_create_partitioned(&qname, partition_interval, retention_interval).unwrap();
 
         let queues = api::listit().unwrap();
