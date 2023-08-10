@@ -54,7 +54,7 @@ RUN apt-get update && apt-get install -y \
 COPY ./postgresql.conf /usr/share/postgresql/${PG_MAJOR}/postgresql.conf.sample
 
 RUN trunk install pg_partman
-RUN trunk install pgmq --version 0.11.0
+RUN trunk install pgmq --version 0.11.2
 
 COPY docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["docker-entrypoint.sh"]
