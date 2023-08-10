@@ -301,10 +301,23 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
 
 /// panics if input is invalid. otherwise does nothing.
 pub fn check_input(input: &str) -> Result<(), PgmqError> {
-    let valid = input
+    // Docs:
+    // https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+
+    // Default value of `NAMEDATALEN`, set in `src/include/pg_config_manual.h`
+    const NAMEDATALEN: usize = 64;
+    // The maximum length of an identifier.
+    // Longer names can be used in commands, but they'll be truncated
+    const MAX_IDENTIFIER_LEN: usize = NAMEDATALEN - 1;
+    // The max length of a PGMQ table, considering its prefix
+    const MAX_PGMQ_TABLE_LEN: usize = MAX_IDENTIFIER_LEN - TABLE_PREFIX.len();
+
+    let is_short_enough = input.len() <= MAX_PGMQ_TABLE_LEN;
+    let has_valid_characters = input
         .as_bytes()
         .iter()
         .all(|&c| c.is_ascii_alphanumeric() || c == b'_');
+    let valid = is_short_enough && has_valid_characters;
     match valid {
         true => Ok(()),
         false => Err(PgmqError::InvalidQueueName {
