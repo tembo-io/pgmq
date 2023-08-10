@@ -55,7 +55,7 @@ fn create_partitioned_queue(
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue} (
             msg_id BIGSERIAL NOT NULL,
             read_ct INT DEFAULT 0 NOT NULL,
-            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
+            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             vt TIMESTAMP WITH TIME ZONE NOT NULL,
             message JSONB
         ) PARTITION BY RANGE ({partition_col});
