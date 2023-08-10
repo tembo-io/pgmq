@@ -38,7 +38,7 @@ async fn test_lifecycle() {
         .expect("failed to create extension");
 
     // pgmq meta was created
-    let _ = sqlx::query("'public.pgmq_meta'::regclass")
+    let _ = sqlx::query("select 'public.pgmq_meta'::regclass")
         .execute(&conn)
         .await
         .expect("pgmq_meta table doesn't exist");
