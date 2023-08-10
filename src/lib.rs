@@ -310,7 +310,7 @@ fn pgmq_set_vt(
     let query = format!(
         "
         UPDATE {TABLE_PREFIX}_{queue_name}
-        SET vt = now() + interval '{vt_offset} seconds'
+        SET vt = (now() + interval '{vt_offset} seconds')
         WHERE msg_id = $1
         RETURNING *;
         "

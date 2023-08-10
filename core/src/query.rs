@@ -183,7 +183,7 @@ pub fn enqueue(
     check_input(name)?;
     let mut values = "".to_owned();
     for message in messages.iter() {
-        let full_msg = format!("now() + interval '{delay} seconds', '{message}'::json),");
+        let full_msg = format!("((now() + interval '{delay} seconds'), '{message}'::json),");
         values.push_str(&full_msg)
     }
     // drop trailing comma from constructed string
