@@ -37,6 +37,12 @@ async fn test_lifecycle() {
         .await
         .expect("failed to create extension");
 
+    // pgmq meta was created
+    let _ = sqlx::query("'public.pgmq_meta'::regclass")
+        .execute(&conn)
+        .await
+        .expect("pgmq_meta table doesn't exist");
+
     // CREATE with default retention and partition strategy
     let test_default_queue = format!("test_default_{test_num}");
     let _ = sqlx::query(&format!("SELECT pgmq_create('{test_default_queue}');"))
