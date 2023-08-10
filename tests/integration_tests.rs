@@ -97,6 +97,11 @@ async fn test_lifecycle() {
         .expect("expected message");
     assert_eq!(message.msg_id, 1);
 
+    let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_partman")
+        .execute(&conn)
+        .await
+        .expect("failed to create extension");
+
     // CREATE with 5 seconds per partition, 10 seconds retention
     let test_duration_queue = format!("test_duration_{test_num}");
     let q = format!("SELECT \"pgmq_create_partitioned\"('{test_duration_queue}'::text, '5 seconds'::text, '10 seconds'::text);");
@@ -104,11 +109,6 @@ async fn test_lifecycle() {
         .execute(&conn)
         .await
         .expect("failed creating duration queue");
-
-    let _ = sqlx::query("CREATE EXTENSION pg_partman")
-        .execute(&conn)
-        .await
-        .expect("failed to create extension");
 
     // CREATE with 10 messages per partition, 20 messages retention
     let test_numeric_queue = format!("test_numeric_{test_num}");
