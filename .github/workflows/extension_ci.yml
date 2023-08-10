@@ -70,8 +70,8 @@ jobs:
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
           sudo make install && cd ../
-          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.3/pgrx-install/share/postgresql/extension/
-          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.3/pgrx-install/lib/postgresql/
+          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.4/pgrx-install/share/postgresql/extension/
+          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.4/pgrx-install/lib/postgresql/
           rm -rf ./target/pgrx-test-data-* || true
           pg_version=$(stoml Cargo.toml features.default)
           cargo pgrx run ${pg_version} --pgcli || true
