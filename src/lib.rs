@@ -149,7 +149,7 @@ fn readit(
     )> = Vec::new();
 
     let _: Result<(), PgmqExtError> = Spi::connect(|mut client| {
-        let query = read(queue_name, &vt, &limit)?;
+        let query = read(queue_name, vt, limit)?;
         let tup_table: SpiTupleTable = client.update(&query, None, None)?;
         results.reserve_exact(tup_table.len());
 
