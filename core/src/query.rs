@@ -197,7 +197,7 @@ pub fn enqueue(
     ))
 }
 
-pub fn read(name: &str, vt: &i32, limit: &i32) -> Result<String, PgmqError> {
+pub fn read(name: &str, vt: i32, limit: i32) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "

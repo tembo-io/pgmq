@@ -533,14 +533,14 @@ impl PGMQueue {
     pub async fn read<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
-        vt: Option<&i32>,
+        vt: Option<i32>,
     ) -> Result<Option<Message<T>>, errors::PgmqError> {
         // map vt or default VT
         let vt_ = match vt {
             Some(t) => t,
-            None => &VT_DEFAULT,
+            None => VT_DEFAULT,
         };
-        let limit = &READ_LIMIT_DEFAULT;
+        let limit = READ_LIMIT_DEFAULT;
         let query = &query::read(queue_name, vt_, limit)?;
         let message = fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
@@ -614,13 +614,13 @@ impl PGMQueue {
     pub async fn read_batch<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
-        vt: Option<&i32>,
-        num_msgs: &i32,
+        vt: Option<i32>,
+        num_msgs: i32,
     ) -> Result<Option<Vec<Message<T>>>, errors::PgmqError> {
         // map vt or default VT
         let vt_ = match vt {
             Some(t) => t,
-            None => &VT_DEFAULT,
+            None => VT_DEFAULT,
         };
         let query = &query::read(queue_name, vt_, num_msgs)?;
         let messages = fetch_messages::<T>(query, &self.connection).await?;
