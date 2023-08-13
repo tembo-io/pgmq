@@ -171,7 +171,7 @@ fn readit(
 #[pg_extern]
 fn pgmq_delete(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtError> {
     let mut num_deleted = 0;
-    let query = delete(queue_name, &msg_id)?;
+    let query = delete(queue_name, msg_id)?;
     Spi::connect(|mut client| {
         let tup_table = client.update(&query, None, None);
         match tup_table {
@@ -197,7 +197,7 @@ fn pgmq_delete(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtErr
 #[pg_extern]
 fn pgmq_archive(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtError> {
     let mut num_deleted = 0;
-    let query = archive(queue_name, &msg_id)?;
+    let query = archive(queue_name, msg_id)?;
     Spi::connect(|mut client| {
         let tup_table = client.update(&query, None, None);
         match tup_table {

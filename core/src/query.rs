@@ -340,7 +340,7 @@ mod tests {
         let vt: i32 = 20;
         let limit: i32 = 1;
 
-        let query = read(&qname, &vt, &limit).unwrap();
+        let query = read(&qname, vt, limit).unwrap();
 
         assert!(query.contains(&qname));
         assert!(query.contains(&vt.to_string()));
@@ -351,7 +351,7 @@ mod tests {
         let qname = "myqueue";
         let msg_id: i64 = 42;
 
-        let query = delete(&qname, &msg_id).unwrap();
+        let query = delete(&qname, msg_id).unwrap();
 
         assert!(query.contains(&qname));
         assert!(query.contains(&msg_id.to_string()));
