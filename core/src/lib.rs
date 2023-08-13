@@ -236,7 +236,7 @@ impl PGMQueue {
         let mut tx = self.connection.begin().await?;
         let setup = query::init_queue(queue_name)?;
         for q in setup {
-            sqlx::query(&q).execute(&mut tx).await?;
+            sqlx::query(&q).execute(&mut *tx).await?;
         }
         tx.commit().await?;
         Ok(())
@@ -270,7 +270,7 @@ impl PGMQueue {
         let mut tx = self.connection.begin().await?;
         let setup = query::destroy_queue(queue_name)?;
         for q in setup {
-            sqlx::query(&q).execute(&mut tx).await?;
+            sqlx::query(&q).execute(&mut *tx).await?;
         }
         tx.commit().await?;
         Ok(())

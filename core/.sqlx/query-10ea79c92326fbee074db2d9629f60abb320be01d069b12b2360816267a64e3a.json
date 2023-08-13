@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * from pgmq_list_queues();",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "queue_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "10ea79c92326fbee074db2d9629f60abb320be01d069b12b2360816267a64e3a"
+}

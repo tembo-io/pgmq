@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * from pgmq_drop_queue($1::text);",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pgmq_drop_queue",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9919286cee87946b387f69e67df94f94eb0acdd3b5f4848faf092c55d484b61a"
+}

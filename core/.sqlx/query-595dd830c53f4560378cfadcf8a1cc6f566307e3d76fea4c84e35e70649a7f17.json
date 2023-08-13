@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * from pgmq_archive($1::text, $2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pgmq_archive",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "595dd830c53f4560378cfadcf8a1cc6f566307e3d76fea4c84e35e70649a7f17"
+}

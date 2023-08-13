@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * from pgmq_read($1::text, $2, $3)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "msg_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "read_ct",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "vt",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "enqueued_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "message",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "c89ad5584222a1f9c0d505fe58bf035d68d033047176b106e289ad6842f49972"
+}
