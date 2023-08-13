@@ -220,7 +220,7 @@ pub fn read(name: &str, vt: i32, limit: i32) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn delete(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
+pub fn delete(name: &str, msg_id: i64) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
@@ -230,7 +230,7 @@ pub fn delete(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn set_vt(name: &str, msg_id: &i64, vt: &chrono::DateTime<Utc>) -> Result<String, PgmqError> {
+pub fn set_vt(name: &str, msg_id: i64, vt: chrono::DateTime<Utc>) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
@@ -261,7 +261,7 @@ pub fn delete_batch(name: &str, msg_ids: &[i64]) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn archive(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
+pub fn archive(name: &str, msg_id: i64) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "

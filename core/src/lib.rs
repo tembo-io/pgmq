@@ -671,7 +671,7 @@ impl PGMQueue {
     ///
     ///     Ok(())
     /// }
-    pub async fn delete(&self, queue_name: &str, msg_id: &i64) -> Result<u64, PgmqError> {
+    pub async fn delete(&self, queue_name: &str, msg_id: i64) -> Result<u64, PgmqError> {
         let query = &query::delete(queue_name, msg_id)?;
         let row = sqlx::query(query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
@@ -763,7 +763,7 @@ impl PGMQueue {
     ///
     ///     Ok(())
     /// }
-    pub async fn archive(&self, queue_name: &str, msg_id: &i64) -> Result<u64, PgmqError> {
+    pub async fn archive(&self, queue_name: &str, msg_id: i64) -> Result<u64, PgmqError> {
         let query = query::archive(queue_name, msg_id)?;
         let row = sqlx::query(&query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
@@ -869,8 +869,8 @@ impl PGMQueue {
     pub async fn set_vt<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
-        msg_id: &i64,
-        vt: &chrono::DateTime<Utc>,
+        msg_id: i64,
+        vt: chrono::DateTime<Utc>,
     ) -> Result<Option<Message<T>>, errors::PgmqError> {
         let query = &query::set_vt(queue_name, msg_id, vt)?;
         let updated_message = fetch_one_message::<T>(query, &self.connection).await?;
