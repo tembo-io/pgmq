@@ -197,7 +197,7 @@ pub fn enqueue(
     ))
 }
 
-pub fn read(name: &str, vt: &i32, limit: &i32) -> Result<String, PgmqError> {
+pub fn read(name: &str, vt: i32, limit: i32) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
@@ -220,7 +220,7 @@ pub fn read(name: &str, vt: &i32, limit: &i32) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn delete(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
+pub fn delete(name: &str, msg_id: i64) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
@@ -230,7 +230,7 @@ pub fn delete(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn set_vt(name: &str, msg_id: &i64, vt: &chrono::DateTime<Utc>) -> Result<String, PgmqError> {
+pub fn set_vt(name: &str, msg_id: i64, vt: chrono::DateTime<Utc>) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
@@ -261,7 +261,7 @@ pub fn delete_batch(name: &str, msg_ids: &[i64]) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn archive(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
+pub fn archive(name: &str, msg_id: i64) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
@@ -353,7 +353,7 @@ mod tests {
         let vt: i32 = 20;
         let limit: i32 = 1;
 
-        let query = read(&qname, &vt, &limit).unwrap();
+        let query = read(&qname, vt, limit).unwrap();
 
         assert!(query.contains(&qname));
         assert!(query.contains(&vt.to_string()));
@@ -364,7 +364,7 @@ mod tests {
         let qname = "myqueue";
         let msg_id: i64 = 42;
 
-        let query = delete(&qname, &msg_id).unwrap();
+        let query = delete(&qname, msg_id).unwrap();
 
         assert!(query.contains(&qname));
         assert!(query.contains(&msg_id.to_string()));
