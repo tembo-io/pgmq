@@ -307,8 +307,8 @@ pub fn check_input(input: &str) -> Result<(), PgmqError> {
     // The maximum length of an identifier.
     // Longer names can be used in commands, but they'll be truncated
     const MAX_IDENTIFIER_LEN: usize = NAMEDATALEN - 1;
-    // The max length of a PGMQ table, considering its prefix
-    const MAX_PGMQ_TABLE_LEN: usize = MAX_IDENTIFIER_LEN - TABLE_PREFIX.len();
+    // The max length of a PGMQ table, considering its prefix and the underline after it (e.g. "pgmq_")
+    const MAX_PGMQ_TABLE_LEN: usize = MAX_IDENTIFIER_LEN - TABLE_PREFIX.len() - 1;
 
     let is_short_enough = input.len() <= MAX_PGMQ_TABLE_LEN;
     let has_valid_characters = input
@@ -384,6 +384,18 @@ mod tests {
         for id in msg_ids.iter() {
             assert!(query.contains(&id.to_string()));
         }
+    }
+
+    #[test]
+    fn check_input_rejects_names_too_large() {
+        let table_name = "my_valid_table_name";
+        assert!(check_input(table_name).is_ok());
+
+        assert!(check_input(&"a".repeat(58)).is_ok());
+
+        assert!(check_input(&"a".repeat(59)).is_err());
+        assert!(check_input(&"a".repeat(60)).is_err());
+        assert!(check_input(&"a".repeat(70)).is_err());
     }
 
     #[test]
