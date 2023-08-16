@@ -65,7 +65,9 @@ class PGMQueue:
         """
 
         with self.pool.connection() as conn:
-            conn.execute("select pgmq.pgmq_create(%s, %s::text, %s::text);", [queue, partition_interval, retention_interval])
+            conn.execute(
+                "select pgmq.pgmq_create(%s, %s::text, %s::text);", [queue, partition_interval, retention_interval]
+            )
 
     def create_queue(self, queue: str) -> None:
         """Create a new queue
@@ -100,7 +102,9 @@ class PGMQueue:
     def read_batch(self, queue: str, vt: Optional[int] = None, batch_size=1) -> Optional[list[Message]]:
         """Read abatch of messages from a queue"""
         with self.pool.connection() as conn:
-            rows = conn.execute("select * from pgmq.pgmq_read(%s, %s, %s);", [queue, vt or self.vt, batch_size]).fetchall()
+            rows = conn.execute(
+                "select * from pgmq.pgmq_read(%s, %s, %s);", [queue, vt or self.vt, batch_size]
+            ).fetchall()
 
         return [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
 
