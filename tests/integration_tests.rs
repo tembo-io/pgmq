@@ -1,3 +1,4 @@
+use pgmq_crate::query::PGMQ_SCHEMA;
 use pgmq_crate::util::{conn_options, fetch_one_message};
 use rand::Rng;
 use sqlx::postgres::PgPoolOptions;
@@ -39,13 +40,15 @@ async fn test_lifecycle() {
 
     // CREATE with default retention and partition strategy
     let test_default_queue = format!("test_default_{test_num}");
-    let _ = sqlx::query(&format!("SELECT pgmq.pgmq_create('{test_default_queue}');"))
-        .execute(&conn)
-        .await
-        .expect("failed to create queue");
+    let _ = sqlx::query(&format!(
+        "SELECT {PGMQ_SCHEMA}.pgmq_create('{test_default_queue}');"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to create queue");
 
     let msg_id = sqlx::query(&format!(
-        "SELECT * from pgmq.pgmq_send('{test_default_queue}', '{{\"hello\": \"world\"}}');"
+        "SELECT * from {PGMQ_SCHEMA}.pgmq_send('{test_default_queue}', '{{\"hello\": \"world\"}}');"
     ))
     .fetch_one(&conn)
     .await
@@ -55,7 +58,7 @@ async fn test_lifecycle() {
 
     // read message
     // vt=2, limit=1
-    let query = &format!("SELECT * from pgmq.pgmq_read('{test_default_queue}', 2, 1);");
+    let query = &format!("SELECT * from {PGMQ_SCHEMA}.pgmq_read('{test_default_queue}', 2, 1);");
 
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
@@ -64,8 +67,9 @@ async fn test_lifecycle() {
     assert_eq!(message.msg_id, 1);
 
     // set VT to tomorrow
-    let query =
-        &format!("SELECT * from pgmq.pgmq_set_vt('{test_default_queue}', {msg_id}, 84600);");
+    let query = &format!(
+        "SELECT * from {PGMQ_SCHEMA}.pgmq_set_vt('{test_default_queue}', {msg_id}, 84600);"
+    );
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
         .expect("failed reading message")
@@ -76,14 +80,15 @@ async fn test_lifecycle() {
     assert!(message.vt > now + chrono::Duration::seconds(84000));
 
     // read again, assert no messages because we just set VT to tomorrow
-    let query = &format!("SELECT * from pgmq.pgmq_read('{test_default_queue}', 2, 1);");
+    let query = &format!("SELECT * from {PGMQ_SCHEMA}.pgmq_read('{test_default_queue}', 2, 1);");
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
         .expect("failed reading message");
     assert!(message.is_none());
 
     // set VT to now
-    let query = &format!("SELECT * from pgmq.pgmq_set_vt('{test_default_queue}', {msg_id}, 0);");
+    let query =
+        &format!("SELECT * from {PGMQ_SCHEMA}.pgmq_set_vt('{test_default_queue}', {msg_id}, 0);");
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
         .expect("failed reading message")
@@ -91,7 +96,7 @@ async fn test_lifecycle() {
     assert_eq!(message.msg_id, 1);
 
     // read again, should have msg_id 1 again
-    let query = &format!("SELECT * from pgmq.pgmq_read('{test_default_queue}', 2, 1);");
+    let query = &format!("SELECT * from {PGMQ_SCHEMA}.pgmq_read('{test_default_queue}', 2, 1);");
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
         .expect("failed reading message")
@@ -105,7 +110,7 @@ async fn test_lifecycle() {
 
     // CREATE with 5 seconds per partition, 10 seconds retention
     let test_duration_queue = format!("test_duration_{test_num}");
-    let q = format!("SELECT \"pgmq.pgmq_create_partitioned\"('{test_duration_queue}'::text, '5 seconds'::text, '10 seconds'::text);");
+    let q = format!("SELECT {PGMQ_SCHEMA}.pgmq_create_partitioned('{test_duration_queue}'::text, '5 seconds'::text, '10 seconds'::text);");
     let _ = sqlx::query(&q)
         .execute(&conn)
         .await
@@ -114,7 +119,7 @@ async fn test_lifecycle() {
     // CREATE with 10 messages per partition, 20 messages retention
     let test_numeric_queue = format!("test_numeric_{test_num}");
     let _ = sqlx::query(&format!(
-        "SELECT \"pgmq.pgmq_create_partitioned\"('{test_numeric_queue}'::text, '10'::text, '20'::text);"
+        "SELECT {PGMQ_SCHEMA}.pgmq_create_partitioned('{test_numeric_queue}'::text, '10'::text, '20'::text);"
     ))
     .execute(&conn)
     .await
@@ -133,7 +138,7 @@ async fn test_lifecycle() {
 
     // get metrics
     let rows = sqlx::query_as::<_, MetricsRow>(&format!(
-        "SELECT * from pgmq.pgmq_metrics('{test_duration_queue}'::text);"
+        "SELECT * from {PGMQ_SCHEMA}.pgmq_metrics('{test_duration_queue}'::text);"
     ))
     .fetch_all(&conn)
     .await
@@ -141,10 +146,12 @@ async fn test_lifecycle() {
     assert_eq!(rows.len(), 1);
 
     // get metrics all
-    let rows = sqlx::query_as::<_, MetricsRow>(&format!("SELECT * from pgmq.pgmq_metrics_all();"))
-        .fetch_all(&conn)
-        .await
-        .expect("failed creating numeric interval queue");
+    let rows = sqlx::query_as::<_, MetricsRow>(&format!(
+        "SELECT * from {PGMQ_SCHEMA}.pgmq_metrics_all();"
+    ))
+    .fetch_all(&conn)
+    .await
+    .expect("failed creating numeric interval queue");
     assert!(rows.len() > 1);
 
     // delete all the queues
@@ -156,30 +163,37 @@ async fn test_lifecycle() {
 
     // delete partitioned queues
     for queue in [test_duration_queue, test_numeric_queue].iter() {
-        sqlx::query(&format!("select pgmq.pgmq_drop_queue('{}', true);", &queue))
-            .execute(&conn)
-            .await
-            .expect("failed to drop partitioned queues");
+        sqlx::query(&format!(
+            "select {PGMQ_SCHEMA}.pgmq_drop_queue('{}', true);",
+            &queue
+        ))
+        .execute(&conn)
+        .await
+        .expect("failed to drop partitioned queues");
     }
 
-    let queues = sqlx::query_as::<_, QueueMeta>("select queue_name from pgmq_list_queues();")
-        .fetch_all(&conn)
-        .await
-        .expect("failed to list queues");
+    let queues = sqlx::query_as::<_, QueueMeta>(&format!(
+        "select queue_name from {PGMQ_SCHEMA}.pgmq_list_queues();"
+    ))
+    .fetch_all(&conn)
+    .await
+    .expect("failed to list queues");
 
     // drop the rest of the queues
     for queue in queues {
         let q = queue.queue_name;
-        sqlx::query(&format!("select pgmq.pgmq_drop_queue('{}');", &q))
+        sqlx::query(&format!("select {PGMQ_SCHEMA}.pgmq_drop_queue('{}');", &q))
             .execute(&conn)
             .await
             .expect("failed to drop standard queues");
     }
 
-    let queues = sqlx::query_as::<_, QueueMeta>("select queue_name from pgmq_list_queues();")
-        .fetch_all(&conn)
-        .await
-        .expect("failed to list queues");
+    let queues = sqlx::query_as::<_, QueueMeta>(&format!(
+        "select queue_name from {PGMQ_SCHEMA}.pgmq_list_queues();"
+    ))
+    .fetch_all(&conn)
+    .await
+    .expect("failed to list queues");
     assert!(queues.is_empty());
 
     #[allow(dead_code)]

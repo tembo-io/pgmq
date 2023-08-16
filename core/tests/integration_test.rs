@@ -536,7 +536,7 @@ async fn test_archive() {
     let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
     // archived record is no longer on the queue
     assert_eq!(num_rows_queue, 0);
-    let num_rows_archive = rowcount(&format!("{test_queue}_archive"), &queue.connection).await;
+    let num_rows_archive = rowcount(&format!("pgmq.{test_queue}_archive"), &queue.connection).await;
     // archived record is now on the archive table
     assert_eq!(num_rows_archive, 1);
 }

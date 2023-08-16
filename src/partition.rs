@@ -95,7 +95,7 @@ fn create_partitioned_table(
 fn set_retention_config(queue: CheckedName<'_>, retention: &str) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        UPDATE {PGMQ_SCHEMA}.part_config
+        UPDATE {PARTMAN_SCHEMA}.part_config
         SET 
             retention = '{retention}',
             retention_keep_table = false,

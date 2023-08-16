@@ -319,7 +319,7 @@ fn pgmq_set_vt(
 
     let query = format!(
         "
-        UPDATE {TABLE_PREFIX}_{queue_name}
+        UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}
         SET vt = (now() + interval '{vt_offset} seconds')
         WHERE msg_id = $1
         RETURNING *;
@@ -354,23 +354,27 @@ mod tests {
     fn test_creat_non_partitioned() {
         let qname = r#"test_queue"#;
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
-        let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
-            .expect("SQL select failed");
+        let retval = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+        ))
+        .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
         let _ = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"}))).unwrap();
-        let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
-            .expect("SQL select failed");
+        let retval = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+        ))
+        .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
     }
 
     // assert an invisible message is not readable
     #[pg_test]
     fn test_default() {
-        let qname = r#"test_default"#;
+        let qname = "test_default";
+        let table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}");
         let _ = pgmq_create_non_partitioned(&qname);
-        let init_count =
-            Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
-                .expect("SQL select failed");
+        let init_count = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {table}"))
+            .expect("SQL select failed");
         // should not be any messages initially
         assert_eq!(init_count.unwrap(), 0);
 
@@ -380,9 +384,8 @@ mod tests {
         // read the message with the pg_extern, sets message invisible
         let _ = pgmq_read(&qname, 10_i32, 1_i32);
         // but still one record on the table
-        let init_count =
-            Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
-                .expect("SQL select failed");
+        let init_count = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {table}"))
+            .expect("SQL select failed");
         assert_eq!(init_count.unwrap(), 1);
 
         // pop the message, must not panic
@@ -424,9 +427,10 @@ mod tests {
         assert_eq!(nothing.len(), 0);
 
         // but still one record on the table
-        let init_count =
-            Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
-                .expect("SQL select failed");
+        let init_count = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+        ))
+        .expect("SQL select failed");
         assert_eq!(init_count.unwrap(), 1);
 
         //  delete the messages
@@ -438,9 +442,10 @@ mod tests {
         assert!(!delete1);
 
         // no records after delete
-        let init_count =
-            Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
-                .expect("SQL select failed");
+        let init_count = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+        ))
+        .expect("SQL select failed");
         assert_eq!(init_count.unwrap(), 0);
     }
 
@@ -493,9 +498,10 @@ mod tests {
         assert_eq!(nothing.len(), 0);
 
         // but still one record on the table
-        let init_count =
-            Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
-                .expect("SQL select failed");
+        let init_count = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+        ))
+        .expect("SQL select failed");
         assert_eq!(init_count.unwrap(), 1);
 
         //  delete the messages
@@ -507,9 +513,10 @@ mod tests {
         assert!(!delete1);
 
         // no records after delete
-        let init_count =
-            Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
-                .expect("SQL select failed");
+        let init_count = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+        ))
+        .expect("SQL select failed");
         assert_eq!(init_count.unwrap(), 0);
     }
 
@@ -519,31 +526,37 @@ mod tests {
         let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman").expect("SQL select failed");
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
         // no messages in the queue
-        let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
-            .expect("SQL select failed");
+        let retval = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+        ))
+        .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
         // no messages in queue archive
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {TABLE_PREFIX}_{qname}_archive"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}_archive"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
         // put a message on the queue
         let msg_id = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"}))).unwrap();
-        let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
-            .expect("SQL select failed");
+        let retval = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+        ))
+        .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
 
         // archive the message
         let archived = pgmq_archive(&qname, msg_id.unwrap()).unwrap().unwrap();
         assert!(archived);
         // should be no messages left on the queue table
-        let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
-            .expect("SQL select failed");
+        let retval = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+        ))
+        .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
         // but one on the archive table
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {TABLE_PREFIX}_{qname}_archive"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}_archive"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
