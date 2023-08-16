@@ -1,5 +1,5 @@
 use crate::errors::PgmqError;
-use crate::query::{check_input, TABLE_PREFIX};
+use crate::query::{check_input, PGMQ_SCHEMA, TABLE_PREFIX};
 use crate::util::connect;
 use crate::Message;
 use log::info;
@@ -57,7 +57,7 @@ impl PGMQueueExt {
     /// Errors when there is any database error and Ok(false) when the queue already exists.
     pub async fn create_partitioned(&self, queue_name: &str) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
-        let queue_table = format!("public.{TABLE_PREFIX}_{queue_name}");
+        let queue_table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}");
         // we need to check whether the queue exists first
         // pg_partman create operations are currently unable to be idempotent
         let exists_stmt = format!(
