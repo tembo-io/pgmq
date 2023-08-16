@@ -115,8 +115,8 @@ fn pgmq_read(
         (
             name!(msg_id, i64),
             name!(read_ct, i32),
-            name!(vt, TimestampWithTimeZone),
             name!(enqueued_at, TimestampWithTimeZone),
+            name!(vt, TimestampWithTimeZone),
             name!(message, pgrx::JsonB),
         ),
     >,
@@ -161,7 +161,7 @@ fn readit(
                 .value::<TimestampWithTimeZone>()?
                 .expect("no enqueue time");
             let message = row["message"].value::<pgrx::JsonB>()?.expect("no message");
-            results.push((msg_id, read_ct, vt, enqueued_at, message));
+            results.push((msg_id, read_ct, enqueued_at, vt, message));
         }
         Ok(())
     });
@@ -229,8 +229,8 @@ fn pgmq_pop(
         (
             name!(msg_id, i64),
             name!(read_ct, i32),
-            name!(vt, TimestampWithTimeZone),
             name!(enqueued_at, TimestampWithTimeZone),
+            name!(vt, TimestampWithTimeZone),
             name!(message, pgrx::JsonB),
         ),
     >,
@@ -270,7 +270,7 @@ fn popit(
                 .value::<TimestampWithTimeZone>()?
                 .expect("no enqueue time");
             let message = row["message"].value::<pgrx::JsonB>()?.expect("no message");
-            results.push((msg_id, read_ct, vt, enqueued_at, message));
+            results.push((msg_id, read_ct, enqueued_at, vt, message));
         }
         Ok(())
     });
