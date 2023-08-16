@@ -9,9 +9,12 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
         create_meta(),
+        assign_meta(),
         create_queue(name)?,
+        assign_queue(name)?,
         create_index(name)?,
         create_archive(name)?,
+        assign_archive(name)?,
         create_archive_index(name)?,
         insert_meta(name)?,
         grant_pgmon_meta(),
@@ -297,6 +300,18 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
         RETURNING *;
         "
     ))
+}
+
+pub fn assign_meta() -> String {
+    format!("ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta; ")
+}
+
+pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
+    Ok(format!("ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}; "))
+}
+
+pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
+    Ok(format!("ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive; "))
 }
 
 /// panics if input is invalid. otherwise does nothing.
