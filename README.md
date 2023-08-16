@@ -30,6 +30,7 @@ A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/s
 - [Configuration](#configuration)
   - [Partitioned Queues](#partitioned-queues)
   - [Visibility Timeout (vt)](#visibility-timeout-vt)
+  - [✨ Contributors](#-contributors)
 
 ## Installation
 
@@ -117,10 +118,10 @@ pgmq=# SELECT * from pgmq_read('my_queue', 30, 2);
 ```
 
 ```text
- msg_id | read_ct |              vt               |          enqueued_at          |    message
---------+---------+-------------------------------+-------------------------------+---------------
-      1 |       1 | 2023-02-07 04:56:00.650342-06 | 2023-02-07 04:54:51.530818-06 | {"foo":"bar1"}
-      2 |       1 | 2023-02-07 04:56:00.650342-06 | 2023-02-07 04:54:51.530818-06 | {"foo":"bar2"}
+ msg_id | read_ct |          enqueued_at          |              vt               |     message     
+--------+---------+-------------------------------+-------------------------------+-----------------
+      1 |       1 | 2023-08-16 08:37:54.567283-05 | 2023-08-16 08:38:29.989841-05 | {"foo": "bar1"}
+      2 |       1 | 2023-08-16 08:37:54.572933-05 | 2023-08-16 08:38:29.989841-05 | {"foo": "bar2"}
 ```
 
 If the queue is empty, or if all messages are currently invisible, no rows will be returned.
@@ -130,8 +131,8 @@ pgmq=# SELECT * from pgmq_read('my_queue', 30, 1);
 ```
 
 ```text
- msg_id | read_ct | vt | enqueued_at | message
---------+---------+----+-------------+---------
+ msg_id | read_ct | enqueued_at | vt | message 
+--------+---------+-------------+----+---------
 ```
 
 ### Pop a message
@@ -142,9 +143,9 @@ pgmq=# SELECT * from pgmq_pop('my_queue');
 ```
 
 ```text
- msg_id | read_ct |              vt               |          enqueued_at          |    message
---------+---------+-------------------------------+-------------------------------+---------------
-      1 |       2 | 2023-02-07 04:56:00.650342-06 | 2023-02-07 04:54:51.530818-06 | {"foo":"bar1"}
+ msg_id | read_ct |          enqueued_at          |              vt               |     message     
+--------+---------+-------------------------------+-------------------------------+-----------------
+      1 |       1 | 2023-08-16 08:37:54.567283-05 | 2023-08-16 08:38:29.989841-05 | {"foo": "bar1"}
 ```
 
 ### Archive a message
