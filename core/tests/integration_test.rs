@@ -1,5 +1,10 @@
 use chrono::{Duration, Utc};
-use pgmq::{self, query::{PGMQ_SCHEMA, TABLE_PREFIX}, util::connect, Message};
+use pgmq::{
+    self,
+    query::{PGMQ_SCHEMA, TABLE_PREFIX},
+    util::connect,
+    Message,
+};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

@@ -74,7 +74,7 @@ Every queue is its own table in Postgres. The table name is the queue name prefi
 
 -- params
 -- queue_name: text
-SELECT pgmq_create('my_queue');
+SELECT pgmq.pgmq_create('my_queue');
 ```
 
 ```text
@@ -89,8 +89,8 @@ SELECT pgmq_create('my_queue');
 ```sql
 -- messages are sent as JSON
 pgmq=#
-SELECT * from pgmq_send('my_queue', '{"foo": "bar1"}');
-SELECT * from pgmq_send('my_queue', '{"foo": "bar2"}');
+SELECT * from pgmq.pgmq_send('my_queue', '{"foo": "bar1"}');
+SELECT * from pgmq.pgmq_send('my_queue', '{"foo": "bar2"}');
 ```
 
 The message id is returned from the send function.
@@ -114,7 +114,7 @@ Read `2` message from the queue. Make them invisible for `30` seconds.
     and can be read by another consumer.
 
 ```sql
-pgmq=# SELECT * from pgmq_read('my_queue', 30, 2);
+pgmq=# SELECT * from pgmq.pgmq_read('my_queue', 30, 2);
 ```
 
 ```text
@@ -127,7 +127,7 @@ pgmq=# SELECT * from pgmq_read('my_queue', 30, 2);
 If the queue is empty, or if all messages are currently invisible, no rows will be returned.
 
 ```sql
-pgmq=# SELECT * from pgmq_read('my_queue', 30, 1);
+pgmq=# SELECT * from pgmq.pgmq_read('my_queue', 30, 1);
 ```
 
 ```text
@@ -139,7 +139,7 @@ pgmq=# SELECT * from pgmq_read('my_queue', 30, 1);
 
 ```sql
 -- Read a message and immediately delete it from the queue. Returns `None` if the queue is empty.
-pgmq=# SELECT * from pgmq_pop('my_queue');
+pgmq=# SELECT * from pgmq.pgmq_pop('my_queue');
 ```
 
 ```text
@@ -155,7 +155,7 @@ Archiving a message removes it from the queue, and inserts it to the archive tab
 Archive message with msg_id=2.
 
 ```sql
-pgmq=# SELECT * from pgmq_archive('my_queue', 2);
+pgmq=# SELECT * from pgmq.pgmq_archive('my_queue', 2);
 ```
 
 ```text
@@ -166,7 +166,7 @@ pgmq=# SELECT * from pgmq_archive('my_queue', 2);
 ```
 
 ```sql
-pgmq=#  SELECT * from pgmq_my_queue_archive;
+pgmq=#  SELECT * from pgmq.pgmq_my_queue_archive;
 ```
 
 ```text
@@ -180,7 +180,7 @@ pgmq=#  SELECT * from pgmq_my_queue_archive;
 Send another message, so that we can delete it.
 
 ```sql
-pgmq=# SELECT * from pgmq_send('my_queue', '{"foo": "bar3"}');
+pgmq=# SELECT * from pgmq.pgmq_send('my_queue', '{"foo": "bar3"}');
 ```
 
 ```text
@@ -193,7 +193,7 @@ pgmq=# SELECT * from pgmq_send('my_queue', '{"foo": "bar3"}');
 Delete the message with id `3` from the queue named `my_queue`.
 
 ```sql
-pgmq=# SELECT pgmq_delete('my_queue', 3);
+pgmq=# SELECT pgmq.pgmq_delete('my_queue', 3);
 ```
 
 ```text
@@ -208,7 +208,7 @@ pgmq=# SELECT pgmq_delete('my_queue', 3);
 Delete the queue `my_queue`.
 
 ```sql
-pgmq=# SELECT pgmq_drop_queue('my_queue');
+pgmq=# SELECT pgmq.pgmq_drop_queue('my_queue');
 ```
 
 ```text

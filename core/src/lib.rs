@@ -141,7 +141,7 @@
 //!
 //! ```sql
 //! SELECT *
-//! FROM pgmq_{your_queue_name}_archive;
+//! FROM pgmq.pgmq_{your_queue_name}_archive;
 //! ```
 //!
 
@@ -730,7 +730,7 @@ impl PGMQueue {
     /// Moves a message, by message id, from the queue table to archive table
     /// View messages on the archive table with sql:
     /// ```sql
-    /// SELECT * FROM pgmq_<queue_name>_archive;
+    /// SELECT * FROM pgmq.pgmq_<queue_name>_archive;
     /// ```
     ///
     /// Example:

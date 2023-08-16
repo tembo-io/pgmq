@@ -157,7 +157,7 @@ Read messages from the queue archive with SQL:
 
 ```sql
 SELECT *
-FROM pgmq_{your_queue_name}_archive;
+FROM pgmq.pgmq_{your_queue_name}_archive;
 ```
 
 

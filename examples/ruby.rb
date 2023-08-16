@@ -33,10 +33,10 @@ $stderr.puts '---',
 conn.exec( "CREATE EXTENSION if not exists pgmq CASCADE;" )
 
 # create the queue (will create a table pg_ using the queue name)
-conn.exec( "select * from pgmq_create('#{QUEUE_NAME}')" )
+conn.exec( "select * from pgmq.pgmq_create('#{QUEUE_NAME}')" )
 
 # list queues
-list_queues = conn.exec( "select * from pgmq_list_queues()" )
+list_queues = conn.exec( "select * from pgmq.pgmq_list_queues()" )
 $stderr.puts '---',
   "### Queues ###"
 
@@ -44,7 +44,7 @@ $stderr.puts list_queues.map { |queue| queue["queue_name"] }
 
 # send a message
 msg = "{yolo: 42}".to_json
-msg_result = conn.exec( "select * from pgmq_send('#{QUEUE_NAME}', '#{msg}') as msg_id;" )
+msg_result = conn.exec( "select * from pgmq.pgmq_send('#{QUEUE_NAME}', '#{msg}') as msg_id;" )
 msg_id = msg_result.first["msg_id"]
 
 $stderr.puts '---',
@@ -52,7 +52,7 @@ $stderr.puts '---',
   msg_id
 
 # read a message (making it unavailable for 1 second)
-msg_result = conn.exec( "select * from pgmq_read('#{QUEUE_NAME}', #{LOCK_TIMEOUT}, #{NUM_MSGS})" )
+msg_result = conn.exec( "select * from pgmq.pgmq_read('#{QUEUE_NAME}', #{LOCK_TIMEOUT}, #{NUM_MSGS})" )
 msg_row = msg_result.first
 
 $stderr.puts '---',
@@ -60,13 +60,13 @@ $stderr.puts '---',
   "msg_id: #{msg_row['msg_id']}, value: #{JSON.parse(msg_row['message']).to_s}"
 
 # delete a message (for a given ID)
-msg_result = conn.exec( "select pgmq_delete('#{QUEUE_NAME}', #{msg_id})" )
+msg_result = conn.exec( "select pgmq.pgmq_delete('#{QUEUE_NAME}', #{msg_id})" )
 $stderr.puts '---',
   "### msg delete: #{msg_id} ###",
   msg_result.values.flatten.first.to_s == "t" ? "true" : "false"
 
 # read up to 1000 messages
-msg_result = conn.exec( "select * from pgmq_read('#{QUEUE_NAME}', #{LOCK_TIMEOUT}, 1000)" )
+msg_result = conn.exec( "select * from pgmq.pgmq_read('#{QUEUE_NAME}', #{LOCK_TIMEOUT}, 1000)" )
 
 if msg_result.any?
   $stderr.puts '---',
