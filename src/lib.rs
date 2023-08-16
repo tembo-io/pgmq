@@ -98,7 +98,7 @@ fn enqueue_str(name: &str) -> Result<String, PgmqError> {
     Ok(format!(
         "
         INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt, message)
-        VALUES (now() at time zone 'utc', $1)
+        VALUES (now(), $1)
         RETURNING msg_id;
         "
     ))
@@ -115,8 +115,8 @@ fn pgmq_read(
         (
             name!(msg_id, i64),
             name!(read_ct, i32),
-            name!(vt, TimestampWithTimeZone),
             name!(enqueued_at, TimestampWithTimeZone),
+            name!(vt, TimestampWithTimeZone),
             name!(message, pgrx::JsonB),
         ),
     >,
@@ -149,7 +149,7 @@ fn readit(
     )> = Vec::new();
 
     let _: Result<(), PgmqExtError> = Spi::connect(|mut client| {
-        let query = read(queue_name, &vt, &limit)?;
+        let query = read(queue_name, vt, limit)?;
         let tup_table: SpiTupleTable = client.update(&query, None, None)?;
         results.reserve_exact(tup_table.len());
 
@@ -161,7 +161,7 @@ fn readit(
                 .value::<TimestampWithTimeZone>()?
                 .expect("no enqueue time");
             let message = row["message"].value::<pgrx::JsonB>()?.expect("no message");
-            results.push((msg_id, read_ct, vt, enqueued_at, message));
+            results.push((msg_id, read_ct, enqueued_at, vt, message));
         }
         Ok(())
     });
@@ -171,7 +171,7 @@ fn readit(
 #[pg_extern]
 fn pgmq_delete(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtError> {
     let mut num_deleted = 0;
-    let query = delete(queue_name, &msg_id)?;
+    let query = delete(queue_name, msg_id)?;
     Spi::connect(|mut client| {
         let tup_table = client.update(&query, None, None);
         match tup_table {
@@ -197,7 +197,7 @@ fn pgmq_delete(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtErr
 #[pg_extern]
 fn pgmq_archive(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtError> {
     let mut num_deleted = 0;
-    let query = archive(queue_name, &msg_id)?;
+    let query = archive(queue_name, msg_id)?;
     Spi::connect(|mut client| {
         let tup_table = client.update(&query, None, None);
         match tup_table {
@@ -229,8 +229,8 @@ fn pgmq_pop(
         (
             name!(msg_id, i64),
             name!(read_ct, i32),
-            name!(vt, TimestampWithTimeZone),
             name!(enqueued_at, TimestampWithTimeZone),
+            name!(vt, TimestampWithTimeZone),
             name!(message, pgrx::JsonB),
         ),
     >,
@@ -270,7 +270,7 @@ fn popit(
                 .value::<TimestampWithTimeZone>()?
                 .expect("no enqueue time");
             let message = row["message"].value::<pgrx::JsonB>()?.expect("no message");
-            results.push((msg_id, read_ct, vt, enqueued_at, message));
+            results.push((msg_id, read_ct, enqueued_at, vt, message));
         }
         Ok(())
     });
@@ -310,7 +310,7 @@ fn pgmq_set_vt(
     let query = format!(
         "
         UPDATE {TABLE_PREFIX}_{queue_name}
-        SET vt = (now() at time zone 'utc' + interval '{vt_offset} seconds')
+        SET vt = (now() + interval '{vt_offset} seconds')
         WHERE msg_id = $1
         RETURNING *;
         "
@@ -442,7 +442,8 @@ mod tests {
         let partition_interval = "2".to_owned();
         let retention_interval = "2".to_owned();
 
-        let _ = Spi::run("DROP EXTENSION IF EXISTS pg_partman").expect("SQL select failed");
+        let _ =
+            Spi::run("DROP EXTENSION IF EXISTS pg_partman").expect("Failed dropping pg_partman");
 
         let failed = pgmq_create_partitioned(
             &qname,
@@ -451,7 +452,8 @@ mod tests {
         );
         assert!(failed.is_err());
 
-        let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman").expect("SQL select failed");
+        let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman")
+            .expect("Failed creating pg_partman");
         let _ = pgmq_create_partitioned(&qname, partition_interval, retention_interval).unwrap();
 
         let queues = api::listit().unwrap();

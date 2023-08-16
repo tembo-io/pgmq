@@ -110,13 +110,13 @@ async fn test_lifecycle() {
     // READ MESSAGE
     let vt = 2;
     let msg1 = queue
-        .read::<Value>(&test_queue, Some(&vt))
+        .read::<Value>(&test_queue, Some(vt))
         .await
         .unwrap()
         .unwrap();
     assert_eq!(msg1.msg_id, 1);
     // no messages returned, and the one record on the table is invisible
-    let no_messages = queue.read::<Value>(&test_queue, Some(&vt)).await.unwrap();
+    let no_messages = queue.read::<Value>(&test_queue, Some(vt)).await.unwrap();
     assert!(no_messages.is_none());
     // still one invisible record on the table
     let num_rows = rowcount(&test_queue, &queue.connection).await;
@@ -127,16 +127,16 @@ async fn test_lifecycle() {
     // WAIT FOR VISIBILITY TIMEOUT TO EXPIRE
     tokio::time::sleep(std::time::Duration::from_secs(vt as u64)).await;
     let msg2 = queue
-        .read::<Value>(&test_queue, Some(&vt))
+        .read::<Value>(&test_queue, Some(vt))
         .await
         .unwrap()
         .unwrap();
     assert_eq!(msg2.msg_id, 1);
 
     // DELETE MESSAGE
-    let deleted = queue.delete(&test_queue, &msg1.msg_id).await.unwrap();
+    let deleted = queue.delete(&test_queue, msg1.msg_id).await.unwrap();
     assert_eq!(deleted, 1);
-    let msg3 = queue.read::<Value>(&test_queue, Some(&vt)).await.unwrap();
+    let msg3 = queue.read::<Value>(&test_queue, Some(vt)).await.unwrap();
     assert!(msg3.is_none());
     let num_rows = rowcount(&test_queue, &queue.connection).await;
 
@@ -164,12 +164,12 @@ async fn test_fifo() {
     let vt: i32 = 1;
     // READ FIRST TWO MESSAGES
     let read1 = queue
-        .read::<Value>(&test_queue, Some(&vt))
+        .read::<Value>(&test_queue, Some(vt))
         .await
         .unwrap()
         .unwrap();
     let read2 = queue
-        .read::<Value>(&test_queue, Some(&vt))
+        .read::<Value>(&test_queue, Some(vt))
         .await
         .unwrap()
         .unwrap();
@@ -181,17 +181,17 @@ async fn test_fifo() {
 
     // READ ALL, must still be in order
     let read1 = queue
-        .read::<Value>(&test_queue, Some(&vt))
+        .read::<Value>(&test_queue, Some(vt))
         .await
         .unwrap()
         .unwrap();
     let read2 = queue
-        .read::<Value>(&test_queue, Some(&vt))
+        .read::<Value>(&test_queue, Some(vt))
         .await
         .unwrap()
         .unwrap();
     let read3 = queue
-        .read::<Value>(&test_queue, Some(&vt))
+        .read::<Value>(&test_queue, Some(vt))
         .await
         .unwrap()
         .unwrap();
@@ -222,12 +222,12 @@ async fn test_send_delay() {
     let _ = queue.send_delay(&test_queue, &msg, 5).await.unwrap();
     let num_rows = rowcount(&test_queue, &queue.connection).await;
     assert_eq!(num_rows, 1);
-    let no_messages = queue.read::<Value>(&test_queue, Some(&vt)).await.unwrap();
+    let no_messages = queue.read::<Value>(&test_queue, Some(vt)).await.unwrap();
     assert!(no_messages.is_none());
     // SLEEP 5 SECONDS
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     // GET MESSAGE
-    let one_messages = queue.read::<Value>(&test_queue, Some(&vt)).await.unwrap();
+    let one_messages = queue.read::<Value>(&test_queue, Some(vt)).await.unwrap();
     assert!(one_messages.is_some());
 }
 
@@ -252,7 +252,7 @@ async fn test_read_batch() {
     let num_msgs = 3;
 
     let batch = queue
-        .read_batch::<Value>(&test_queue, Some(&vt), &num_msgs)
+        .read_batch::<Value>(&test_queue, Some(vt), num_msgs)
         .await
         .unwrap()
         .unwrap();
@@ -262,7 +262,7 @@ async fn test_read_batch() {
         assert_eq!(message.msg_id.to_string(), index.to_string());
     }
 
-    let msg = queue.read::<Value>(&test_queue, Some(&vt)).await.unwrap();
+    let msg = queue.read::<Value>(&test_queue, Some(vt)).await.unwrap();
     // assert no messages read because they are invisible
     assert!(msg.is_none());
     let num_rows = rowcount(&test_queue, &queue.connection).await;
@@ -318,7 +318,7 @@ async fn test_send_batch() {
     let vt: i32 = 1;
     let num_msgs = 3;
     let batch = queue
-        .read_batch::<Value>(&test_queue, Some(&vt), &num_msgs)
+        .read_batch::<Value>(&test_queue, Some(vt), num_msgs)
         .await
         .unwrap()
         .unwrap();
@@ -377,14 +377,14 @@ async fn test_delete_batch() {
 
     // Assert first message is still present and readable
     let first = queue
-        .read::<Value>(&test_queue, Some(&vt))
+        .read::<Value>(&test_queue, Some(vt))
         .await
         .expect("Failed to read message");
     assert_eq!(first.unwrap().msg_id, msg_id1);
 
     // Assert last message is still present and readable
     let last = queue
-        .read::<Value>(&test_queue, Some(&vt))
+        .read::<Value>(&test_queue, Some(vt))
         .await
         .expect("Failed to read message");
     assert_eq!(last.unwrap().msg_id, msg_id2);
@@ -402,7 +402,7 @@ async fn test_delete_batch() {
     );
 
     // Assert there are no messages to read from queue
-    let msg = queue.read::<Value>(&test_queue, Some(&vt)).await.unwrap();
+    let msg = queue.read::<Value>(&test_queue, Some(vt)).await.unwrap();
     assert!(msg.is_none());
 }
 
@@ -423,11 +423,11 @@ async fn test_serde() {
     assert_eq!(msg1, 1);
 
     let msg_read = queue
-        .read::<MyMessage>(&test_queue, Some(&30_i32))
+        .read::<MyMessage>(&test_queue, Some(30_i32))
         .await
         .unwrap()
         .unwrap();
-    let _ = queue.delete(&test_queue, &msg_read.msg_id).await;
+    let _ = queue.delete(&test_queue, msg_read.msg_id).await;
     assert_eq!(msg_read.message.num, msg.num);
 
     // JSON => JSON
@@ -440,11 +440,11 @@ async fn test_serde() {
     assert_eq!(msg2, 2);
 
     let msg_read = queue
-        .read::<Value>(&test_queue, Some(&30_i32))
+        .read::<Value>(&test_queue, Some(30_i32))
         .await
         .unwrap()
         .unwrap();
-    let _ = queue.delete(&test_queue, &msg_read.msg_id).await.unwrap();
+    let _ = queue.delete(&test_queue, msg_read.msg_id).await.unwrap();
     assert_eq!(msg_read.message["num"], msg["num"]);
     assert_eq!(msg_read.message["foo"], msg["foo"]);
 
@@ -459,11 +459,11 @@ async fn test_serde() {
     assert_eq!(msg3, 3);
 
     let msg_read = queue
-        .read::<MyMessage>(&test_queue, Some(&30_i32))
+        .read::<MyMessage>(&test_queue, Some(30_i32))
         .await
         .unwrap()
         .unwrap();
-    queue.delete(&test_queue, &msg_read.msg_id).await.unwrap();
+    queue.delete(&test_queue, msg_read.msg_id).await.unwrap();
     assert_eq!(msg_read.message.foo, msg["foo"].to_owned());
     assert_eq!(msg_read.message.num, msg["num"].as_u64().unwrap());
 
@@ -475,11 +475,11 @@ async fn test_serde() {
     let msg4 = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg4, 4);
     let msg_read = queue
-        .read::<Value>(&test_queue, Some(&30_i32))
+        .read::<Value>(&test_queue, Some(30_i32))
         .await
         .unwrap()
         .unwrap();
-    let _ = queue.delete(&test_queue, &msg_read.msg_id).await;
+    let _ = queue.delete(&test_queue, msg_read.msg_id).await;
     assert_eq!(msg_read.message["foo"].to_owned(), msg.foo);
     assert_eq!(msg_read.message["num"].as_u64().unwrap(), msg.num);
 
@@ -493,11 +493,11 @@ async fn test_serde() {
     let msg5 = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg5, 5);
     let msg_read: crate::pgmq::Message = queue
-        .read(&test_queue, Some(&30_i32)) // no turbofish on this line
+        .read(&test_queue, Some(30_i32)) // no turbofish on this line
         .await
         .unwrap()
         .unwrap();
-    let _ = queue.delete(&test_queue, &msg_read.msg_id).await.unwrap();
+    let _ = queue.delete(&test_queue, msg_read.msg_id).await.unwrap();
     assert_eq!(msg_read.message["foo"].to_owned(), msg["foo"].to_owned());
     assert_eq!(
         msg_read.message["num"].as_u64().unwrap(),
@@ -526,7 +526,7 @@ async fn test_archive() {
     let msg = MyMessage::default();
     let msg = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg, 1);
-    let num_moved = queue.archive(&test_queue, &msg).await.unwrap();
+    let num_moved = queue.archive(&test_queue, msg).await.unwrap();
     assert_eq!(num_moved, 1);
     let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
     // archived record is no longer on the queue
@@ -549,7 +549,7 @@ async fn test_database_error_modes() {
     assert!(msg_id.is_err());
 
     // read from a queue that does not exist should error
-    let read_msg = queue.read::<Message>("doesNotExist", Some(&10_i32)).await;
+    let read_msg = queue.read::<Message>("doesNotExist", Some(10_i32)).await;
     assert!(read_msg.is_err());
 
     // connect to a postgres instance with a malformed connection string should error
@@ -594,7 +594,7 @@ async fn test_parsing_error_modes() {
     let _ = queue.send(&test_queue, &msg).await.unwrap();
 
     // we sent MyMessage, so trying to parse into YoloMessage should error
-    let read_msg = queue.read::<YoloMessage>(&test_queue, Some(&10_i32)).await;
+    let read_msg = queue.read::<YoloMessage>(&test_queue, Some(10_i32)).await;
 
     // we expect a parse error
     match read_msg {
@@ -622,10 +622,10 @@ async fn test_destroy() {
     let msg2 = queue.send(&test_queue, &msg).await.unwrap();
 
     // archive one, so there's messages in queue and in archive
-    let _ = queue.archive(&test_queue, &msg1).await.unwrap();
+    let _ = queue.archive(&test_queue, msg1).await.unwrap();
     // read one to make sure messages are on the queue
     let read: Message = queue
-        .read(&test_queue, Some(&30_i32))
+        .read(&test_queue, Some(30_i32))
         .await
         .unwrap()
         .unwrap();
@@ -666,38 +666,30 @@ async fn test_set_vt() {
 
     let msg_id = queue.send(&test_queue, &msg).await.unwrap();
     // read the message
-    let read: Message = queue
-        .read(&test_queue, Some(&0_i32))
-        .await
-        .unwrap()
-        .unwrap();
+    let read: Message = queue.read(&test_queue, Some(0_i32)).await.unwrap().unwrap();
     assert_eq!(read.msg_id, msg_id);
 
     // read again
-    let read: Message = queue
-        .read(&test_queue, Some(&0_i32))
-        .await
-        .unwrap()
-        .unwrap();
+    let read: Message = queue.read(&test_queue, Some(0_i32)).await.unwrap().unwrap();
     assert_eq!(read.msg_id, msg_id);
     assert_eq!(read.msg_id, msg_id);
 
     // set the vt
     let utc_24h_from_now = Utc::now() + Duration::hours(24);
     let _ = queue
-        .set_vt::<MyMessage>(&test_queue, &msg_id, &utc_24h_from_now)
+        .set_vt::<MyMessage>(&test_queue, msg_id, utc_24h_from_now)
         .await
         .unwrap();
 
     // try read again
-    let read: Option<Message> = queue.read(&test_queue, Some(&0_i32)).await.unwrap();
+    let read: Option<Message> = queue.read(&test_queue, Some(0_i32)).await.unwrap();
     // we set the vt to tomorrow, should not be read
     assert!(read.is_none());
 
     // set the vt to now
     let now = Utc::now();
     let _ = queue
-        .set_vt::<MyMessage>(&test_queue, &msg_id, &now)
+        .set_vt::<MyMessage>(&test_queue, msg_id, now)
         .await
         .unwrap();
 
