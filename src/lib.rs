@@ -30,6 +30,16 @@ enum PgmqExtError {
     MissingDependency(String),
 }
 
+
+extension_sql!(
+    "
+CREATE TABLE IF NOT EXISTS pgmq.pgmq_meta(
+    queue_name text PRIMARY KEY,
+    created_at timestamp with time zone default now() not null
+);
+", name = "bootstrap_raw"
+);
+
 #[pg_extern]
 fn pgmq_create_non_partitioned(queue_name: &str) -> Result<(), PgmqExtError> {
     let setup = init_queue(queue_name)?;

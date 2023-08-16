@@ -1,5 +1,5 @@
 use chrono::{Duration, Utc};
-use pgmq::{self, query::TABLE_PREFIX, util::connect, Message};
+use pgmq::{self, query::{PGMQ_SCHEMA, TABLE_PREFIX}, util::connect, Message};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -644,7 +644,7 @@ async fn test_destroy() {
     // queue must not be present on pgmq_meta
     let pgmq_meta_query = format!(
         "SELECT count(*) as ct
-        FROM {TABLE_PREFIX}_meta
+        FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta
         WHERE queue_name = '{test_queue}'",
     );
     let rowcount = sqlx::query(&pgmq_meta_query)

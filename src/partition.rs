@@ -22,7 +22,7 @@ pub fn init_partitioned_queue(
     let name = CheckedName::new(name)?;
     let partition_col = map_partition_col(partition_interval);
     Ok(vec![
-        create_meta(),
+        // create_meta(),
         grant_pgmon_meta(),
         create_partitioned_queue(name, partition_col)?,
         create_partitioned_index(name, partition_col)?,

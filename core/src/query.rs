@@ -3,12 +3,12 @@
 use crate::{errors::PgmqError, util::CheckedName};
 use sqlx::types::chrono::Utc;
 pub const TABLE_PREFIX: &str = r#"pgmq"#;
-pub const PGMQ_SCHEMA: &str = "public";
+pub const PGMQ_SCHEMA: &str = "pgmq";
 
 pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
-        create_meta(),
+        // create_meta(),
         create_queue(name)?,
         create_index(name)?,
         create_archive(name)?,
