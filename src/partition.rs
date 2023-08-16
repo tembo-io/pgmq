@@ -4,7 +4,7 @@ use pgrx::prelude::*;
 use pgmq_crate::{
     errors::PgmqError,
     query::{
-        create_archive, create_index, create_meta, grant_pgmon_meta, grant_pgmon_queue,
+        create_archive, create_index, grant_pgmon_meta, grant_pgmon_queue,
         grant_pgmon_queue_seq, insert_meta, PGMQ_SCHEMA, TABLE_PREFIX,
     },
     util::CheckedName,
