@@ -234,7 +234,7 @@ impl PGMQueue {
     /// }
     pub async fn create(&self, queue_name: &str) -> Result<(), errors::PgmqError> {
         let mut tx = self.connection.begin().await?;
-        let setup = query::init_queue(queue_name)?;
+        let setup = query::init_queue_client_only(queue_name)?;
         for q in setup {
             sqlx::query(&q).execute(&mut tx).await?;
         }
@@ -268,7 +268,7 @@ impl PGMQueue {
     /// }
     pub async fn destroy(&self, queue_name: &str) -> Result<(), errors::PgmqError> {
         let mut tx = self.connection.begin().await?;
-        let setup = query::destroy_queue(queue_name)?;
+        let setup = query::destroy_queue_client_only(queue_name)?;
         for q in setup {
             sqlx::query(&q).execute(&mut tx).await?;
         }

@@ -3,27 +3,25 @@ use pgrx::spi;
 use pgrx::spi::SpiTupleTable;
 
 use crate::partition::PARTMAN_SCHEMA;
-use pgmq_crate::query::{PGMQ_SCHEMA, TABLE_PREFIX};
+use crate::PgmqExtError;
+use pgmq_crate::query::{destroy_queue, PGMQ_SCHEMA, TABLE_PREFIX};
 
 #[pg_extern]
 fn pgmq_drop_queue(
     queue_name: String,
     partitioned: default!(bool, false),
-) -> Result<bool, spi::Error> {
+) -> Result<bool, PgmqExtError> {
     delete_queue(queue_name, partitioned)?;
     Ok(true)
 }
 
-pub fn delete_queue(queue_name: String, partitioned: bool) -> Result<(), spi::Error> {
+pub fn delete_queue(queue_name: String, partitioned: bool) -> Result<(), PgmqExtError> {
     // TODO: we should keep track whether queue is partitioned in pgmq_meta
     // then read that to determine we want to delete the part_config entries
     // this should go out before 1.0
-    let queue_table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}");
-    let mut queries = vec![
-        format!("DELETE from {PGMQ_SCHEMA}.pgmq_meta WHERE queue_name = '{queue_name}';"),
-        format!("DROP TABLE {queue_table};"),
-    ];
+    let mut queries = destroy_queue(&queue_name)?;
     if partitioned {
+        let queue_table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}");
         queries.push(format!(
             "DELETE FROM {PARTMAN_SCHEMA}.part_config where parent_table = '{queue_table}';"
         ))
