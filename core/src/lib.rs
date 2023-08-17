@@ -163,8 +163,12 @@ pub mod util;
 pub use pg_ext::PGMQueueExt;
 use util::fetch_one_message;
 
+use std::time::Duration;
+
 const VT_DEFAULT: i32 = 30;
 const READ_LIMIT_DEFAULT: i32 = 1;
+const POLL_TIMEOUT_DEFAULT: Duration = Duration::from_secs(5);
+const POLL_INTERVAL_DEFAULT: Duration = Duration::from_millis(250);
 
 /// Message struct received from the queue
 ///
@@ -544,6 +548,30 @@ impl PGMQueue {
         let query = &query::read(queue_name, vt_, limit)?;
         let message = fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
+    }
+
+    pub async fn read_batch_with_poll<T: for<'de> Deserialize<'de>>(
+        &self,
+        queue_name: &str,
+        vt: Option<i32>,
+        max_batch_size: i32,
+        poll_timeout: Option<Duration>,
+        poll_interval: Option<Duration>,
+    ) -> Result<Option<Vec<Message<T>>>, errors::PgmqError> {
+        let vt_ = vt.unwrap_or(VT_DEFAULT);
+        let poll_timeout_ = poll_timeout.unwrap_or(POLL_TIMEOUT_DEFAULT);
+        let poll_interval_ = poll_interval.unwrap_or(POLL_INTERVAL_DEFAULT);
+        let start_time = std::time::Instant::now();
+        loop {
+            let query = &query::read(queue_name, vt_, max_batch_size)?;
+            let messages = fetch_messages::<T>(query, &self.connection).await?;
+            if messages.is_none() && start_time.elapsed() < poll_timeout_ {
+                tokio::time::sleep(poll_interval_).await;
+                continue;
+            } else {
+                break Ok(messages);
+            }
+        }
     }
 
     /// Reads a specified number of messages (num_msgs) from the queue.
