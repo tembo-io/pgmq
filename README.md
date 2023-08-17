@@ -1,13 +1,13 @@
 # Postgres Message Queue (PGMQ)
 
-A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq) but on Postgres.
+A lightweight message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq) but on Postgres.
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-20dtnhcmo-pLNV7_Aobi50TdTLpfQ~EQ)
 
 ## Features
 
 - Lightweight - Built with Rust and Postgres only
-- Guaranteed "exactly once" delivery of messages consumer within a visibility timeout
+- Guaranteed "exactly once" delivery of messages to a consumer within a visibility timeout
 - API parity with [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq)
 - Messages stay in the queue until explicitly deleted
 - Messages can be archived, instead of deleted, for long-term retention and replayability
@@ -30,6 +30,7 @@ A lightweight distributed message queue. Like [AWS SQS](https://aws.amazon.com/s
 - [Configuration](#configuration)
   - [Partitioned Queues](#partitioned-queues)
   - [Visibility Timeout (vt)](#visibility-timeout-vt)
+  - [✨ Contributors](#-contributors)
 
 ## Installation
 
@@ -117,10 +118,10 @@ pgmq=# SELECT * from pgmq_read('my_queue', 30, 2);
 ```
 
 ```text
- msg_id | read_ct |              vt               |          enqueued_at          |    message
---------+---------+-------------------------------+-------------------------------+---------------
-      1 |       1 | 2023-02-07 04:56:00.650342-06 | 2023-02-07 04:54:51.530818-06 | {"foo":"bar1"}
-      2 |       1 | 2023-02-07 04:56:00.650342-06 | 2023-02-07 04:54:51.530818-06 | {"foo":"bar2"}
+ msg_id | read_ct |          enqueued_at          |              vt               |     message     
+--------+---------+-------------------------------+-------------------------------+-----------------
+      1 |       1 | 2023-08-16 08:37:54.567283-05 | 2023-08-16 08:38:29.989841-05 | {"foo": "bar1"}
+      2 |       1 | 2023-08-16 08:37:54.572933-05 | 2023-08-16 08:38:29.989841-05 | {"foo": "bar2"}
 ```
 
 If the queue is empty, or if all messages are currently invisible, no rows will be returned.
@@ -130,8 +131,8 @@ pgmq=# SELECT * from pgmq_read('my_queue', 30, 1);
 ```
 
 ```text
- msg_id | read_ct | vt | enqueued_at | message
---------+---------+----+-------------+---------
+ msg_id | read_ct | enqueued_at | vt | message 
+--------+---------+-------------+----+---------
 ```
 
 ### Pop a message
@@ -142,9 +143,9 @@ pgmq=# SELECT * from pgmq_pop('my_queue');
 ```
 
 ```text
- msg_id | read_ct |              vt               |          enqueued_at          |    message
---------+---------+-------------------------------+-------------------------------+---------------
-      1 |       2 | 2023-02-07 04:56:00.650342-06 | 2023-02-07 04:54:51.530818-06 | {"foo":"bar1"}
+ msg_id | read_ct |          enqueued_at          |              vt               |     message     
+--------+---------+-------------------------------+-------------------------------+-----------------
+      1 |       1 | 2023-08-16 08:37:54.567283-05 | 2023-08-16 08:38:29.989841-05 | {"foo": "bar1"}
 ```
 
 ### Archive a message

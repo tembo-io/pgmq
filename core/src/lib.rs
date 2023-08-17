@@ -97,7 +97,7 @@
 //!
 //!     // Read a message
 //!     let received_message: Message<MyMessage> = queue
-//!         .read::<MyMessage>(&my_queue, Some(&visibility_timeout_seconds))
+//!         .read::<MyMessage>(&my_queue, Some(visibility_timeout_seconds))
 //!         .await
 //!         .unwrap()
 //!         .expect("No messages in the queue");
@@ -106,7 +106,7 @@
 //!     assert_eq!(received_message.msg_id, message_id);
 //!
 //!     // archive the messages
-//!     let _ = queue.archive(&my_queue, &received_message.msg_id)
+//!     let _ = queue.archive(&my_queue, received_message.msg_id)
 //!         .await
 //!         .expect("Failed to archive message");
 //!     println!("archived the messages from the queue");
@@ -517,13 +517,13 @@ impl PGMQueue {
     ///     println!("Struct Message ids: {:?}", struct_message_batch_ids);
     ///
     ///     let visibility_timeout_seconds = 30;
-    ///     let known_message_structure: Message<MyMessage> = queue.read::<MyMessage>(&my_queue, Some(&visibility_timeout_seconds))
+    ///     let known_message_structure: Message<MyMessage> = queue.read::<MyMessage>(&my_queue, Some(visibility_timeout_seconds))
     ///         .await
     ///         .unwrap()
     ///         .expect("no messages in the queue!");
     ///     println!("Received known : {known_message_structure:?}");
     ///
-    ///     let unknown_message_structure: Message = queue.read(&my_queue, Some(&visibility_timeout_seconds))
+    ///     let unknown_message_structure: Message = queue.read(&my_queue, Some(visibility_timeout_seconds))
     ///         .await
     ///         .unwrap()
     ///         .expect("no messages in the queue!");
@@ -533,14 +533,14 @@ impl PGMQueue {
     pub async fn read<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
-        vt: Option<&i32>,
+        vt: Option<i32>,
     ) -> Result<Option<Message<T>>, errors::PgmqError> {
         // map vt or default VT
         let vt_ = match vt {
             Some(t) => t,
-            None => &VT_DEFAULT,
+            None => VT_DEFAULT,
         };
-        let limit = &READ_LIMIT_DEFAULT;
+        let limit = READ_LIMIT_DEFAULT;
         let query = &query::read(queue_name, vt_, limit)?;
         let message = fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
@@ -597,14 +597,14 @@ impl PGMQueue {
     ///
     ///     let visibility_timeout_seconds = 30;
     ///     let batch_size = 1;
-    ///     let batch: Vec<Message<MyMessage>> = queue.read_batch::<MyMessage>(&my_queue, Some(&visibility_timeout_seconds), &batch_size)
+    ///     let batch: Vec<Message<MyMessage>> = queue.read_batch::<MyMessage>(&my_queue, Some(visibility_timeout_seconds), batch_size)
     ///         .await
     ///         .unwrap()
     ///         .expect("no messages in the queue!");
     ///     println!("Received a batch of messages: {batch:?}");
     ///
     ///     let batch_size = 2;
-    ///     let unknown_message_structure: Message = queue.read(&my_queue, Some(&visibility_timeout_seconds))
+    ///     let unknown_message_structure: Message = queue.read(&my_queue, Some(visibility_timeout_seconds))
     ///         .await
     ///         .unwrap()
     ///         .expect("no messages in the queue!");
@@ -614,13 +614,13 @@ impl PGMQueue {
     pub async fn read_batch<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
-        vt: Option<&i32>,
-        num_msgs: &i32,
+        vt: Option<i32>,
+        num_msgs: i32,
     ) -> Result<Option<Vec<Message<T>>>, errors::PgmqError> {
         // map vt or default VT
         let vt_ = match vt {
             Some(t) => t,
-            None => &VT_DEFAULT,
+            None => VT_DEFAULT,
         };
         let query = &query::read(queue_name, vt_, num_msgs)?;
         let messages = fetch_messages::<T>(query, &self.connection).await?;
@@ -667,11 +667,11 @@ impl PGMQueue {
     ///        .expect("Failed to enqueue message");
     ///     println!("Struct Message id: {message_id}");
     ///
-    ///     queue.delete(&my_queue, &message_id).await.expect("failed to delete message");
+    ///     queue.delete(&my_queue, message_id).await.expect("failed to delete message");
     ///
     ///     Ok(())
     /// }
-    pub async fn delete(&self, queue_name: &str, msg_id: &i64) -> Result<u64, PgmqError> {
+    pub async fn delete(&self, queue_name: &str, msg_id: i64) -> Result<u64, PgmqError> {
         let query = &query::delete(queue_name, msg_id)?;
         let row = sqlx::query(query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
@@ -759,11 +759,11 @@ impl PGMQueue {
     ///        .await
     ///        .expect("Failed to enqueue message");
     ///
-    ///     queue.archive(&my_queue, &message_id).await.expect("failed to archive message");
+    ///     queue.archive(&my_queue, message_id).await.expect("failed to archive message");
     ///
     ///     Ok(())
     /// }
-    pub async fn archive(&self, queue_name: &str, msg_id: &i64) -> Result<u64, PgmqError> {
+    pub async fn archive(&self, queue_name: &str, msg_id: i64) -> Result<u64, PgmqError> {
         let query = query::archive(queue_name, msg_id)?;
         let row = sqlx::query(&query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
@@ -862,15 +862,15 @@ impl PGMQueue {
     ///
     ///     let utc_24h_from_now = Utc::now() + Duration::hours(24);
     ///
-    ///     queue.set_vt::<MyMessage>(&my_queue, &message_id, &utc_24h_from_now).await.expect("failed to set vt");
+    ///     queue.set_vt::<MyMessage>(&my_queue, message_id, utc_24h_from_now).await.expect("failed to set vt");
     ///
     ///     Ok(())
     /// }
     pub async fn set_vt<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
-        msg_id: &i64,
-        vt: &chrono::DateTime<Utc>,
+        msg_id: i64,
+        vt: chrono::DateTime<Utc>,
     ) -> Result<Option<Message<T>>, errors::PgmqError> {
         let query = &query::set_vt(queue_name, msg_id, vt)?;
         let updated_message = fetch_one_message::<T>(query, &self.connection).await?;

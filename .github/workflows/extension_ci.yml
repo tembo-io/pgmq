@@ -70,8 +70,8 @@ jobs:
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
           sudo make install && cd ../
-          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.3/pgrx-install/share/postgresql/extension/
-          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.3/pgrx-install/lib/postgresql/
+          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.4/pgrx-install/share/postgresql/extension/
+          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.4/pgrx-install/lib/postgresql/
           rm -rf ./target/pgrx-test-data-* || true
           pg_version=$(stoml Cargo.toml features.default)
           cargo pgrx run ${pg_version} --pgcli || true
@@ -122,3 +122,44 @@ jobs:
           pgmq_descr=$(stoml Cargo.toml package.description)
           pgmq_repo=$(stoml Cargo.toml package.repository)
           trunk publish pgmq --version ${pgmq_ver} --file .trunk/pgmq-${pgmq_ver}.tar.gz --description "A lightweight distributed message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
+  build_and_push:
+    name: Build and push images
+    needs: 
+      - publish
+    runs-on:
+      - self-hosted
+      - dind
+      - large-8x8
+    outputs:
+      short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Install stoml and pg-trunk
+        shell: bash
+        run: |
+         set -xe
+         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+         mv stoml_linux_amd64 stoml
+         chmod +x stoml
+         sudo mv stoml /usr/local/bin/
+      - name: Set version strings
+        id: versions
+        run: |
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "TAG_VER=$(/usr/local/bin/stoml Cargo.toml package.version)" >> $GITHUB_OUTPUT
+      - name: Build and upload image
+        run: |
+          docker build --build-arg="PGMQ_VER=${{ steps.versions.outputs.TAG_VER }}" -t pgmq-pg images/pgmq-pg
+          docker tag pgmq-pg quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }}
+          docker tag pgmq-pg quay.io/tembo/pgmq-pg:latest
+      - name: Login to Quay
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io/tembo
+          username: ${{ secrets.QUAY_USER_TEMBO }}
+          password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
+      - name: Push image
+        run: |
+          docker push quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }}
+          docker push quay.io/tembo/pgmq-pg:latest

@@ -40,7 +40,7 @@ pub fn create_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (
             msg_id BIGSERIAL NOT NULL,
             read_ct INT DEFAULT 0 NOT NULL,
-            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
+            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             vt TIMESTAMP WITH TIME ZONE NOT NULL,
             message JSONB
         );
@@ -54,8 +54,8 @@ pub fn create_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (
             msg_id BIGSERIAL NOT NULL,
             read_ct INT DEFAULT 0 NOT NULL,
-            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
-            deleted_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL,
+            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+            deleted_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             vt TIMESTAMP WITH TIME ZONE NOT NULL,
             message JSONB
         );
@@ -68,7 +68,7 @@ pub fn create_meta() -> String {
         "
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (
             queue_name VARCHAR UNIQUE NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') NOT NULL
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
         );
         "
     )
@@ -188,9 +188,7 @@ pub fn enqueue(
     check_input(name)?;
     let mut values = "".to_owned();
     for message in messages.iter() {
-        let full_msg = format!(
-            "((now() at time zone 'utc' + interval '{delay} seconds'), '{message}'::json),"
-        );
+        let full_msg = format!("((now() + interval '{delay} seconds'), '{message}'::json),");
         values.push_str(&full_msg)
     }
     // drop trailing comma from constructed string
@@ -204,7 +202,7 @@ pub fn enqueue(
     ))
 }
 
-pub fn read(name: &str, vt: &i32, limit: &i32) -> Result<String, PgmqError> {
+pub fn read(name: &str, vt: i32, limit: i32) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
@@ -212,14 +210,14 @@ pub fn read(name: &str, vt: &i32, limit: &i32) -> Result<String, PgmqError> {
         (
             SELECT msg_id
             FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
-            WHERE vt <= now() at time zone 'utc'
+            WHERE vt <= now()
             ORDER BY msg_id ASC
             LIMIT {limit}
             FOR UPDATE SKIP LOCKED
         )
     UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
     SET
-        vt = (now() at time zone 'utc' + interval '{vt} seconds'),
+        vt = now() + interval '{vt} seconds',
         read_ct = read_ct + 1
     WHERE msg_id in (select msg_id from cte)
     RETURNING *;
@@ -227,7 +225,7 @@ pub fn read(name: &str, vt: &i32, limit: &i32) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn delete(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
+pub fn delete(name: &str, msg_id: i64) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
@@ -237,7 +235,7 @@ pub fn delete(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn set_vt(name: &str, msg_id: &i64, vt: &chrono::DateTime<Utc>) -> Result<String, PgmqError> {
+pub fn set_vt(name: &str, msg_id: i64, vt: chrono::DateTime<Utc>) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
@@ -268,7 +266,7 @@ pub fn delete_batch(name: &str, msg_ids: &[i64]) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn archive(name: &str, msg_id: &i64) -> Result<String, PgmqError> {
+pub fn archive(name: &str, msg_id: i64) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
         "
@@ -292,7 +290,7 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
             (
                 SELECT msg_id
                 FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
-                WHERE vt <= now() at time zone 'utc'
+                WHERE vt <= now()
                 ORDER BY msg_id ASC
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED
@@ -334,10 +332,23 @@ pub fn unassign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
 
 /// panics if input is invalid. otherwise does nothing.
 pub fn check_input(input: &str) -> Result<(), PgmqError> {
-    let valid = input
+    // Docs:
+    // https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+
+    // Default value of `NAMEDATALEN`, set in `src/include/pg_config_manual.h`
+    const NAMEDATALEN: usize = 64;
+    // The maximum length of an identifier.
+    // Longer names can be used in commands, but they'll be truncated
+    const MAX_IDENTIFIER_LEN: usize = NAMEDATALEN - 1;
+    // The max length of a PGMQ table, considering its prefix and the underline after it (e.g. "pgmq_")
+    const MAX_PGMQ_TABLE_LEN: usize = MAX_IDENTIFIER_LEN - TABLE_PREFIX.len() - 1;
+
+    let is_short_enough = input.len() <= MAX_PGMQ_TABLE_LEN;
+    let has_valid_characters = input
         .as_bytes()
         .iter()
         .all(|&c| c.is_ascii_alphanumeric() || c == b'_');
+    let valid = is_short_enough && has_valid_characters;
     match valid {
         true => Ok(()),
         false => Err(PgmqError::InvalidQueueName {
@@ -375,7 +386,7 @@ mod tests {
         let vt: i32 = 20;
         let limit: i32 = 1;
 
-        let query = read(&qname, &vt, &limit).unwrap();
+        let query = read(&qname, vt, limit).unwrap();
 
         assert!(query.contains(&qname));
         assert!(query.contains(&vt.to_string()));
@@ -386,7 +397,7 @@ mod tests {
         let qname = "myqueue";
         let msg_id: i64 = 42;
 
-        let query = delete(&qname, &msg_id).unwrap();
+        let query = delete(&qname, msg_id).unwrap();
 
         assert!(query.contains(&qname));
         assert!(query.contains(&msg_id.to_string()));
@@ -406,6 +417,18 @@ mod tests {
         for id in msg_ids.iter() {
             assert!(query.contains(&id.to_string()));
         }
+    }
+
+    #[test]
+    fn check_input_rejects_names_too_large() {
+        let table_name = "my_valid_table_name";
+        assert!(check_input(table_name).is_ok());
+
+        assert!(check_input(&"a".repeat(58)).is_ok());
+
+        assert!(check_input(&"a".repeat(59)).is_err());
+        assert!(check_input(&"a".repeat(60)).is_err());
+        assert!(check_input(&"a".repeat(70)).is_err());
     }
 
     #[test]
