@@ -25,6 +25,8 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
 pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
+        unassign_queue(name)?,
+        unassign_archive(name)?,
         drop_queue(name)?,
         delete_queue_index(name)?,
         drop_queue_archive(name)?,
@@ -312,6 +314,14 @@ pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
 
 pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!("ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive; "))
+}
+
+pub fn unassign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
+    Ok(format!("ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}; "))
+}
+
+pub fn unassign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
+    Ok(format!("ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive; "))
 }
 
 /// panics if input is invalid. otherwise does nothing.
