@@ -22,11 +22,35 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     ])
 }
 
+pub fn init_queue_client_only(name: &str) -> Result<Vec<String>, PgmqError> {
+    let name = CheckedName::new(name)?;
+    Ok(vec![
+        create_meta(),
+        create_queue(name)?,
+        create_index(name)?,
+        create_archive(name)?,
+        create_archive_index(name)?,
+        insert_meta(name)?,
+        grant_pgmon_meta(),
+        grant_pgmon_queue(name)?,
+    ])
+}
+
 pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
         unassign_queue(name)?,
         unassign_archive(name)?,
+        drop_queue(name)?,
+        delete_queue_index(name)?,
+        drop_queue_archive(name)?,
+        delete_queue_metadata(name)?,
+    ])
+}
+
+pub fn destroy_queue_client_only(name: &str) -> Result<Vec<String>, PgmqError> {
+    let name = CheckedName::new(name)?;
+    Ok(vec![
         drop_queue(name)?,
         delete_queue_index(name)?,
         drop_queue_archive(name)?,
