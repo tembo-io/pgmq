@@ -16,7 +16,7 @@ use pgmq_crate::query::{
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-enum PgmqExtError {
+pub enum PgmqExtError {
     #[error("")]
     SqlError(#[from] pgrx::spi::Error),
 

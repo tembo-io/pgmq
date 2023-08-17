@@ -327,19 +327,15 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
 }
 
 pub fn assign_meta() -> String {
-    format!("ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta; ")
+    assign("meta")
 }
 
 pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(format!(
-        "ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}; "
-    ))
+    Ok(assign(&name.to_string()))
 }
 
 pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(format!(
-        "ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive; "
-    ))
+    Ok(assign(&format!("{name}_archive; ")))
 }
 
 pub fn unassign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
@@ -352,6 +348,29 @@ pub fn unassign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive; "
     ))
+}
+
+// assign a table to pgmq extension, only if its not already assigned
+pub fn assign(table_name: &str) -> String {
+    format!(
+        "
+    DO $$ 
+        BEGIN
+        -- Check if the table is not yet associated with the extension
+        IF NOT EXISTS (
+            SELECT 1 
+            FROM pg_depend 
+            WHERE refobjid = (SELECT oid FROM pg_extension WHERE extname = 'pgmq')
+            AND objid = (SELECT oid FROM pg_class WHERE relname = '{TABLE_PREFIX}_{table_name}')
+        ) THEN
+        
+            EXECUTE 'ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{table_name}';
+        
+        END IF;
+        
+        END $$;
+    "
+    )
 }
 
 /// panics if input is invalid. otherwise does nothing.
