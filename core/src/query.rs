@@ -309,19 +309,27 @@ pub fn assign_meta() -> String {
 }
 
 pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(format!("ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}; "))
+    Ok(format!(
+        "ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}; "
+    ))
 }
 
 pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(format!("ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive; "))
+    Ok(format!(
+        "ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive; "
+    ))
 }
 
 pub fn unassign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(format!("ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}; "))
+    Ok(format!(
+        "ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}; "
+    ))
 }
 
 pub fn unassign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(format!("ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive; "))
+    Ok(format!(
+        "ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive; "
+    ))
 }
 
 /// panics if input is invalid. otherwise does nothing.
