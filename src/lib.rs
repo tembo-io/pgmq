@@ -148,7 +148,6 @@ fn pgmq_read_with_poll(
     spi::Error,
 > {
     let start_time = std::time::Instant::now();
-    dbg!(start_time);
     loop {
         let results = readit(queue_name, vt, limit)?;
         if results.len() == 0 {

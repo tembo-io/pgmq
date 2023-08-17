@@ -1,6 +1,7 @@
 //! Query constructors
 
 use crate::{errors::PgmqError, util::CheckedName};
+
 use sqlx::types::chrono::Utc;
 pub const TABLE_PREFIX: &str = r#"pgmq"#;
 pub const PGMQ_SCHEMA: &str = "public";
@@ -234,14 +235,14 @@ pub fn read(name: &str, vt: i32, limit: i32) -> Result<String, PgmqError> {
         (
             SELECT msg_id
             FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
-            WHERE vt <= now()
+            WHERE vt <= clock_timestamp()
             ORDER BY msg_id ASC
             LIMIT {limit}
             FOR UPDATE SKIP LOCKED
         )
     UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
     SET
-        vt = now() + interval '{vt} seconds',
+        vt = clock_timestamp() + interval '{vt} seconds',
         read_ct = read_ct + 1
     WHERE msg_id in (select msg_id from cte)
     RETURNING *;
@@ -354,20 +355,20 @@ pub fn unassign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
 pub fn assign(table_name: &str) -> String {
     format!(
         "
-    DO $$ 
+    DO $$
         BEGIN
         -- Check if the table is not yet associated with the extension
         IF NOT EXISTS (
-            SELECT 1 
-            FROM pg_depend 
+            SELECT 1
+            FROM pg_depend
             WHERE refobjid = (SELECT oid FROM pg_extension WHERE extname = 'pgmq')
             AND objid = (SELECT oid FROM pg_class WHERE relname = '{TABLE_PREFIX}_{table_name}')
         ) THEN
-        
+
             EXECUTE 'ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{table_name}';
-        
+
         END IF;
-        
+
         END $$;
     "
     )
