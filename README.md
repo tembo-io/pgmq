@@ -7,7 +7,7 @@ A lightweight message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RS
 ## Features
 
 - Lightweight - Built with Rust and Postgres only
-- Guaranteed "exactly once" delivery of messages consumer within a visibility timeout
+- Guaranteed "exactly once" delivery of messages to a consumer within a visibility timeout
 - API parity with [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq)
 - Messages stay in the queue until explicitly deleted
 - Messages can be archived, instead of deleted, for long-term retention and replayability

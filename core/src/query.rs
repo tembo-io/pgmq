@@ -9,6 +9,23 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
         create_meta(),
+        assign_meta(),
+        create_queue(name)?,
+        assign_queue(name)?,
+        create_index(name)?,
+        create_archive(name)?,
+        assign_archive(name)?,
+        create_archive_index(name)?,
+        insert_meta(name)?,
+        grant_pgmon_meta(),
+        grant_pgmon_queue(name)?,
+    ])
+}
+
+pub fn init_queue_client_only(name: &str) -> Result<Vec<String>, PgmqError> {
+    let name = CheckedName::new(name)?;
+    Ok(vec![
+        create_meta(),
         create_queue(name)?,
         create_index(name)?,
         create_archive(name)?,
@@ -20,6 +37,18 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
 }
 
 pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
+    let name = CheckedName::new(name)?;
+    Ok(vec![
+        unassign_queue(name)?,
+        unassign_archive(name)?,
+        drop_queue(name)?,
+        delete_queue_index(name)?,
+        drop_queue_archive(name)?,
+        delete_queue_metadata(name)?,
+    ])
+}
+
+pub fn destroy_queue_client_only(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
         drop_queue(name)?,
@@ -295,6 +324,53 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
         RETURNING *;
         "
     ))
+}
+
+pub fn assign_meta() -> String {
+    assign("meta")
+}
+
+pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
+    Ok(assign(&name.to_string()))
+}
+
+pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
+    Ok(assign(&format!("{name}_archive; ")))
+}
+
+pub fn unassign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
+    Ok(format!(
+        "ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}; "
+    ))
+}
+
+pub fn unassign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
+    Ok(format!(
+        "ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive; "
+    ))
+}
+
+// assign a table to pgmq extension, only if its not already assigned
+pub fn assign(table_name: &str) -> String {
+    format!(
+        "
+    DO $$ 
+        BEGIN
+        -- Check if the table is not yet associated with the extension
+        IF NOT EXISTS (
+            SELECT 1 
+            FROM pg_depend 
+            WHERE refobjid = (SELECT oid FROM pg_extension WHERE extname = 'pgmq')
+            AND objid = (SELECT oid FROM pg_class WHERE relname = '{TABLE_PREFIX}_{table_name}')
+        ) THEN
+        
+            EXECUTE 'ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{table_name}';
+        
+        END IF;
+        
+        END $$;
+    "
+    )
 }
 
 /// panics if input is invalid. otherwise does nothing.
