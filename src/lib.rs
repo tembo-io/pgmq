@@ -149,15 +149,12 @@ fn pgmq_read_with_poll(
     spi::Error,
 > {
     let start_time = std::time::Instant::now();
+    let poll_timeout_ms = (poll_timeout_s * 1000) as u128;
     loop {
         let results = readit(queue_name, vt, limit)?;
-        if results.len() == 0 {
-            if start_time.elapsed().as_millis() > (poll_timeout_s * 1000) as u128 {
-                break Ok(TableIterator::new(results));
-            } else {
-                std::thread::sleep(Duration::from_millis(poll_interval_ms.try_into().unwrap()));
-                continue;
-            }
+        if results.is_empty() && start_time.elapsed().as_millis() < poll_timeout_ms {
+            std::thread::sleep(Duration::from_millis(poll_interval_ms.try_into().unwrap()));
+            continue;
         } else {
             break Ok(TableIterator::new(results));
         }
