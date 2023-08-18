@@ -17,8 +17,18 @@ async fn connect(url: &str) -> Pool<Postgres> {
 #[tokio::test]
 async fn test_lifecycle() {
     let username = whoami::username();
-    let conn = connect(&format!(
+
+    let conn00 = connect(&format!(
         "postgres://{username}:postgres@localhost:28815/pgmq"
+    )).await;
+    // ignore the error if the db already exists!
+    let _ = sqlx::query("CREATE DATABASE pgmq_test;")
+        .execute(&conn00)
+        .await;
+    conn00.close().await;
+
+    let conn = connect(&format!(
+        "postgres://{username}:postgres@localhost:28815/pgmq_test"
     ))
     .await;
     let mut rng = rand::thread_rng();
