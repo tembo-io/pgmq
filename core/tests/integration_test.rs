@@ -806,7 +806,13 @@ async fn test_extension_api() {
 
     // read with poll, blocks until message visible
     let read_messages = queue
-        .read_batch_with_poll::<MyMessage>(&test_queue, 5, 1, Some(std::time::Duration::from_secs(6)), None)
+        .read_batch_with_poll::<MyMessage>(
+            &test_queue,
+            5,
+            1,
+            Some(std::time::Duration::from_secs(6)),
+            None,
+        )
         .await
         .expect("error reading message")
         .expect("no message");
