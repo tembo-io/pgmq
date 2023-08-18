@@ -654,22 +654,16 @@ impl PGMQueue {
         loop {
             let query = &query::read(queue_name, vt_, max_batch_size)?;
             let messages = fetch_messages::<T>(query, &self.connection).await?;
-            // Why can fetch_messages return both `None` and `Option(())`
             match messages {
+                Some(m) => {
+                    break Ok(Some(m));
+                }
                 None => {
                     if start_time.elapsed() < poll_timeout_ {
                         tokio::time::sleep(poll_interval_).await;
                         continue;
                     } else {
                         break Ok(None);
-                    }
-                }
-                Some(m) => {
-                    if m.is_empty() && start_time.elapsed() < poll_timeout_ {
-                        tokio::time::sleep(poll_interval_).await;
-                        continue;
-                    } else {
-                        break Ok(Some(m));
                     }
                 }
             }
@@ -935,28 +929,31 @@ async fn fetch_messages<T: for<'de> Deserialize<'de>>(
     connection: &Pool<Postgres>,
 ) -> Result<Option<Vec<Message<T>>>, errors::PgmqError> {
     let mut messages: Vec<Message<T>> = Vec::new();
-    let rows: Result<Vec<PgRow>, Error> = sqlx::query(query).fetch_all(connection).await;
-    if let Err(sqlx::error::Error::RowNotFound) = rows {
-        return Ok(None);
-    } else if let Err(e) = rows {
-        return Err(e)?;
-    } else if let Ok(rows) = rows {
-        // happy path - successfully read messages
-        for row in rows.iter() {
-            let raw_msg = row.get("message");
-            let parsed_msg = serde_json::from_value::<T>(raw_msg);
-            if let Err(e) = parsed_msg {
-                return Err(errors::PgmqError::JsonParsingError(e));
-            } else if let Ok(parsed_msg) = parsed_msg {
-                messages.push(Message {
-                    msg_id: row.get("msg_id"),
-                    vt: row.get("vt"),
-                    read_ct: row.get("read_ct"),
-                    enqueued_at: row.get("enqueued_at"),
-                    message: parsed_msg,
-                })
+    let result: Result<Vec<PgRow>, Error> = sqlx::query(query).fetch_all(connection).await;
+    match result {
+        Ok(rows) => {
+            if rows.is_empty() {
+                Ok(None)
+            } else {
+                // happy path - successfully read messages
+                for row in rows.iter() {
+                    let raw_msg = row.get("message");
+                    let parsed_msg = serde_json::from_value::<T>(raw_msg);
+                    if let Err(e) = parsed_msg {
+                        return Err(errors::PgmqError::JsonParsingError(e));
+                    } else if let Ok(parsed_msg) = parsed_msg {
+                        messages.push(Message {
+                            msg_id: row.get("msg_id"),
+                            vt: row.get("vt"),
+                            read_ct: row.get("read_ct"),
+                            enqueued_at: row.get("enqueued_at"),
+                            message: parsed_msg,
+                        })
+                    }
+                }
+                Ok(Some(messages))
             }
         }
+        Err(e) => Err(e)?,
     }
-    Ok(Some(messages))
 }

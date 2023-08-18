@@ -292,10 +292,9 @@ async fn test_read_batch_with_poll() {
             None,
         )
         .await
-        .unwrap()
         .unwrap();
 
-    assert_eq!(read_message_3.len(), 0);
+    assert!(read_message_3.is_none());
 }
 
 #[tokio::test]
