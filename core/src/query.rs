@@ -42,7 +42,6 @@ pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
         unassign_queue(name)?,
         unassign_archive(name)?,
         drop_queue(name)?,
-        delete_queue_index(name)?,
         drop_queue_archive(name)?,
         delete_queue_metadata(name)?,
     ])
@@ -52,7 +51,6 @@ pub fn destroy_queue_client_only(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
         drop_queue(name)?,
-        delete_queue_index(name)?,
         drop_queue_archive(name)?,
         delete_queue_metadata(name)?,
     ])
@@ -62,7 +60,7 @@ pub fn create_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (
-            msg_id BIGSERIAL NOT NULL,
+            msg_id BIGSERIAL PRIMARY KEY,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             vt TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -76,7 +74,7 @@ pub fn create_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (
-            msg_id BIGSERIAL NOT NULL,
+            msg_id BIGSERIAL PRIMARY KEY,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             deleted_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
@@ -140,14 +138,6 @@ pub fn drop_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn delete_queue_index(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(format!(
-        "
-        DROP INDEX IF EXISTS {TABLE_PREFIX}_{name}.vt_idx_{name};
-        "
-    ))
-}
-
 pub fn delete_queue_metadata(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
@@ -198,7 +188,7 @@ pub fn create_archive_index(name: CheckedName<'_>) -> Result<String, PgmqError> 
 pub fn create_index(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        CREATE INDEX IF NOT EXISTS msg_id_vt_idx_{name} ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt ASC, msg_id ASC);
+        CREATE INDEX IF NOT EXISTS {TABLE_PREFIX}_{name}_vt_idx ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt ASC);
         "
     ))
 }
