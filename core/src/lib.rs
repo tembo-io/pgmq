@@ -550,30 +550,6 @@ impl PGMQueue {
         Ok(message)
     }
 
-    pub async fn read_batch_with_poll<T: for<'de> Deserialize<'de>>(
-        &self,
-        queue_name: &str,
-        vt: Option<i32>,
-        max_batch_size: i32,
-        poll_timeout: Option<Duration>,
-        poll_interval: Option<Duration>,
-    ) -> Result<Option<Vec<Message<T>>>, errors::PgmqError> {
-        let vt_ = vt.unwrap_or(VT_DEFAULT);
-        let poll_timeout_ = poll_timeout.unwrap_or(POLL_TIMEOUT_DEFAULT);
-        let poll_interval_ = poll_interval.unwrap_or(POLL_INTERVAL_DEFAULT);
-        let start_time = std::time::Instant::now();
-        loop {
-            let query = &query::read(queue_name, vt_, max_batch_size)?;
-            let messages = fetch_messages::<T>(query, &self.connection).await?;
-            if messages.is_none() && start_time.elapsed() < poll_timeout_ {
-                tokio::time::sleep(poll_interval_).await;
-                continue;
-            } else {
-                break Ok(messages);
-            }
-        }
-    }
-
     /// Reads a specified number of messages (num_msgs) from the queue.
     /// Any messages that are returned are made invisible for the duration of the visibility timeout (vt) in seconds.
     ///
@@ -653,6 +629,51 @@ impl PGMQueue {
         let query = &query::read(queue_name, vt_, num_msgs)?;
         let messages = fetch_messages::<T>(query, &self.connection).await?;
         Ok(messages)
+    }
+
+    /// Similar to [`read_batch`], but allows waiting until a message is available
+    ///
+    /// You can specify a maximum duration for polling (defaults to 5 seconds),
+    /// and an interval between calls (defaults to 250ms). A lower interval
+    /// implies higher maximum latency, but less load on the database.
+    ///
+    /// Refer to the [`read_batch`] function for more details.
+    ///
+    pub async fn read_batch_with_poll<T: for<'de> Deserialize<'de>>(
+        &self,
+        queue_name: &str,
+        vt: Option<i32>,
+        max_batch_size: i32,
+        poll_timeout: Option<Duration>,
+        poll_interval: Option<Duration>,
+    ) -> Result<Option<Vec<Message<T>>>, errors::PgmqError> {
+        let vt_ = vt.unwrap_or(VT_DEFAULT);
+        let poll_timeout_ = poll_timeout.unwrap_or(POLL_TIMEOUT_DEFAULT);
+        let poll_interval_ = poll_interval.unwrap_or(POLL_INTERVAL_DEFAULT);
+        let start_time = std::time::Instant::now();
+        loop {
+            let query = &query::read(queue_name, vt_, max_batch_size)?;
+            let messages = fetch_messages::<T>(query, &self.connection).await?;
+            // Why can fetch_messages return both `None` and `Option(())`
+            match messages {
+                None => {
+                    if start_time.elapsed() < poll_timeout_ {
+                        tokio::time::sleep(poll_interval_).await;
+                        continue;
+                    } else {
+                        break Ok(None);
+                    }
+                }
+                Some(m) => {
+                    if m.is_empty() && start_time.elapsed() < poll_timeout_ {
+                        tokio::time::sleep(poll_interval_).await;
+                        continue;
+                    } else {
+                        break Ok(Some(m));
+                    }
+                }
+            }
+        }
     }
 
     /// Delete a message from the queue.

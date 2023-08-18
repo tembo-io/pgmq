@@ -232,6 +232,73 @@ async fn test_send_delay() {
 }
 
 #[tokio::test]
+async fn test_read_batch_with_poll() {
+    let test_queue = "test_read_batch_with_poll".to_owned();
+
+    let queue = init_queue(&test_queue).await;
+
+    // PUBLISH THREE MESSAGES
+    let msg = serde_json::json!({
+        "foo": "bar1"
+    });
+    let msg_id1 = queue.send(&test_queue, &msg).await.unwrap();
+    assert_eq!(msg_id1, 1);
+    let msg_id2 = queue.send(&test_queue, &msg).await.unwrap();
+    assert_eq!(msg_id2, 2);
+    let msg_id3 = queue.send(&test_queue, &msg).await.unwrap();
+    assert_eq!(msg_id3, 3);
+
+    // Reading from queue with a 5 seconds VT
+    let read_message_1 = queue
+        .read_batch_with_poll::<Value>(
+            &test_queue,
+            Some(5),
+            5,
+            Some(std::time::Duration::from_secs(6)),
+            None,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(read_message_1.len(), 3);
+
+    let starting_time = std::time::Instant::now();
+
+    // Since VT is 5 seconds, if we poll the queue, it takes around 5 seconds
+    // to return the result, and returns all 3 messages
+    let read_message_2 = queue
+        .read_batch_with_poll::<Value>(
+            &test_queue,
+            Some(5),
+            5,
+            Some(std::time::Duration::from_secs(6)),
+            None,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(read_message_2.len(), 3);
+    assert!(starting_time.elapsed() > std::time::Duration::from_secs(3));
+
+    // If we don't poll for long enough, we get none
+    let read_message_3 = queue
+        .read_batch_with_poll::<Value>(
+            &test_queue,
+            Some(3),
+            5,
+            Some(std::time::Duration::from_secs(1)),
+            None,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(read_message_3.len(), 0);
+}
+
+#[tokio::test]
 async fn test_read_batch() {
     let test_queue = "test_read_batch".to_owned();
 
@@ -722,7 +789,7 @@ async fn test_extension_api() {
     assert!(msg_id >= 1);
 
     let read_message = queue
-        .read::<MyMessage>(&test_queue, 100)
+        .read::<MyMessage>(&test_queue, 5)
         .await
         .expect("error reading message");
     assert!(read_message.is_some());
