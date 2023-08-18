@@ -15,6 +15,27 @@ use pgmq_crate::query::{
 };
 use thiserror::Error;
 
+extension_sql!(
+    "
+CREATE TABLE public.pgmq_meta (
+    queue_name VARCHAR UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    WHERE has_table_privilege('pg_monitor', 'public.pgmq_meta', 'SELECT')
+  ) THEN
+    EXECUTE 'GRANT SELECT ON pgmq.meta TO pg_monitor';
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+",
+    name = "bootstrap"
+);
+
 #[derive(Error, Debug)]
 pub enum PgmqExtError {
     #[error("")]

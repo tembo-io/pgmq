@@ -8,8 +8,6 @@ pub const PGMQ_SCHEMA: &str = "public";
 pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
-        create_meta(),
-        assign_meta(),
         create_queue(name)?,
         assign_queue(name)?,
         create_index(name)?,
@@ -17,7 +15,6 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
         assign_archive(name)?,
         create_archive_index(name)?,
         insert_meta(name)?,
-        grant_pgmon_meta(),
         grant_pgmon_queue(name)?,
     ])
 }
@@ -354,20 +351,20 @@ pub fn unassign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
 pub fn assign(table_name: &str) -> String {
     format!(
         "
-    DO $$ 
+    DO $$
         BEGIN
         -- Check if the table is not yet associated with the extension
         IF NOT EXISTS (
-            SELECT 1 
-            FROM pg_depend 
+            SELECT 1
+            FROM pg_depend
             WHERE refobjid = (SELECT oid FROM pg_extension WHERE extname = 'pgmq')
             AND objid = (SELECT oid FROM pg_class WHERE relname = '{TABLE_PREFIX}_{table_name}')
         ) THEN
-        
+
             EXECUTE 'ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{table_name}';
-        
+
         END IF;
-        
+
         END $$;
     "
     )

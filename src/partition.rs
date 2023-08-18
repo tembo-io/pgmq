@@ -4,9 +4,8 @@ use pgrx::prelude::*;
 use pgmq_crate::{
     errors::PgmqError,
     query::{
-        assign_archive, assign_meta, assign_queue, create_archive, create_index, create_meta,
-        grant_pgmon_meta, grant_pgmon_queue, grant_pgmon_queue_seq, insert_meta, PGMQ_SCHEMA,
-        TABLE_PREFIX,
+        assign_archive, assign_queue, create_archive, create_index, create_meta, grant_pgmon_meta,
+        grant_pgmon_queue, grant_pgmon_queue_seq, insert_meta, PGMQ_SCHEMA, TABLE_PREFIX,
     },
     util::CheckedName,
 };
@@ -23,8 +22,30 @@ pub fn init_partitioned_queue(
     let name = CheckedName::new(name)?;
     let partition_col = map_partition_col(partition_interval);
     Ok(vec![
+        create_partitioned_queue(name, partition_col)?,
+        assign_queue(name)?,
+        create_partitioned_index(name, partition_col)?,
+        create_index(name)?,
+        create_archive(name)?,
+        assign_archive(name)?,
+        create_partitioned_table(name, partition_col, partition_interval)?,
+        insert_meta(name)?,
+        set_retention_config(name, retention_interval)?,
+        grant_pgmon_queue(name)?,
+        grant_pgmon_queue_seq(name)?,
+    ])
+}
+
+/// partitioned queues require pg_partman to be installed
+pub fn init_partitioned_queue_client_only(
+    name: &str,
+    partition_interval: &str,
+    retention_interval: &str,
+) -> Result<Vec<String>, PgmqError> {
+    let name = CheckedName::new(name)?;
+    let partition_col = map_partition_col(partition_interval);
+    Ok(vec![
         create_meta(),
-        assign_meta(),
         grant_pgmon_meta(),
         create_partitioned_queue(name, partition_col)?,
         assign_queue(name)?,
@@ -100,7 +121,7 @@ fn set_retention_config(queue: CheckedName<'_>, retention: &str) -> Result<Strin
     Ok(format!(
         "
         UPDATE {PGMQ_SCHEMA}.part_config
-        SET 
+        SET
             retention = '{retention}',
             retention_keep_table = false,
             retention_keep_index = true,
