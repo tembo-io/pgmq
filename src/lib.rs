@@ -28,7 +28,7 @@ BEGIN
     SELECT 1
     WHERE has_table_privilege('pg_monitor', 'public.pgmq_meta', 'SELECT')
   ) THEN
-    EXECUTE 'GRANT SELECT ON pgmq.meta TO pg_monitor';
+    EXECUTE 'GRANT SELECT ON public.pgmq_meta TO pg_monitor';
   END IF;
 END;
 $$ LANGUAGE plpgsql;
