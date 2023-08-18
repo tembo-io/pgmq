@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::types::chrono::Utc;
 use sqlx::{Executor, Pool, Postgres};
 
+const DEFAULT_POLL_TIMEOUT_S: i32 = 5;
+const DEFAULT_POLL_INTERVAL_MS: i32 = 250;
+
 /// Main controller for interacting with a managed by the PGMQ Postgres extension.
 #[derive(Clone, Debug)]
 pub struct PGMQueueExt {
@@ -169,6 +172,50 @@ impl PGMQueueExt {
             queue_name,
             vt,
             1
+        )
+        .fetch_optional(&self.connection)
+        .await?;
+        match row {
+            Some(row) => {
+                // happy path - successfully read a message
+                let raw_msg = row.message.expect("no message");
+                let parsed_msg = serde_json::from_value::<T>(raw_msg)?;
+                Ok(Some(Message {
+                    msg_id: row.msg_id.expect("msg_id missing from queue table"),
+                    vt: row.vt.expect("vt missing from queue table"),
+                    read_ct: row.read_ct.expect("read_ct missing from queue table"),
+                    enqueued_at: row
+                        .enqueued_at
+                        .expect("enqueued_at missing from queue table"),
+                    message: parsed_msg,
+                }))
+            }
+            None => {
+                // no message found
+                Ok(None)
+            }
+        }
+    }
+
+    pub async fn read_batch_with_poll<T: for<'de> Deserialize<'de>>(
+        &self,
+        queue_name: &str,
+        vt: i32,
+        max_batch_size: i32,
+        poll_timeout: Option<std::time::Duration>,
+        poll_interval: Option<std::time::Duration>,
+    ) -> Result<Option<Message<T>>, PgmqError> {
+        check_input(queue_name)?;
+        let poll_timeout_s = poll_timeout.map_or(DEFAULT_POLL_TIMEOUT_S, |t| t.as_secs() as i32);
+        let poll_interval_ms =
+            poll_interval_ms.map_or(DEFAULT_POLL_INTERVAL_MS, |i| i.as_millis() as i32);
+        let row = sqlx::query!(
+            "SELECT * from pgmq_read_with_poll($1::text, $2, $3, $4, $5)",
+            queue_name,
+            vt,
+            max_batch_size,
+            poll_timeout_s,
+            poll_interval_ms
         )
         .fetch_optional(&self.connection)
         .await?;

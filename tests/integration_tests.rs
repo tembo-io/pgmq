@@ -82,8 +82,7 @@ async fn test_lifecycle() {
     assert!(message.is_none());
 
     // read again, now using poll to block until message is ready
-    let query =
-        &format!("SELECT * from pgmq_read_with_poll('{test_default_queue}', 10, 1, 10000);");
+    let query = &format!("SELECT * from pgmq_read_with_poll('{test_default_queue}', 10, 1, 10);");
     let message = fetch_one_message::<serde_json::Value>(query, &conn)
         .await
         .expect("failed reading message")
