@@ -1,6 +1,7 @@
 //! Query constructors
 
 use crate::{errors::PgmqError, util::CheckedName};
+
 use sqlx::types::chrono::Utc;
 pub const TABLE_PREFIX: &str = r#"pgmq"#;
 pub const PGMQ_SCHEMA: &str = "public";
@@ -231,14 +232,14 @@ pub fn read(name: &str, vt: i32, limit: i32) -> Result<String, PgmqError> {
         (
             SELECT msg_id
             FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
-            WHERE vt <= now()
+            WHERE vt <= clock_timestamp()
             ORDER BY msg_id ASC
             LIMIT {limit}
             FOR UPDATE SKIP LOCKED
         )
     UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
     SET
-        vt = now() + interval '{vt} seconds',
+        vt = clock_timestamp() + interval '{vt} seconds',
         read_ct = read_ct + 1
     WHERE msg_id in (select msg_id from cte)
     RETURNING *;
