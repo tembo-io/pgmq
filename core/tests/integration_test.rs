@@ -804,6 +804,16 @@ async fn test_extension_api() {
         .expect("error reading message");
     assert!(read_message.is_none());
 
+    // read with poll, blocks until message visible
+    let read_messages = queue
+        .read_batch_with_poll::<MyMessage>(&test_queue, 5, 1, Some(std::time::Duration::from_secs(6)), None)
+        .await
+        .expect("error reading message")
+        .expect("no message");
+
+    assert_eq!(read_messages.len(), 1);
+    assert_eq!(read_messages[0].msg_id, msg_id);
+
     // change the VT to now
     let _vt_set = queue
         .set_vt::<MyMessage>(&test_queue, msg_id, 0)
