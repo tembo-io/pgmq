@@ -14,12 +14,12 @@
           "type_info": "Int4"
         },
         {
-          "name": "vt",
+          "name": "enqueued_at",
           "ordinal": 2,
           "type_info": "Timestamptz"
         },
         {
-          "name": "enqueued_at",
+          "name": "vt",
           "ordinal": 3,
           "type_info": "Timestamptz"
         },
@@ -220,12 +220,12 @@
           "type_info": "Int4"
         },
         {
-          "name": "vt",
+          "name": "enqueued_at",
           "ordinal": 2,
           "type_info": "Timestamptz"
         },
         {
-          "name": "enqueued_at",
+          "name": "vt",
           "ordinal": 3,
           "type_info": "Timestamptz"
         },
@@ -272,6 +272,54 @@
       }
     },
     "query": "SELECT pgmq_send as msg_id from pgmq_send($1::text, $2::jsonb);"
+  },
+  "e4c38347b44aed05aa890d3351a362d3b6f81387e98fc564ec922cefa1e96f71": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "read_ct",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "enqueued_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "vt",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 4,
+          "type_info": "Jsonb"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int4",
+          "Int4",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_read_with_poll($1::text, $2, $3, $4, $5)"
   },
   "ed8b7aacd0d94fe647899b6d2fe61a29372cd7d6dbc28bf59ac6bb3118e3fe6c": {
     "describe": {

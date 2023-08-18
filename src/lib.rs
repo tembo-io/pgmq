@@ -15,6 +15,8 @@ use pgmq_crate::query::{
 };
 use thiserror::Error;
 
+use std::time::Duration;
+
 #[derive(Error, Debug)]
 pub enum PgmqExtError {
     #[error("")]
@@ -124,6 +126,39 @@ fn pgmq_read(
 > {
     let results = readit(queue_name, vt, limit)?;
     Ok(TableIterator::new(results))
+}
+
+#[pg_extern]
+fn pgmq_read_with_poll(
+    queue_name: &str,
+    vt: i32,
+    limit: i32,
+    poll_timeout_s: default!(i32, 5),
+    poll_interval_ms: default!(i32, 250),
+) -> Result<
+    TableIterator<
+        'static,
+        (
+            name!(msg_id, i64),
+            name!(read_ct, i32),
+            name!(enqueued_at, TimestampWithTimeZone),
+            name!(vt, TimestampWithTimeZone),
+            name!(message, pgrx::JsonB),
+        ),
+    >,
+    spi::Error,
+> {
+    let start_time = std::time::Instant::now();
+    let poll_timeout_ms = (poll_timeout_s * 1000) as u128;
+    loop {
+        let results = readit(queue_name, vt, limit)?;
+        if results.is_empty() && start_time.elapsed().as_millis() < poll_timeout_ms {
+            std::thread::sleep(Duration::from_millis(poll_interval_ms.try_into().unwrap()));
+            continue;
+        } else {
+            break Ok(TableIterator::new(results));
+        }
+    }
 }
 
 fn readit(
