@@ -364,12 +364,9 @@ pub fn assign(table_name: &str) -> String {
             WHERE refobjid = (SELECT oid FROM pg_extension WHERE extname = 'pgmq')
             AND objid = (SELECT oid FROM pg_class WHERE relname = '{TABLE_PREFIX}_{table_name}')
         ) THEN
-
             EXECUTE 'ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{table_name}';
-
         END IF;
-
-        END $$;
+    END $$;
     "
     )
 }
