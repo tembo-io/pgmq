@@ -6,7 +6,7 @@ pub enum PgmqExtError {
     #[error("unexpected error")]
     SqlError(#[from] pgrx::spi::Error),
 
-    #[error("invalid queue name: \"{0}\"")]
+    #[error("invalid queue name: '{0}'")]
     InvalidQueueName(String),
 
     #[error("queue error")]
