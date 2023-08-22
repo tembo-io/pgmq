@@ -18,6 +18,6 @@ pub enum PgmqError {
 
     /// a queue name error
     /// queue names must be alphanumeric and start with a letter
-    #[error("naming error: {name}")]
+    #[error("invalid queue name: '{name}'")]
     InvalidQueueName { name: String },
 }
