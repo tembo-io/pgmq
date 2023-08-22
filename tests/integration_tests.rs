@@ -20,7 +20,8 @@ async fn test_lifecycle() {
 
     let conn00 = connect(&format!(
         "postgres://{username}:postgres@localhost:28815/pgmq"
-    )).await;
+    ))
+    .await;
     // ignore the error if the db already exists!
     let _ = sqlx::query("CREATE DATABASE pgmq_test;")
         .execute(&conn00)
