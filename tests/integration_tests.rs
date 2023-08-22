@@ -54,6 +54,13 @@ async fn test_lifecycle() {
         .await
         .expect("failed to create queue");
 
+    // creating a queue must be idempotent
+    // create with same name again, must be no  error
+    let _ = sqlx::query(&format!("SELECT pgmq_create('{test_default_queue}');"))
+        .execute(&conn)
+        .await
+        .expect("failed to create queue");
+
     let msg_id = sqlx::query(&format!(
         "SELECT * from pgmq_send('{test_default_queue}', '{{\"hello\": \"world\"}}');"
     ))

@@ -326,7 +326,7 @@ pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
 }
 
 pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(assign(&format!("{name}_archive; ")))
+    Ok(assign(&format!("{name}_archive")))
 }
 
 pub fn unassign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
@@ -352,14 +352,15 @@ pub fn assign(table_name: &str) -> String {
             SELECT 1
             FROM pg_depend
             WHERE refobjid = (SELECT oid FROM pg_extension WHERE extname = 'pgmq')
-            AND objid = (SELECT oid FROM pg_class WHERE relname = '{TABLE_PREFIX}_{table_name}')
+            AND objid = (
+                SELECT oid
+                FROM pg_class
+                WHERE relname = '{TABLE_PREFIX}_{table_name}'
+            )
         ) THEN
-
             EXECUTE 'ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{table_name}';
-
         END IF;
-
-        END $$;
+    END $$;
     "
     )
 }
@@ -394,6 +395,12 @@ pub fn check_input(input: &str) -> Result<(), PgmqError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_assign() {
+        let query = assign("my_queue_archive");
+        assert!(query.contains("WHERE relname = 'pgmq_my_queue_archive'"));
+    }
 
     #[test]
     fn test_create() {
