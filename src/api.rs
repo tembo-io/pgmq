@@ -2,8 +2,8 @@ use pgrx::prelude::*;
 use pgrx::spi;
 use pgrx::spi::SpiTupleTable;
 
+use crate::errors::PgmqExtError;
 use crate::partition::PARTMAN_SCHEMA;
-use crate::PgmqExtError;
 use pgmq_crate::query::{destroy_queue, PGMQ_SCHEMA, TABLE_PREFIX};
 
 #[pg_extern]

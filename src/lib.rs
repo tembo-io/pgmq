@@ -6,6 +6,7 @@ use pgrx::warning;
 pgrx::pg_module_magic!();
 
 pub mod api;
+pub mod errors;
 pub mod metrics;
 pub mod partition;
 
@@ -13,22 +14,8 @@ use pgmq_crate::errors::PgmqError;
 use pgmq_crate::query::{
     archive, check_input, delete, init_queue, pop, read, PGMQ_SCHEMA, TABLE_PREFIX,
 };
-use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum PgmqExtError {
-    #[error("")]
-    SqlError(#[from] pgrx::spi::Error),
-
-    #[error("")]
-    QueueError(#[from] PgmqError),
-
-    #[error("{0} invalid types")]
-    TypeErrorError(String),
-
-    #[error("missing dependency: {0}")]
-    MissingDependency(String),
-}
+use errors::PgmqExtError;
 
 #[pg_extern]
 fn pgmq_create_non_partitioned(queue_name: &str) -> Result<(), PgmqExtError> {
