@@ -78,9 +78,8 @@ jobs:
           cargo pgrx test ${pg_version}
 
   publish:
-    # only publish on tagged release events
-    # if: github.ref == 'refs/heads/main'
-    if: startsWith(github.ref, 'refs/tags/')
+    # only publish release events
+    if: github.event_name == 'release'
     name: trunk publish
     runs-on: ubuntu-22.04
     steps:

@@ -163,8 +163,12 @@ pub mod util;
 pub use pg_ext::PGMQueueExt;
 use util::fetch_one_message;
 
+use std::time::Duration;
+
 const VT_DEFAULT: i32 = 30;
 const READ_LIMIT_DEFAULT: i32 = 1;
+const POLL_TIMEOUT_DEFAULT: Duration = Duration::from_secs(5);
+const POLL_INTERVAL_DEFAULT: Duration = Duration::from_millis(250);
 
 /// Message struct received from the queue
 ///
@@ -627,6 +631,45 @@ impl PGMQueue {
         Ok(messages)
     }
 
+    /// Similar to [`read_batch`], but allows waiting until a message is available
+    ///
+    /// You can specify a maximum duration for polling (defaults to 5 seconds),
+    /// and an interval between calls (defaults to 250ms). A lower interval
+    /// implies higher maximum latency, but less load on the database.
+    ///
+    /// Refer to the [`read_batch`] function for more details.
+    ///
+    pub async fn read_batch_with_poll<T: for<'de> Deserialize<'de>>(
+        &self,
+        queue_name: &str,
+        vt: Option<i32>,
+        max_batch_size: i32,
+        poll_timeout: Option<Duration>,
+        poll_interval: Option<Duration>,
+    ) -> Result<Option<Vec<Message<T>>>, errors::PgmqError> {
+        let vt_ = vt.unwrap_or(VT_DEFAULT);
+        let poll_timeout_ = poll_timeout.unwrap_or(POLL_TIMEOUT_DEFAULT);
+        let poll_interval_ = poll_interval.unwrap_or(POLL_INTERVAL_DEFAULT);
+        let start_time = std::time::Instant::now();
+        loop {
+            let query = &query::read(queue_name, vt_, max_batch_size)?;
+            let messages = fetch_messages::<T>(query, &self.connection).await?;
+            match messages {
+                Some(m) => {
+                    break Ok(Some(m));
+                }
+                None => {
+                    if start_time.elapsed() < poll_timeout_ {
+                        tokio::time::sleep(poll_interval_).await;
+                        continue;
+                    } else {
+                        break Ok(None);
+                    }
+                }
+            }
+        }
+    }
+
     /// Delete a message from the queue.
     /// This is a permanent delete and cannot be undone. If you want to retain a log of the message,
     /// use the [archive](#method.archive) method.
@@ -886,28 +929,31 @@ async fn fetch_messages<T: for<'de> Deserialize<'de>>(
     connection: &Pool<Postgres>,
 ) -> Result<Option<Vec<Message<T>>>, errors::PgmqError> {
     let mut messages: Vec<Message<T>> = Vec::new();
-    let rows: Result<Vec<PgRow>, Error> = sqlx::query(query).fetch_all(connection).await;
-    if let Err(sqlx::error::Error::RowNotFound) = rows {
-        return Ok(None);
-    } else if let Err(e) = rows {
-        return Err(e)?;
-    } else if let Ok(rows) = rows {
-        // happy path - successfully read messages
-        for row in rows.iter() {
-            let raw_msg = row.get("message");
-            let parsed_msg = serde_json::from_value::<T>(raw_msg);
-            if let Err(e) = parsed_msg {
-                return Err(errors::PgmqError::JsonParsingError(e));
-            } else if let Ok(parsed_msg) = parsed_msg {
-                messages.push(Message {
-                    msg_id: row.get("msg_id"),
-                    vt: row.get("vt"),
-                    read_ct: row.get("read_ct"),
-                    enqueued_at: row.get("enqueued_at"),
-                    message: parsed_msg,
-                })
+    let result: Result<Vec<PgRow>, Error> = sqlx::query(query).fetch_all(connection).await;
+    match result {
+        Ok(rows) => {
+            if rows.is_empty() {
+                Ok(None)
+            } else {
+                // happy path - successfully read messages
+                for row in rows.iter() {
+                    let raw_msg = row.get("message");
+                    let parsed_msg = serde_json::from_value::<T>(raw_msg);
+                    if let Err(e) = parsed_msg {
+                        return Err(errors::PgmqError::JsonParsingError(e));
+                    } else if let Ok(parsed_msg) = parsed_msg {
+                        messages.push(Message {
+                            msg_id: row.get("msg_id"),
+                            vt: row.get("vt"),
+                            read_ct: row.get("read_ct"),
+                            enqueued_at: row.get("enqueued_at"),
+                            message: parsed_msg,
+                        })
+                    }
+                }
+                Ok(Some(messages))
             }
         }
+        Err(e) => Err(e)?,
     }
-    Ok(Some(messages))
 }
