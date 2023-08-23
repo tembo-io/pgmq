@@ -100,7 +100,7 @@ pub fn create_meta() -> String {
 fn grant_stmt(table: &str) -> String {
     let grant_seq = match table {
         "pgmq_meta" => "".to_string(),
-        _ => format!("EXECUTE 'GRANT SELECT ON SEQUENCE {table}_msg_id_seq TO pg_monitor';")
+        _ => format!("EXECUTE 'GRANT SELECT ON SEQUENCE {table}_msg_id_seq TO pg_monitor';"),
     };
     format!(
         "
@@ -434,7 +434,6 @@ END;
 $$ LANGUAGE plpgsql;
 ";
         assert_eq!(q, expected)
-
     }
 
     #[test]
