@@ -98,6 +98,10 @@ pub fn create_meta() -> String {
 }
 
 fn grant_stmt(table: &str) -> String {
+    let grant_seq = match &table.contains("pgmq_meta") {
+        true => "".to_string(),
+        false => format!("EXECUTE 'GRANT SELECT ON SEQUENCE {table}_msg_id_seq TO pg_monitor';"),
+    };
     format!(
         "
 DO $$
@@ -107,6 +111,7 @@ BEGIN
     WHERE has_table_privilege('pg_monitor', '{table}', 'SELECT')
   ) THEN
     EXECUTE 'GRANT SELECT ON {table} TO pg_monitor';
+    {grant_seq}
   END IF;
 END;
 $$ LANGUAGE plpgsql;
@@ -395,6 +400,41 @@ pub fn check_input(input: &str) -> Result<(), PgmqError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_grant() {
+        let q = grant_stmt("my_table");
+        let expected = "
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    WHERE has_table_privilege('pg_monitor', 'my_table', 'SELECT')
+  ) THEN
+    EXECUTE 'GRANT SELECT ON my_table TO pg_monitor';
+    EXECUTE 'GRANT SELECT ON SEQUENCE my_table_msg_id_seq TO pg_monitor';
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+";
+        assert_eq!(q, expected);
+
+        let q = grant_stmt("pgmq_meta");
+        let expected = "
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    WHERE has_table_privilege('pg_monitor', 'pgmq_meta', 'SELECT')
+  ) THEN
+    EXECUTE 'GRANT SELECT ON pgmq_meta TO pg_monitor';
+    
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+";
+        assert_eq!(q, expected)
+    }
 
     #[test]
     fn test_assign() {
