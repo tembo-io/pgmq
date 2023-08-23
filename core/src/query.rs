@@ -107,7 +107,7 @@ BEGIN
     WHERE has_table_privilege('pg_monitor', '{table}', 'SELECT')
   ) THEN
     EXECUTE 'GRANT SELECT ON {table} TO pg_monitor';
-    EXECUTE 'GRANT USAGE ON SEQUENCE {table}_msg_id_seq TO pg_monitor';
+    EXECUTE 'GRANT SELECT ON SEQUENCE {table}_msg_id_seq TO pg_monitor';
   END IF;
 END;
 $$ LANGUAGE plpgsql;
@@ -408,7 +408,7 @@ BEGIN
     WHERE has_table_privilege('pg_monitor', 'my_table', 'SELECT')
   ) THEN
     EXECUTE 'GRANT SELECT ON my_table TO pg_monitor';
-    EXECUTE 'GRANT USAGE ON SEQUENCE my_table_msg_id_seq TO pg_monitor';
+    EXECUTE 'GRANT SELECT ON SEQUENCE my_table_msg_id_seq TO pg_monitor';
   END IF;
 END;
 $$ LANGUAGE plpgsql;
