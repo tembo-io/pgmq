@@ -1246,7 +1246,7 @@ name = "pgmq"
 version = "0.15.1"
 dependencies = [
  "chrono",
- "pgmq 0.16.3",
+ "pgmq 0.17.0",
  "pgrx",
  "pgrx-tests",
  "rand",
@@ -1260,7 +1260,7 @@ dependencies = [
 
 [[package]]
 name = "pgmq"
-version = "0.16.3"
+version = "0.17.0"
 dependencies = [
  "chrono",
  "log",
