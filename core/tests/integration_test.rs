@@ -870,6 +870,18 @@ async fn test_extension_api() {
         .await
         .expect("failed to delete");
     assert!(!deleted);
+
+    // delete a batch of messages
+    let m1 = queue.send(&test_queue, &del_msg).await.unwrap();
+    let m2 = queue.send(&test_queue, &del_msg).await.unwrap();
+    let m3 = queue.send(&test_queue, &del_msg).await.unwrap();
+    let delete_result = queue
+        .delete_batch(&test_queue, &[m1, m2, m3])
+        .await
+        .expect("delete batch error");
+    let rowcount = rowcount(&test_queue, &queue.connection).await;
+    assert_eq!(rowcount, 0);
+    assert_eq!(delete_result, true);
 }
 
 #[tokio::test]

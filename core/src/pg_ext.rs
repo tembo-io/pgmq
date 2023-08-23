@@ -295,7 +295,7 @@ impl PGMQueueExt {
     // Delete a message by message id.
     pub async fn delete(&self, queue_name: &str, msg_id: i64) -> Result<bool, PgmqError> {
         let row = sqlx::query!(
-            "SELECT * from pgmq_delete($1::text, $2)",
+            "SELECT * from pgmq_delete($1::text, $2::bigint)",
             queue_name,
             msg_id
         )
@@ -304,5 +304,15 @@ impl PGMQueueExt {
         Ok(row.pgmq_delete.expect("no delete result"))
     }
 
-    //
+    // Delete with a slice of message ids
+    pub async fn delete_batch(&self, queue_name: &str, msg_id: &[i64]) -> Result<bool, PgmqError> {
+        let row = sqlx::query!(
+            "SELECT * from pgmq_delete($1::text, $2::bigint[])",
+            queue_name,
+            msg_id
+        )
+        .fetch_one(&self.connection)
+        .await?;
+        Ok(row.pgmq_delete.expect("no delete result"))
+    }
 }
