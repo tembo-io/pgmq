@@ -268,57 +268,6 @@ def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seco
     return all_results_csv
 
 
-def generate_plot(csv_name: str, bench_name: str, duration: int, params: dict, window: int = 10_000) -> None:
-    alldf = pd.read_csv(csv_name)
-    alldf["duration_ms"] = alldf["duration"] * 1000
-    wide_df = pd.pivot(alldf, index="msg_id", columns="operation", values="duration_ms")
-    ax = wide_df.rolling(window).mean().plot(figsize=(20, 10))
-    ax.set_xlabel("Message Number")
-    ax.set_ylabel("Duration (ms)")
-    plt.suptitle("PGMQ Concurrent Produce/Consumer Benchmark")
-    plt.title(params)
-    output_plot = f"rolling_avg_{duration}_{bench_name}.png"
-    plt.savefig(output_plot)
-    print(f"Saved plot to: {output_plot}")
-
-
-def merge_plot(csv: str):
-    df = pd.read_csv(csv)
-    # Creating a figure and axis object
-    fig, ax1 = plt.subplots(figsize=(10, 6))
-
-    # Plotting duration against msg_id for each operation
-    for operation in df["operation"].unique():
-        if operation != "queue_depth":
-            df_operation = df[df["operation"] == operation]
-            ax1.plot(df_operation["msg_id"], df_operation["duration"], label=operation)
-
-    # Setting the y-label for the left axis
-    ax1.set_ylabel("Duration", color="blue")
-    ax1.tick_params("y", colors="blue")
-
-    # Create another axis object for the right y-axis
-    ax2 = ax1.twinx()
-
-    # Plotting queue_length against msg_id for 'queue_depth' operation
-    df_queue_depth = df[df["operation"] == "queue_depth"]
-    ax2.plot(df_queue_depth["msg_id"], df_queue_depth["queue_length"], label="queue_depth", color="green")
-
-    # Setting the y-label for the right axis
-    ax2.set_ylabel("Queue Length", color="green")
-    ax2.tick_params("y", colors="green")
-
-    # Setting the x-label
-    ax1.set_xlabel("msg_id")
-
-    # Displaying the legend and plot
-    ax1.legend(loc="upper left")
-    ax2.legend(loc="upper right")
-    output_plot = f"newplot.png"
-    plt.savefig(output_plot)
-    print(f"Saved plot to: {output_plot}")
-
-
 def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
     df = pd.read_csv(csv)
     # convert seconds to milliseconds
@@ -404,10 +353,6 @@ if __name__ == "__main__":
     # script merges csvs and summarizes results
     import argparse
     from multiprocessing import Process
-
-    # plot_rolling("/Users/adamhendel/repos/pgmq/tembo-pgmq-python/all_results_bench_queue_1692837321.csv", "", "", "", "")
-    # import sys
-    # sys.exit(1)
 
     parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
 
