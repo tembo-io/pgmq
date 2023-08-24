@@ -2,12 +2,12 @@ import multiprocessing
 import random
 import time
 from typing import Optional
-from time import process_time
 
 import pandas as pd
+import psycopg2
 from matplotlib import pyplot as plt  # type: ignore
 from scipy.ndimage import gaussian_filter1d
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 
 from tembo_pgmq_python import Message, PGMQueue
 
@@ -148,9 +148,9 @@ def produce(
         queue_name: The name of the queue to publish to
         duration_seconds: The number of seconds to publish messages
     """
-    queue = PGMQueue(**connection_info)
-
-    msg = {"hello": "world"}
+    url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
+    conn = psycopg2.connect(url)
+    cur = conn.cursor()
 
     all_results = []
 
@@ -161,22 +161,24 @@ def produce(
     last_print_time = time.time()
 
     while running_duration < duration_seconds:
-        send_start = process_time()
-        msg_id: int = queue.send(queue_name, msg)
-        send_duration = process_time() - send_start
-        all_results.append(
-            {"operation": "write", "duration": send_duration, "msg_id": msg_id, "epoch": time.time()}
-        )
+        send_start = time.perf_counter()
+        cur.execute(f"""select * from pgmq_send('{queue_name}', '{{"hello": "world"}}')""")
+        conn.commit()
+        msg_id = cur.fetchall()[0][0]
+        send_duration = time.perf_counter() - send_start
+        # msg_id: int = queue.send(queue_name, msg)
+        all_results.append({"operation": "write", "duration": send_duration, "msg_id": msg_id, "epoch": time.time()})
         num_msg += 1
         running_duration = int(time.time() - start_time)
         # log every 5 seconds
         if time.time() - last_print_time >= 5:
             last_print_time = time.time()
             print(f"Total Messages Sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
-
+    cur.close()
+    conn.close()
     print(f"Total Messages Sent: {num_msg}, {int(running_duration)} / {duration_seconds} seconds")
     df = pd.DataFrame(all_results)
-    con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
+    con = create_engine(url)
     df.to_sql(f"bench_results_{queue_name}", con=con, if_exists="append", index=False)
     print("Finished publishing messages")
 
@@ -186,15 +188,20 @@ def consume(queue_name: str, connection_info: dict):
 
     Halts consumption after 5 seconds of no messages.
     """
-    queue = PGMQueue(**connection_info)
+    url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
+    conn = psycopg2.connect(url)
+    cur = conn.cursor()
+    # queue = PGMQueue(**connection_info)
 
     results = []
     no_message_timeout = 0
     while no_message_timeout < 5:
-        read_start = process_time()
-        message: Optional[Message] = queue.read(queue_name, vt=10)
-        read_duration = process_time() - read_start
-        if message is None:
+        read_start = time.perf_counter()
+        cur.execute("select * from pgmq_read(%s, %s, %s);", [queue_name, 1, 1])
+        message = cur.fetchall()
+        conn.commit()
+        read_duration = time.perf_counter() - read_start
+        if len(message) == 0:
             no_message_timeout += 1
             if no_message_timeout > 2:
                 print(f"No messages for {no_message_timeout} consecutive reads")
@@ -202,15 +209,13 @@ def consume(queue_name: str, connection_info: dict):
             continue
         else:
             no_message_timeout = 0
+        msg_id = message[0][0]
+        results.append({"operation": "read", "duration": read_duration, "msg_id": msg_id, "epoch": time.time()})
 
-        results.append({"operation": "read", "duration": read_duration, "msg_id": message.msg_id, "epoch": read_start})
-
-        archive_start = process_time()
-        queue.archive(queue_name, message.msg_id)
-        archive_duration = process_time() - archive_start
-        results.append(
-            {"operation": "archive", "duration": archive_duration, "msg_id": message.msg_id, "epoch": time.time()}
-        )
+        archive_start = time.perf_counter()
+        queue.archive(queue_name, msg_id)
+        archive_duration = time.perf_counter() - archive_start
+        results.append({"operation": "archive", "duration": archive_duration, "msg_id": msg_id, "epoch": time.time()})
 
     # divide by 2 because we're appending two results (read/archive) per message
     num_consumed = len(results) / 2
@@ -276,19 +281,16 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
     df["duration_ms"] = df["duration"] * 1000
     df["time"] = pd.to_datetime(df["epoch"], unit="s")
 
-    result = df.groupby('operation').agg({
-        'time': lambda x: x.max() - x.min(),
-        'operation': 'size'
-    })
+    result = df.groupby("operation").agg({"time": lambda x: x.max() - x.min(), "operation": "size"})
     result.columns = ["range", "num_messages"]
     result.reset_index(inplace=True)
 
-    result.columns = ['operation', 'range', 'num_messages']
+    result.columns = ["operation", "range", "num_messages"]
     result["total_duration_seconds"] = result["range"].apply(lambda x: x.total_seconds())
-    result['messages_per_second'] =  result['num_messages'] / result['total_duration_seconds']
+    result["messages_per_second"] = result["num_messages"] / result["total_duration_seconds"]
     output_str = []
     for _, row in result.iterrows():
-        operation = row['operation']
+        operation = row["operation"]
         if operation == "queue_depth":
             continue
         s = f"{operation}: total seconds: {row['total_duration_seconds']}, total messages: {row['num_messages']}, message / sec = {row['messages_per_second']:.2f}"
@@ -296,7 +298,6 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
 
     output_str = "\n".join(output_str)
     print(output_str)
-
 
     # Plotting
     _, ax1 = plt.subplots(figsize=(20, 10))
@@ -329,33 +330,37 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
 
 
 def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessing.Value):
-    from sqlalchemy import create_engine, text
-
     url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
-
+    conn = psycopg2.connect(url)
     eng = create_engine(url)
-
+    cur = conn.cursor()
     all_metrics = []
     while not kill_flag.value:
-        with eng.connect() as conn:
-            cur = conn.execute(text(f"select * from pgmq_metrics_all() where queue_name = '{queue_name}'"))
-            metrics = cur.fetchall()
-            depth = metrics[0][1]
-            total_messages = metrics[0][-2]
-            all_metrics.append(
-                {
-                    "queue_name": metrics[0][0],
-                    "queue_length": depth,
-                    "total_messages": total_messages,
-                    "time": time.time(),
-                }
-            )
-            print(f"Number messages in queue: {depth}, max_msg_id: {total_messages}")
+        cur.execute(f"select * from pgmq_metrics('{queue_name}')")
+        metrics = cur.fetchall()[0]
+        depth = metrics[1]
+        total_messages = metrics[-2]
+        all_metrics.append(
+            {
+                "queue_name": metrics[0],
+                "queue_length": depth,
+                "total_messages": total_messages,
+                "time": time.time(),
+            }
+        )
+        print(f"Number messages in queue: {depth}, max_msg_id: {total_messages}")
+
+        read_start = time.perf_counter()
+        cur.execute("select 1")
+        cur.fetchall()
+        sel_duration = time.perf_counter() - read_start
+        print("Select 1 latency (ms): ", sel_duration * 1000)
         time.sleep(5)
+    cur.close()
+    conn.close()
     print("Writing queue length results")
     df = pd.DataFrame(all_metrics)
     df.to_sql(f"bench_results_{queue_name}_queue_depth", con=eng, if_exists="append", index=False)
-
     return all_metrics
 
 
@@ -378,7 +383,7 @@ if __name__ == "__main__":
     # script merges csvs and summarizes results
     import argparse
     from multiprocessing import Process
-   
+
     parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
 
     parser.add_argument("--postgres_connection", type=str, required=False, help="postgres connection string")
@@ -431,15 +436,23 @@ if __name__ == "__main__":
     # setup results table
     test_queue = f"bench_queue_{bench_name}"
     with queue.pool.connection() as con:
-        con.execute(f"""
+        con.execute(
+            f"""
             CREATE TABLE "bench_results_{test_queue}"(
                 operation text NULL,
                 duration float8 NULL,
                 msg_id int8 NULL,
                 epoch float8 NULL
             )
-        """)
+        """
+        )
 
+    with queue.pool.connection() as con:
+        con.execute(
+            f"""
+            select pg_stat_statements_reset()
+        """
+        ).fetchall()
 
     if partitioned_queue:
         print(f"Creating partitioned queue: {test_queue}")
@@ -485,6 +498,10 @@ if __name__ == "__main__":
     kill_flag.value = True
     queue_depth_proc.join()
 
+    # save pg_stat_statements
+    with queue.pool.connection() as con:
+        pg_stat_df = pd.read_sql("select * from pg_stat_statements", con=con)
+    pg_stat_df.to_csv("bench_name_pg_stat.csv", index=None)
     # once consuming finishes, summarize
     results_file = f"results_{test_queue}.jpg"
     # TODO: organize results in a directory or something, log all the params
