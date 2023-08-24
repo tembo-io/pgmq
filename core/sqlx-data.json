@@ -109,17 +109,7 @@
     },
     "query": "SELECT * from pgmq_create($1::text);"
   },
-  "3a3440841fba7d0f8744f5873cdb93a64b6e2f6481c3b14af701c5189f5e73f0": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;"
-  },
-  "595dd830c53f4560378cfadcf8a1cc6f566307e3d76fea4c84e35e70649a7f17": {
+  "36b2ecea83484248d99c8d091f8d9b7fa6ce368d7db8fe14e3ab491eb52c723c": {
     "describe": {
       "columns": [
         {
@@ -134,11 +124,21 @@
       "parameters": {
         "Left": [
           "Text",
-          "Int8"
+          "Int8Array"
         ]
       }
     },
-    "query": "SELECT * from pgmq_archive($1::text, $2)"
+    "query": "SELECT * from pgmq_archive($1::text, $2::bigint[])"
+  },
+  "3a3440841fba7d0f8744f5873cdb93a64b6e2f6481c3b14af701c5189f5e73f0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;"
   },
   "8e4f6635dc4cfb5ed42ddb87930b985793e81243b8a5609dec4ab566aaab4e9c": {
     "describe": {
@@ -272,6 +272,27 @@
       }
     },
     "query": "SELECT * from pgmq_read($1::text, $2, $3)"
+  },
+  "cb7072cc0f81a187953b6210a40d799b0ff301b73ad873f767c29fd383724a32": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_archive",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_archive($1::text, $2::bigint)"
   },
   "cd7b28f6bd348038e7c26d89292f2445841e7c13143b453277a010390699d1fc": {
     "describe": {

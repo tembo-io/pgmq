@@ -766,6 +766,7 @@ async fn test_set_vt() {
 #[tokio::test]
 async fn test_extension_api() {
     let test_queue = format!("test_ext_api_{}", rand::thread_rng().gen_range(0..100000));
+    let test_queue_archive = format!("{}_archive", test_queue);
 
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
@@ -879,9 +880,23 @@ async fn test_extension_api() {
         .delete_batch(&test_queue, &[m1, m2, m3])
         .await
         .expect("delete batch error");
-    let rowcount = rowcount(&test_queue, &queue.connection).await;
-    assert_eq!(rowcount, 0);
+    let post_delete_rowcount = rowcount(&test_queue, &queue.connection).await;
+    assert_eq!(post_delete_rowcount, 0);
     assert_eq!(delete_result, true);
+
+    // archive a batch of messages
+    let m4 = queue.send(&test_queue, &del_msg).await.unwrap();
+    let m5 = queue.send(&test_queue, &del_msg).await.unwrap();
+    let m6 = queue.send(&test_queue, &del_msg).await.unwrap();
+    let archive_result = queue
+        .archive_batch(&test_queue, &[m4, m5, m6])
+        .await
+        .expect("archive batch error");
+    let post_archive_rowcount = rowcount(&test_queue, &queue.connection).await;
+    assert_eq!(post_archive_rowcount, 0);
+    assert_eq!(archive_result, true);
+    let post_archive_archive_rowcount = rowcount(&test_queue_archive, &queue.connection).await;
+    assert_eq!(post_archive_archive_rowcount, 4);
 }
 
 #[tokio::test]
