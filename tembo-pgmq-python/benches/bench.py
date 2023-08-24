@@ -7,7 +7,7 @@ import pandas as pd
 import psycopg2
 from matplotlib import pyplot as plt  # type: ignore
 from scipy.ndimage import gaussian_filter1d
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from tembo_pgmq_python import Message, PGMQueue
 
@@ -191,7 +191,6 @@ def consume(queue_name: str, connection_info: dict):
     url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
     conn = psycopg2.connect(url)
     cur = conn.cursor()
-    # queue = PGMQueue(**connection_info)
 
     results = []
     no_message_timeout = 0
@@ -213,14 +212,19 @@ def consume(queue_name: str, connection_info: dict):
         results.append({"operation": "read", "duration": read_duration, "msg_id": msg_id, "epoch": time.time()})
 
         archive_start = time.perf_counter()
-        queue.archive(queue_name, msg_id)
+        cur.execute("select * from pgmq_archive(%s, %s);", [queue_name, msg_id])
+        cur.fetchall()
+        # queue.archive(queue_name, msg_id)
         archive_duration = time.perf_counter() - archive_start
         results.append({"operation": "archive", "duration": archive_duration, "msg_id": msg_id, "epoch": time.time()})
 
+    cur.close()
+    conn.close()
     # divide by 2 because we're appending two results (read/archive) per message
     num_consumed = len(results) / 2
     print(f"Consumed {num_consumed} messages")
     df = pd.DataFrame(results)
+    print(df[df["operation"] == "read"].duration.mean())
     con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
     df.to_sql(f"bench_results_{queue_name}", con=con, if_exists="append", index=False)
 
@@ -236,7 +240,6 @@ def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seco
     queue_depth["operation"] = "queue_depth"
     queue_depth.rename(
         columns={
-            # "queue_length": "duration",
             "total_messages": "msg_id",
             "time": "epoch",
         },
@@ -245,9 +248,7 @@ def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seco
     df = pd.concat([df, queue_depth[["operation", "queue_length", "msg_id", "epoch"]]])
 
     # iteration
-    trial = queue_name
-
-    all_results_csv = f"all_results_{trial}.csv"
+    all_results_csv = f"all_results_{queue_name}.csv"
     df.to_csv(all_results_csv, index=False)
 
     _num_df = df[df["operation"] == "archive"]
@@ -297,13 +298,12 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
         output_str.append(s)
 
     output_str = "\n".join(output_str)
-    print(output_str)
 
     # Plotting
     _, ax1 = plt.subplots(figsize=(20, 10))
 
     # plot th operations
-    sigma = 500  # Adjust as needed for the desired smoothing level
+    sigma = 100  # Adjust as needed for the desired smoothing level
     for op in ["read", "write", "archive"]:
         _df = df[df["operation"] == op].sort_values("time")
         ax1.plot(_df["time"], _df[["duration_ms"]].apply(lambda x: gaussian_filter1d(x, sigma)), label=op)
@@ -431,13 +431,15 @@ if __name__ == "__main__":
     if bench_name is None:
         bench_name = int(time.time())
 
-    queue = PGMQueue(**connection_info)  # type: ignore
+    url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
+    eng = create_engine(url)
 
     # setup results table
     test_queue = f"bench_queue_{bench_name}"
-    with queue.pool.connection() as con:
+    with eng.connect() as con:
         con.execute(
-            f"""
+            text(
+                f"""
             CREATE TABLE "bench_results_{test_queue}"(
                 operation text NULL,
                 duration float8 NULL,
@@ -445,15 +447,19 @@ if __name__ == "__main__":
                 epoch float8 NULL
             )
         """
+            )
         )
 
-    with queue.pool.connection() as con:
+    with eng.connect() as con:
         con.execute(
-            f"""
+            text(
+                f"""
             select pg_stat_statements_reset()
         """
+            )
         ).fetchall()
 
+    queue = PGMQueue(**connection_info)
     if partitioned_queue:
         print(f"Creating partitioned queue: {test_queue}")
         queue.create_partitioned_queue(
@@ -499,7 +505,7 @@ if __name__ == "__main__":
     queue_depth_proc.join()
 
     # save pg_stat_statements
-    with queue.pool.connection() as con:
+    with eng.connect() as con:
         pg_stat_df = pd.read_sql("select * from pg_stat_statements", con=con)
     pg_stat_df.to_csv("bench_name_pg_stat.csv", index=None)
     # once consuming finishes, summarize
