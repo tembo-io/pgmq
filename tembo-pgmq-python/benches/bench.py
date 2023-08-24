@@ -2,6 +2,7 @@ import multiprocessing
 import random
 import time
 from typing import Optional
+from time import process_time
 
 import pandas as pd
 from matplotlib import pyplot as plt  # type: ignore
@@ -153,25 +154,26 @@ def produce(
 
     all_results = []
 
-    start_time = int(time.time())
+    start_time = time.time()
 
     num_msg = 0
     running_duration = 0
-    last_print_time = start_time
+    last_print_time = time.time()
 
     while running_duration < duration_seconds:
-        send_start = time.time()
+        send_start = process_time()
         msg_id: int = queue.send(queue_name, msg)
-        send_duration = time.time() - send_start
+        send_duration = process_time() - send_start
         all_results.append(
-            {"operation": "write", "duration": round(send_duration, 4), "msg_id": msg_id, "epoch": send_start}
+            {"operation": "write", "duration": send_duration, "msg_id": msg_id, "epoch": time.time()}
         )
         num_msg += 1
-        running_duration = int(time.time()) - start_time
+        running_duration = int(time.time() - start_time)
         # log every 5 seconds
-        if send_start - last_print_time >= 5:
-            last_print_time = send_start
+        if time.time() - last_print_time >= 5:
+            last_print_time = time.time()
             print(f"Total Messages Sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
+
     print(f"Total Messages Sent: {num_msg}, {int(running_duration)} / {duration_seconds} seconds")
     df = pd.DataFrame(all_results)
     con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
@@ -189,8 +191,9 @@ def consume(queue_name: str, connection_info: dict):
     results = []
     no_message_timeout = 0
     while no_message_timeout < 5:
-        read_start = time.time()
+        read_start = process_time()
         message: Optional[Message] = queue.read(queue_name, vt=10)
+        read_duration = process_time() - read_start
         if message is None:
             no_message_timeout += 1
             if no_message_timeout > 2:
@@ -200,14 +203,13 @@ def consume(queue_name: str, connection_info: dict):
         else:
             no_message_timeout = 0
 
-        read_duration = time.time() - read_start
         results.append({"operation": "read", "duration": read_duration, "msg_id": message.msg_id, "epoch": read_start})
 
-        archive_start = time.time()
+        archive_start = process_time()
         queue.archive(queue_name, message.msg_id)
-        archive_duration = time.time() - archive_start
+        archive_duration = process_time() - archive_start
         results.append(
-            {"operation": "archive", "duration": archive_duration, "msg_id": message.msg_id, "epoch": archive_start}
+            {"operation": "archive", "duration": archive_duration, "msg_id": message.msg_id, "epoch": time.time()}
         )
 
     # divide by 2 because we're appending two results (read/archive) per message
@@ -471,14 +473,12 @@ if __name__ == "__main__":
         consume_procs[conumser] = Process(target=consume, args=(test_queue, connection_info))
         consume_procs[conumser].start()
 
-
     for consumer, proc in consume_procs.items():
         print(f"Waiting for {consumer} to finish")
         proc.join()
         print(f"{consumer} finished")
 
     for producer, proc in producer_procs.items():
-        # this maybe doesnt need to run since producer will finish already
         proc.join()
 
     # stop the queue depth proc
@@ -491,9 +491,11 @@ if __name__ == "__main__":
     filename = summarize(test_queue, queue, results_file=results_file, duration_seconds=duration_seconds)
 
     params = {
-        "duration_seconds": duration_seconds,
-        "read_concurrency": args.read_concurrency,
         "bench_name": bench_name,
+        "host": connection_info["host"],
+        "produce_time_seconds": duration_seconds,
+        "read_concurrency": args.read_concurrency,
+        "write_concurrency": args.write_concurrency,
     }
     if partitioned_queue:
         params["partition_interval"] = partition_interval
