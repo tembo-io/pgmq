@@ -273,11 +273,34 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
     # convert seconds to milliseconds
     df["duration_ms"] = df["duration"] * 1000
     df["time"] = pd.to_datetime(df["epoch"], unit="s")
+
+    result = df.groupby('operation').agg({
+        'time': lambda x: x.max() - x.min(),
+        'operation': 'size'
+    })
+    result.columns = ["range", "num_messages"]
+    result.reset_index(inplace=True)
+
+    result.columns = ['operation', 'range', 'num_messages']
+    result["total_duration_seconds"] = result["range"].apply(lambda x: x.total_seconds())
+    result['messages_per_second'] =  result['num_messages'] / result['total_duration_seconds']
+    output_str = []
+    for _, row in result.iterrows():
+        operation = row['operation']
+        if operation == "queue_depth":
+            continue
+        s = f"{operation}: total seconds: {row['total_duration_seconds']}, total messages: {row['num_messages']}, message / sec = {row['messages_per_second']:.2f}"
+        output_str.append(s)
+
+    output_str = "\n".join(output_str)
+    print(output_str)
+
+
     # Plotting
     _, ax1 = plt.subplots(figsize=(20, 10))
 
     # plot th operations
-    sigma = 1000  # Adjust as needed for the desired smoothing level
+    sigma = 500  # Adjust as needed for the desired smoothing level
     for op in ["read", "write", "archive"]:
         _df = df[df["operation"] == op].sort_values("time")
         ax1.plot(_df["time"], _df[["duration_ms"]].apply(lambda x: gaussian_filter1d(x, sigma)), label=op)
@@ -285,7 +308,7 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
 
     ax1.set_xlabel("time")
     ax1.set_ylabel("Duration (ms)")
-    plt.suptitle("PGMQ Concurrent Produce/Consumer Benchmark")
+    plt.suptitle(f"PGMQ Concurrent Produce/Consumer Benchmark\n{output_str}")
     plt.title(params)
     # Create a second y-axis for 'queue_length'
     ax2 = ax1.twinx()
@@ -353,7 +376,7 @@ if __name__ == "__main__":
     # script merges csvs and summarizes results
     import argparse
     from multiprocessing import Process
-
+   
     parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
 
     parser.add_argument("--postgres_connection", type=str, required=False, help="postgres connection string")
@@ -362,6 +385,7 @@ if __name__ == "__main__":
         "--duration_seconds", type=int, required=True, help="how long the benchmark should run, in seconds"
     )
     parser.add_argument("--read_concurrency", type=int, default=1, help="number of concurrent consumers")
+    parser.add_argument("--write_concurrency", type=int, default=1, help="number of concurrent producers")
     parser.add_argument("--bench_name", type=str, required=False, help="the name of the benchmark")
 
     # partitioned queue configurations
@@ -402,7 +426,18 @@ if __name__ == "__main__":
 
     queue = PGMQueue(**connection_info)  # type: ignore
 
+    # setup results table
     test_queue = f"bench_queue_{bench_name}"
+    with queue.pool.connection() as con:
+        con.execute(f"""
+            CREATE TABLE "bench_results_{test_queue}"(
+                operation text NULL,
+                duration float8 NULL,
+                msg_id int8 NULL,
+                epoch float8 NULL
+            )
+        """)
+
 
     if partitioned_queue:
         print(f"Creating partitioned queue: {test_queue}")
@@ -419,9 +454,11 @@ if __name__ == "__main__":
     consume_csv = f"consume_{test_queue}.csv"
 
     # run producing and consuming in parallel, separate processes
-
-    proc_produce = Process(target=produce, args=(test_queue, connection_info, duration_seconds))
-    proc_produce.start()
+    producer_procs = {}
+    for i in range(args.write_concurrency):
+        producer = f"producer_{i}"
+        producer_procs[producer] = Process(target=produce, args=(test_queue, connection_info, duration_seconds))
+        producer_procs[producer].start()
 
     # start a proc to poll for queue depth
     kill_flag = multiprocessing.Value("b", False)
@@ -434,10 +471,15 @@ if __name__ == "__main__":
         consume_procs[conumser] = Process(target=consume, args=(test_queue, connection_info))
         consume_procs[conumser].start()
 
+
     for consumer, proc in consume_procs.items():
         print(f"Waiting for {consumer} to finish")
         proc.join()
         print(f"{consumer} finished")
+
+    for producer, proc in producer_procs.items():
+        # this maybe doesnt need to run since producer will finish already
+        proc.join()
 
     # stop the queue depth proc
     kill_flag.value = True
