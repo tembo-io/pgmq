@@ -1,10 +1,12 @@
+import multiprocessing
 import random
 import time
 from typing import Optional
 
 import pandas as pd
 from matplotlib import pyplot as plt  # type: ignore
-from sqlalchemy import create_engine
+from scipy.ndimage import gaussian_filter1d
+from sqlalchemy import create_engine, text
 
 from tembo_pgmq_python import Message, PGMQueue
 
@@ -137,7 +139,6 @@ def produce(
     queue_name: str,
     connection_info: dict,
     duration_seconds: int = 60,
-    tps: int = 500,
 ):
     """Publishes messages at a given rate for a given duration
     Assumes queue_name already exists. Writes results to csv.
@@ -145,34 +146,37 @@ def produce(
     Args:
         queue_name: The name of the queue to publish to
         duration_seconds: The number of seconds to publish messages
-        tps: The number of messages to publish per second
     """
     queue = PGMQueue(**connection_info)
 
     msg = {"hello": "world"}
-    # delay between messages, assuming instantaneous send
-    delay = 1.0 / tps
-
-    total_messages = tps * duration_seconds
-
-    start_time = time.time()
 
     all_results = []
-    for i in range(int(total_messages)):
+
+    start_time = int(time.time())
+
+    num_msg = 0
+    running_duration = 0
+    last_print_time = start_time
+
+    while running_duration < duration_seconds:
         send_start = time.time()
         msg_id: int = queue.send(queue_name, msg)
         send_duration = time.time() - send_start
         all_results.append(
             {"operation": "write", "duration": round(send_duration, 4), "msg_id": msg_id, "epoch": send_start}
         )
-        # Sleep to maintain the desired tps
-        time.sleep(delay - ((time.time() - start_time) % delay))
-        if i % 10000 == 0:
-            print(f"Sent {i} / {int(total_messages)} messages")
-
+        num_msg += 1
+        running_duration = int(time.time()) - start_time
+        # log every 5 seconds
+        if send_start - last_print_time >= 5:
+            last_print_time = send_start
+            print(f"Total Messages Sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
+    print(f"Total Messages Sent: {num_msg}, {int(running_duration)} / {duration_seconds} seconds")
     df = pd.DataFrame(all_results)
     con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
     df.to_sql(f"bench_results_{queue_name}", con=con, if_exists="append", index=False)
+    print("Finished publishing messages")
 
 
 def consume(queue_name: str, connection_info: dict):
@@ -212,14 +216,26 @@ def consume(queue_name: str, connection_info: dict):
     df = pd.DataFrame(results)
     con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
     df.to_sql(f"bench_results_{queue_name}", con=con, if_exists="append", index=False)
-    # df.to_csv(f"consume_{queue_name}.csv", index=False)
 
 
-def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seconds: int, tps: int):
+def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seconds: int):
     """summarizes results from two csvs into pdf"""
 
     con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
     df = pd.read_sql(f'''select * from "bench_results_{queue_name}"''', con=con)
+
+    # merge schemas of queue depth so we can plot it in-line with latency results
+    queue_depth = pd.read_sql(f'''select * from "bench_results_{queue_name}_queue_depth"''', con=con)
+    queue_depth["operation"] = "queue_depth"
+    queue_depth.rename(
+        columns={
+            # "queue_length": "duration",
+            "total_messages": "msg_id",
+            "time": "epoch",
+        },
+        inplace=True,
+    )
+    df = pd.concat([df, queue_depth[["operation", "queue_length", "msg_id", "epoch"]]])
 
     # iteration
     trial = queue_name
@@ -243,7 +259,6 @@ def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seco
         title = f"""
         num_messages = {num_messages}
         duration = {duration_seconds}
-        tps = {tps}
         """
         bbplot[0].set_title(title)
 
@@ -253,18 +268,81 @@ def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seco
     return all_results_csv
 
 
-def generate_plot(csv_name: str, bench_name: str, duration: int, tps: int, params: dict, window: int = 10_000) -> None:
-    alldf = pd.read_csv(csv_name)
-    alldf["duration_ms"] = alldf["duration"] * 1000
-    wide_df = pd.pivot(alldf, index="msg_id", columns="operation", values="duration_ms")
-    ax = wide_df.rolling(window).mean().plot(figsize=(20, 10))
-    ax.set_xlabel("Message Number")
-    ax.set_ylabel("Duration (ms)")
+def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
+    df = pd.read_csv(csv)
+    # convert seconds to milliseconds
+    df["duration_ms"] = df["duration"] * 1000
+    df["time"] = pd.to_datetime(df["epoch"], unit="s")
+    # Plotting
+    _, ax1 = plt.subplots(figsize=(20, 10))
+
+    # plot th operations
+    sigma = 1000  # Adjust as needed for the desired smoothing level
+    for op in ["read", "write", "archive"]:
+        _df = df[df["operation"] == op].sort_values("time")
+        ax1.plot(_df["time"], _df[["duration_ms"]].apply(lambda x: gaussian_filter1d(x, sigma)), label=op)
+    ax1.legend(loc="upper left")
+
+    ax1.set_xlabel("time")
+    ax1.set_ylabel("Duration (ms)")
     plt.suptitle("PGMQ Concurrent Produce/Consumer Benchmark")
     plt.title(params)
-    output_plot = f"rolling_avg_{duration}_{tps}_{bench_name}.png"
+    # Create a second y-axis for 'queue_length'
+    ax2 = ax1.twinx()
+    queue_depth_data = df[df["operation"] == "queue_depth"]
+    ax2.plot(queue_depth_data["time"], queue_depth_data["queue_length"], color="gray", label="queue_depth")
+    ax2.set_ylabel("queue_depth", color="gray")
+    ax2.tick_params("y", colors="gray")
+
+    # Show the plot
+    ax1.legend(loc="upper left")
+    ax2.legend(loc="upper right")
+
+    output_plot = f"{bench_name}_{duration_sec}.png"
     plt.savefig(output_plot)
     print(f"Saved plot to: {output_plot}")
+
+
+def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessing.Value):
+    from sqlalchemy import create_engine, text
+
+    url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
+
+    eng = create_engine(url)
+
+    all_metrics = []
+    while not kill_flag.value:
+        with eng.connect() as conn:
+            cur = conn.execute(text(f"select * from pgmq_metrics_all() where queue_name = '{queue_name}'"))
+            metrics = cur.fetchall()
+            depth = metrics[0][1]
+            total_messages = metrics[0][-2]
+            all_metrics.append(
+                {
+                    "queue_name": metrics[0][0],
+                    "queue_length": depth,
+                    "total_messages": total_messages,
+                    "time": time.time(),
+                }
+            )
+            print(f"Number messages in queue: {depth}, max_msg_id: {total_messages}")
+        time.sleep(5)
+    print("Writing queue length results")
+    df = pd.DataFrame(all_metrics)
+    df.to_sql(f"bench_results_{queue_name}_queue_depth", con=eng, if_exists="append", index=False)
+
+    return all_metrics
+
+
+def bench_select_1(pool):
+    all_durations = []
+    for _ in range(1000):
+        start = time.time()
+        with pool.connection() as c:
+            c.execute("select 1")
+        duration = time.time() - start
+        print("lat (ms)", duration * 1000)
+        all_durations.append(duration)
 
 
 if __name__ == "__main__":
@@ -282,10 +360,6 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--duration_seconds", type=int, required=True, help="how long the benchmark should run, in seconds"
-    )
-    parser.add_argument("--tps", type=int, default=400, help="number of messages to produce per second")
-    parser.add_argument(
-        "--agg_window", type=int, default=10_000, help="number of messages to aggregate for rolling average"
     )
     parser.add_argument("--read_concurrency", type=int, default=1, help="number of concurrent consumers")
     parser.add_argument("--bench_name", type=str, required=False, help="the name of the benchmark")
@@ -309,7 +383,7 @@ if __name__ == "__main__":
 
         result = urlparse(args.postgres_connection)
         connection_info = {
-            "user": result.username,
+            "username": result.username,
             "password": result.password,
             "host": result.hostname,
             "port": int(result.port),
@@ -317,8 +391,6 @@ if __name__ == "__main__":
         }
 
     duration_seconds = args.duration_seconds
-    tps = args.tps
-    agg_window = args.agg_window
     bench_name = args.bench_name
 
     partitioned_queue = args.partitioned_queue
@@ -326,11 +398,12 @@ if __name__ == "__main__":
     retention_interval = args.message_retention
 
     if bench_name is None:
-        bench_name = random.randint(0, 1000)
+        bench_name = int(time.time())
 
     queue = PGMQueue(**connection_info)  # type: ignore
 
     test_queue = f"bench_queue_{bench_name}"
+
     if partitioned_queue:
         print(f"Creating partitioned queue: {test_queue}")
         queue.create_partitioned_queue(
@@ -347,8 +420,13 @@ if __name__ == "__main__":
 
     # run producing and consuming in parallel, separate processes
 
-    proc_produce = Process(target=produce, args=(test_queue, connection_info, duration_seconds, tps))
+    proc_produce = Process(target=produce, args=(test_queue, connection_info, duration_seconds))
     proc_produce.start()
+
+    # start a proc to poll for queue depth
+    kill_flag = multiprocessing.Value("b", False)
+    queue_depth_proc = Process(target=queue_depth, args=(test_queue, connection_info, kill_flag))
+    queue_depth_proc.start()
 
     consume_procs = {}
     for i in range(args.read_concurrency):
@@ -361,20 +439,22 @@ if __name__ == "__main__":
         proc.join()
         print(f"{consumer} finished")
 
+    # stop the queue depth proc
+    kill_flag.value = True
+    queue_depth_proc.join()
+
     # once consuming finishes, summarize
     results_file = f"results_{test_queue}.jpg"
     # TODO: organize results in a directory or something, log all the params
-    filename = summarize(test_queue, queue, results_file=results_file, duration_seconds=duration_seconds, tps=tps)
+    filename = summarize(test_queue, queue, results_file=results_file, duration_seconds=duration_seconds)
 
     params = {
         "duration_seconds": duration_seconds,
-        "tps": tps,
         "read_concurrency": args.read_concurrency,
         "bench_name": bench_name,
-        "agg_window": agg_window,
     }
     if partitioned_queue:
         params["partition_interval"] = partition_interval
         params["retention_interval"] = retention_interval
 
-    generate_plot(filename, bench_name, duration_seconds, tps, window=agg_window, params=params)
+    plot_rolling(filename, bench_name, duration_seconds, params=params)
