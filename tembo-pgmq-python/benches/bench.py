@@ -139,7 +139,6 @@ def produce(
     queue_name: str,
     connection_info: dict,
     duration_seconds: int = 60,
-    mps: int = 500,
 ):
     """Publishes messages at a given rate for a given duration
     Assumes queue_name already exists. Writes results to csv.
@@ -147,38 +146,37 @@ def produce(
     Args:
         queue_name: The name of the queue to publish to
         duration_seconds: The number of seconds to publish messages
-        mps: The number of messages to publish per second
     """
     queue = PGMQueue(**connection_info)
 
     msg = {"hello": "world"}
-    # delay between messages, assuming instantaneous send
-    delay = 1.0 / mps
-
-    total_messages = mps * duration_seconds
-
-    start_time = time.time()
 
     all_results = []
-    for i in range(int(total_messages)):
+
+    start_time = int(time.time())
+
+    num_msg = 0
+    running_duration = 0
+    last_print_time = start_time
+
+    while running_duration < duration_seconds:
         send_start = time.time()
         msg_id: int = queue.send(queue_name, msg)
         send_duration = time.time() - send_start
         all_results.append(
             {"operation": "write", "duration": round(send_duration, 4), "msg_id": msg_id, "epoch": send_start}
         )
-        # Sleep to maintain the desired mps
-        sleep_duration = delay - ((time.time() - start_time) % delay)
-        if sleep_duration < 0:
-            print(sleep_duration)
-        else:
-            time.sleep(sleep_duration)
-        if i % 10000 == 0:
-            print(f"Sent {i} / {int(total_messages)} messages")
-    print(f"Sent {i} / {int(total_messages)} messages")
+        num_msg += 1
+        running_duration = int(time.time()) - start_time
+        # log every 5 seconds
+        if send_start - last_print_time >= 5:
+            last_print_time = send_start
+            print(f"Total Messages Sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
+    print(f"Total Messages Sent: {num_msg}, {int(running_duration)} / {duration_seconds} seconds")
     df = pd.DataFrame(all_results)
     con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
     df.to_sql(f"bench_results_{queue_name}", con=con, if_exists="append", index=False)
+    print("Finished publishing messages")
 
 
 def consume(queue_name: str, connection_info: dict):
@@ -220,7 +218,7 @@ def consume(queue_name: str, connection_info: dict):
     df.to_sql(f"bench_results_{queue_name}", con=con, if_exists="append", index=False)
 
 
-def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seconds: int, mps: int):
+def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seconds: int):
     """summarizes results from two csvs into pdf"""
 
     con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
@@ -261,7 +259,6 @@ def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seco
         title = f"""
         num_messages = {num_messages}
         duration = {duration_seconds}
-        mps = {mps}
         """
         bbplot[0].set_title(title)
 
@@ -271,7 +268,7 @@ def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seco
     return all_results_csv
 
 
-def generate_plot(csv_name: str, bench_name: str, duration: int, mps: int, params: dict, window: int = 10_000) -> None:
+def generate_plot(csv_name: str, bench_name: str, duration: int, params: dict, window: int = 10_000) -> None:
     alldf = pd.read_csv(csv_name)
     alldf["duration_ms"] = alldf["duration"] * 1000
     wide_df = pd.pivot(alldf, index="msg_id", columns="operation", values="duration_ms")
@@ -280,7 +277,7 @@ def generate_plot(csv_name: str, bench_name: str, duration: int, mps: int, param
     ax.set_ylabel("Duration (ms)")
     plt.suptitle("PGMQ Concurrent Produce/Consumer Benchmark")
     plt.title(params)
-    output_plot = f"rolling_avg_{duration}_{mps}_{bench_name}.png"
+    output_plot = f"rolling_avg_{duration}_{bench_name}.png"
     plt.savefig(output_plot)
     print(f"Saved plot to: {output_plot}")
 
@@ -322,7 +319,7 @@ def merge_plot(csv: str):
     print(f"Saved plot to: {output_plot}")
 
 
-def plot_rolling(csv: str, bench_name: str, duration_sec: int, mps: int, params: dict):
+def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
     df = pd.read_csv(csv)
     # convert seconds to milliseconds
     df["duration_ms"] = df["duration"] * 1000
@@ -331,7 +328,7 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, mps: int, params:
     _, ax1 = plt.subplots(figsize=(20, 10))
 
     # plot th operations
-    sigma = 10  # Adjust as needed for the desired smoothing level
+    sigma = 1000  # Adjust as needed for the desired smoothing level
     for op in ["read", "write", "archive"]:
         _df = df[df["operation"] == op].sort_values("time")
         ax1.plot(_df["time"], _df[["duration_ms"]].apply(lambda x: gaussian_filter1d(x, sigma)), label=op)
@@ -352,7 +349,7 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, mps: int, params:
     ax1.legend(loc="upper left")
     ax2.legend(loc="upper right")
 
-    output_plot = f"{bench_name}_{duration_sec}_{mps}.png"
+    output_plot = f"{bench_name}_{duration_sec}.png"
     plt.savefig(output_plot)
     print(f"Saved plot to: {output_plot}")
 
@@ -369,15 +366,18 @@ def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessi
         with eng.connect() as conn:
             cur = conn.execute(text(f"select * from pgmq_metrics_all() where queue_name = '{queue_name}'"))
             metrics = cur.fetchall()
+            depth = metrics[0][1]
+            total_messages = metrics[0][-2]
             all_metrics.append(
                 {
                     "queue_name": metrics[0][0],
-                    "queue_length": metrics[0][1],
-                    "total_messages": metrics[0][-2],
+                    "queue_length": depth,
+                    "total_messages": total_messages,
                     "time": time.time(),
                 }
             )
-        time.sleep(3)
+            print(f"Number messages in queue: {depth}, max_msg_id: {total_messages}")
+        time.sleep(5)
     print("Writing queue length results")
     df = pd.DataFrame(all_metrics)
     df.to_sql(f"bench_results_{queue_name}_queue_depth", con=eng, if_exists="append", index=False)
@@ -405,6 +405,10 @@ if __name__ == "__main__":
     import argparse
     from multiprocessing import Process
 
+    # plot_rolling("/Users/adamhendel/repos/pgmq/tembo-pgmq-python/all_results_bench_queue_1692837321.csv", "", "", "", "")
+    # import sys
+    # sys.exit(1)
+
     parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
 
     parser.add_argument("--postgres_connection", type=str, required=False, help="postgres connection string")
@@ -412,7 +416,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--duration_seconds", type=int, required=True, help="how long the benchmark should run, in seconds"
     )
-    parser.add_argument("--mps", type=int, default=400, help="number of messages to produce per second")
     parser.add_argument("--read_concurrency", type=int, default=1, help="number of concurrent consumers")
     parser.add_argument("--bench_name", type=str, required=False, help="the name of the benchmark")
 
@@ -443,7 +446,6 @@ if __name__ == "__main__":
         }
 
     duration_seconds = args.duration_seconds
-    mps = args.mps
     bench_name = args.bench_name
 
     partitioned_queue = args.partitioned_queue
@@ -473,7 +475,7 @@ if __name__ == "__main__":
 
     # run producing and consuming in parallel, separate processes
 
-    proc_produce = Process(target=produce, args=(test_queue, connection_info, duration_seconds, mps))
+    proc_produce = Process(target=produce, args=(test_queue, connection_info, duration_seconds))
     proc_produce.start()
 
     # start a proc to poll for queue depth
@@ -499,11 +501,10 @@ if __name__ == "__main__":
     # once consuming finishes, summarize
     results_file = f"results_{test_queue}.jpg"
     # TODO: organize results in a directory or something, log all the params
-    filename = summarize(test_queue, queue, results_file=results_file, duration_seconds=duration_seconds, mps=mps)
+    filename = summarize(test_queue, queue, results_file=results_file, duration_seconds=duration_seconds)
 
     params = {
         "duration_seconds": duration_seconds,
-        "mps": mps,
         "read_concurrency": args.read_concurrency,
         "bench_name": bench_name,
     }
@@ -511,4 +512,4 @@ if __name__ == "__main__":
         params["partition_interval"] = partition_interval
         params["retention_interval"] = retention_interval
 
-    plot_rolling(filename, bench_name, duration_seconds, mps, params=params)
+    plot_rolling(filename, bench_name, duration_seconds, params=params)
