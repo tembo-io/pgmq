@@ -150,6 +150,7 @@ def produce(
     """
     url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
     conn = psycopg2.connect(url)
+    conn.autocommit = True
     cur = conn.cursor()
 
     all_results = []
@@ -163,7 +164,6 @@ def produce(
     while running_duration < duration_seconds:
         send_start = time.perf_counter()
         cur.execute(f"""select * from pgmq_send('{queue_name}', '{{"hello": "world"}}')""")
-        conn.commit()
         msg_id = cur.fetchall()[0][0]
         send_duration = time.perf_counter() - send_start
         # msg_id: int = queue.send(queue_name, msg)
@@ -192,14 +192,31 @@ def consume(queue_name: str, connection_info: dict):
     conn = psycopg2.connect(url)
     cur = conn.cursor()
 
+    # from psycopg2 import pool
+    # db_pool = pool.SimpleConnectionPool(
+    #     1,  # minconn
+    #     5,  # maxconn
+    #     dbname=connection_info['database'],
+    #     user=connection_info['username'],
+    #     password=connection_info['password'],
+    #     host=connection_info['host'],
+    #     port=connection_info['port'],
+    # )
+
+    # conn = db_pool.getconn()
+    conn.autocommit = True
+
+    cur = conn.cursor()
     results = []
     no_message_timeout = 0
     while no_message_timeout < 5:
+        stmt = f"select * from pgmq_read('{queue_name}', 1, 1)"
         read_start = time.perf_counter()
-        cur.execute("select * from pgmq_read(%s, %s, %s);", [queue_name, 1, 1])
-        message = cur.fetchall()
-        conn.commit()
+        cur.execute(stmt)
+        # cur.execute("select * from pgmq_read(%s, %s, %s);", [queue_name, 1, 1])
         read_duration = time.perf_counter() - read_start
+        message = cur.fetchall()
+
         if len(message) == 0:
             no_message_timeout += 1
             if no_message_timeout > 2:
@@ -209,17 +226,23 @@ def consume(queue_name: str, connection_info: dict):
         else:
             no_message_timeout = 0
         msg_id = message[0][0]
+
+        # if read_duration > 0.004:
+        #     print("Read duration: ", read_duration)
         results.append({"operation": "read", "duration": read_duration, "msg_id": msg_id, "epoch": time.time()})
 
         archive_start = time.perf_counter()
         cur.execute("select * from pgmq_archive(%s, %s);", [queue_name, msg_id])
         cur.fetchall()
+
         # queue.archive(queue_name, msg_id)
         archive_duration = time.perf_counter() - archive_start
         results.append({"operation": "archive", "duration": archive_duration, "msg_id": msg_id, "epoch": time.time()})
 
     cur.close()
+    # db_pool.closeall()
     conn.close()
+
     # divide by 2 because we're appending two results (read/archive) per message
     num_consumed = len(results) / 2
     print(f"Consumed {num_consumed} messages")
@@ -261,9 +284,6 @@ def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seco
         bbplot = _df.boxplot(
             column="duration", by="operation", fontsize=12, layout=(2, 1), rot=90, figsize=(25, 20), return_type="axes"
         )
-
-        bbplot[0].set_ylabel("Milliseconds")
-
         title = f"""
         num_messages = {num_messages}
         duration = {duration_seconds}
@@ -304,7 +324,7 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
 
     # plot the operations
     color_map = {"read": "orange", "write": "blue", "archive": "green"}
-    sigma = 100  # Adjust as needed for the desired smoothing level
+    sigma = 1000  # Adjust as needed for the desired smoothing level
     for op in ["read", "write", "archive"]:
         _df = df[df["operation"] == op].sort_values("time")
         ax1.plot(
@@ -340,6 +360,7 @@ def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessi
     conn = psycopg2.connect(url)
     eng = create_engine(url)
     cur = conn.cursor()
+    conn.autocommit = True
     all_metrics = []
     while not kill_flag.value:
         cur.execute(f"select * from pgmq_metrics('{queue_name}')")
@@ -370,17 +391,6 @@ def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessi
     return all_metrics
 
 
-def bench_select_1(pool):
-    all_durations = []
-    for _ in range(1000):
-        start = time.time()
-        with pool.connection() as c:
-            c.execute("select 1")
-        duration = time.time() - start
-        print("lat (ms)", duration * 1000)
-        all_durations.append(duration)
-
-
 if __name__ == "__main__":
     # run the multiproc benchmark
     # 1 process publishing messages
@@ -390,6 +400,10 @@ if __name__ == "__main__":
     import argparse
     from multiprocessing import Process
 
+    # plot_rolling("/home/ubuntu/repos/pgmq/tembo-pgmq-python/all_results_bench_queue_1692911915.csv", "0test", "","")
+    # import os
+    # import sys
+    # sys.exit(0)
     parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
 
     parser.add_argument("--postgres_connection", type=str, required=False, help="postgres connection string")
@@ -503,6 +517,7 @@ if __name__ == "__main__":
         print(f"{consumer} finished")
 
     for producer, proc in producer_procs.items():
+        print("Closing producer: ", producer)
         proc.join()
 
     # stop the queue depth proc
