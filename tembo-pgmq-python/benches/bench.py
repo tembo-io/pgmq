@@ -302,11 +302,17 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
     # Plotting
     _, ax1 = plt.subplots(figsize=(20, 10))
 
-    # plot th operations
+    # plot the operations
+    color_map = {"read": "orange", "write": "blue", "archive": "green"}
     sigma = 100  # Adjust as needed for the desired smoothing level
     for op in ["read", "write", "archive"]:
         _df = df[df["operation"] == op].sort_values("time")
-        ax1.plot(_df["time"], _df[["duration_ms"]].apply(lambda x: gaussian_filter1d(x, sigma)), label=op)
+        ax1.plot(
+            _df["time"],
+            _df[["duration_ms"]].apply(lambda x: gaussian_filter1d(x, sigma)),
+            label=op,
+            color=color_map[op],
+        )
     ax1.legend(loc="upper left")
 
     ax1.set_xlabel("time")
@@ -401,7 +407,6 @@ if __name__ == "__main__":
     parser.add_argument("--message_retention", type=int, default=1_000_000, help="number of messages per partition")
 
     args = parser.parse_args()
-    print(args)
 
     # default postgres connection
     if args.postgres_connection is None:
@@ -507,7 +512,8 @@ if __name__ == "__main__":
     # save pg_stat_statements
     with eng.connect() as con:
         pg_stat_df = pd.read_sql("select * from pg_stat_statements", con=con)
-    pg_stat_df.to_csv("bench_name_pg_stat.csv", index=None)
+    pg_stat_df.to_sql(f"{bench_name}_pg_stat", index=None, con=eng)
+
     # once consuming finishes, summarize
     results_file = f"results_{test_queue}.jpg"
     # TODO: organize results in a directory or something, log all the params
