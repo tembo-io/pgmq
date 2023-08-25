@@ -764,26 +764,52 @@ async fn test_set_vt() {
 }
 
 #[tokio::test]
-async fn test_extension_api() {
-    let test_queue = format!("test_ext_api_{}", rand::thread_rng().gen_range(0..100000));
-    let test_queue_archive = format!("{}_archive", test_queue);
+async fn test_ext_create_list_drop() {
+    let test_queue = format!(
+        "test_ext_create_list_drop_{}",
+        rand::thread_rng().gen_range(0..100000)
+    );
+    let queue = init_queue_ext(&test_queue).await;
+
+    let q_names = queue
+        .list_queues()
+        .await
+        .expect("error listing queues")
+        .expect("test queue was not created")
+        .iter()
+        .map(|q| q.queue_name.clone())
+        .collect::<Vec<String>>();
+
+    assert!(q_names.contains(&test_queue));
+
+    let _ = queue
+        .drop_queue(&test_queue)
+        .await
+        .expect("error dropping queue");
+
+    let post_drop_q_names = queue
+        .list_queues()
+        .await
+        .expect("error listing queues")
+        .expect("test queue was not created")
+        .iter()
+        .map(|q| q.queue_name.clone())
+        .collect::<Vec<String>>();
+
+    assert!(!post_drop_q_names.contains(&test_queue));
+}
+
+#[tokio::test]
+async fn test_ext_send_read_delete() {
+    let test_queue = format!(
+        "test_ext_send_read_delete_{}",
+        rand::thread_rng().gen_range(0..100000)
+    );
 
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
     let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
-    println!("num_rows_queue: {:?}", num_rows_queue);
     assert_eq!(num_rows_queue, 0);
-
-    let qs = queue
-        .list_queues()
-        .await
-        .expect("error listing queues")
-        .expect("test queue was not created");
-    let q_names = qs
-        .iter()
-        .map(|q| q.queue_name.clone())
-        .collect::<Vec<String>>();
-    assert!(q_names.contains(&test_queue));
 
     let msg_id = queue.send(&test_queue, &msg).await.unwrap();
     assert!(msg_id >= 1);
@@ -805,7 +831,8 @@ async fn test_extension_api() {
     assert!(read_message.is_none());
 
     // read with poll, blocks until message visible
-    let read_messages = queue
+    let start_poll = std::time::Instant::now();
+    let read_with_poll = queue
         .read_batch_with_poll::<MyMessage>(
             &test_queue,
             5,
@@ -817,8 +844,11 @@ async fn test_extension_api() {
         .expect("error reading message")
         .expect("no message");
 
-    assert_eq!(read_messages.len(), 1);
-    assert_eq!(read_messages[0].msg_id, msg_id);
+    let poll_duration = start_poll.elapsed();
+
+    assert!(poll_duration.as_millis() > 1000);
+    assert_eq!(read_with_poll.len(), 1);
+    assert_eq!(read_with_poll[0].msg_id, msg_id);
 
     // change the VT to now
     let _vt_set = queue
@@ -832,50 +862,100 @@ async fn test_extension_api() {
         .expect("expected a message");
     assert_eq!(read_message.msg_id, msg_id);
 
-    // archive message
-    let archived = queue
-        .archive(&test_queue, msg_id)
-        .await
-        .expect("failed to archive");
-    assert!(archived);
-
-    // pop message
-    let pmsg = MyMessage {
-        foo: "pop".to_owned(),
-        num: 123,
-    };
-    let msg_id_pop = queue.send(&test_queue, &pmsg).await.unwrap();
-    assert!(msg_id_pop > msg_id);
-    let popped = queue
-        .pop::<MyMessage>(&test_queue)
-        .await
-        .expect("failed to pop")
-        .expect("no message to pop");
-    assert_eq!(popped.message, pmsg);
-
     // delete message
-    let del_msg = MyMessage {
-        foo: "delete".to_owned(),
-        num: 123,
-    };
-    let msg_id_del = queue.send(&test_queue, &del_msg).await.unwrap();
-    assert!(msg_id_del > msg_id_pop);
+    let msg_id_del = queue.send(&test_queue, &msg).await.unwrap();
+
     let deleted = queue
         .delete(&test_queue, msg_id_del)
         .await
         .expect("failed to delete");
     assert!(deleted);
-    // try delete a message that doesnt exist
+
+    // try to delete a message that doesnt exist
     let deleted = queue
         .delete(&test_queue, msg_id_del)
         .await
         .expect("failed to delete");
     assert!(!deleted);
+}
 
-    // delete a batch of messages
-    let m1 = queue.send(&test_queue, &del_msg).await.unwrap();
-    let m2 = queue.send(&test_queue, &del_msg).await.unwrap();
-    let m3 = queue.send(&test_queue, &del_msg).await.unwrap();
+#[tokio::test]
+async fn test_ext_send_pop() {
+    let test_queue = format!(
+        "test_ext_send_pop_{}",
+        rand::thread_rng().gen_range(0..100000)
+    );
+    let queue = init_queue_ext(&test_queue).await;
+    let msg = MyMessage::default();
+
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
+
+    let popped = queue
+        .pop::<MyMessage>(&test_queue)
+        .await
+        .expect("failed to pop")
+        .expect("no message to pop");
+    assert_eq!(popped.message, msg);
+}
+
+#[tokio::test]
+async fn test_ext_send_archive() {
+    let test_queue = format!(
+        "test_ext_send_archive_{}",
+        rand::thread_rng().gen_range(0..100000)
+    );
+    let queue = init_queue_ext(&test_queue).await;
+    let msg = MyMessage::default();
+
+    let msg_id = queue.send(&test_queue, &msg).await.unwrap();
+
+    let archived = queue
+        .archive(&test_queue, msg_id)
+        .await
+        .expect("failed to archive");
+    assert!(archived);
+}
+
+#[tokio::test]
+async fn test_ext_archive_batch() {
+    let test_queue = format!(
+        "test_ext_archive_batch_{}",
+        rand::thread_rng().gen_range(0..100000)
+    );
+    let test_queue_archive = format!("{}_archive", test_queue);
+    let queue = init_queue_ext(&test_queue).await;
+    let msg = MyMessage::default();
+
+    let m1 = queue.send(&test_queue, &msg).await.unwrap();
+    let m2 = queue.send(&test_queue, &msg).await.unwrap();
+    let m3 = queue.send(&test_queue, &msg).await.unwrap();
+
+    let archive_result = queue
+        .archive_batch(&test_queue, &[m1, m2, m3])
+        .await
+        .expect("archive batch error");
+
+    let post_archive_rowcount = rowcount(&test_queue, &queue.connection).await;
+
+    assert_eq!(post_archive_rowcount, 0);
+    assert_eq!(archive_result, true);
+
+    let post_archive_archive_rowcount = rowcount(&test_queue_archive, &queue.connection).await;
+    assert_eq!(post_archive_archive_rowcount, 3);
+}
+
+#[tokio::test]
+async fn test_ext_delete_batch() {
+    let test_queue = format!(
+        "test_ext_delete_batch{}",
+        rand::thread_rng().gen_range(0..100000)
+    );
+
+    let queue = init_queue_ext(&test_queue).await;
+    let msg = MyMessage::default();
+    let m1 = queue.send(&test_queue, &msg).await.unwrap();
+    let m2 = queue.send(&test_queue, &msg).await.unwrap();
+    let m3 = queue.send(&test_queue, &msg).await.unwrap();
     let delete_result = queue
         .delete_batch(&test_queue, &[m1, m2, m3])
         .await
@@ -883,20 +963,6 @@ async fn test_extension_api() {
     let post_delete_rowcount = rowcount(&test_queue, &queue.connection).await;
     assert_eq!(post_delete_rowcount, 0);
     assert_eq!(delete_result, true);
-
-    // archive a batch of messages
-    let m4 = queue.send(&test_queue, &del_msg).await.unwrap();
-    let m5 = queue.send(&test_queue, &del_msg).await.unwrap();
-    let m6 = queue.send(&test_queue, &del_msg).await.unwrap();
-    let archive_result = queue
-        .archive_batch(&test_queue, &[m4, m5, m6])
-        .await
-        .expect("archive batch error");
-    let post_archive_rowcount = rowcount(&test_queue, &queue.connection).await;
-    assert_eq!(post_archive_rowcount, 0);
-    assert_eq!(archive_result, true);
-    let post_archive_archive_rowcount = rowcount(&test_queue_archive, &queue.connection).await;
-    assert_eq!(post_archive_archive_rowcount, 4);
 }
 
 #[tokio::test]
