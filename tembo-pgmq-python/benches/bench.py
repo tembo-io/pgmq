@@ -218,15 +218,12 @@ def consume(queue_name: str, connection_info: dict):
             no_message_timeout = 0
         msg_id = message[0][0]
 
-        # if read_duration > 0.004:
-        #     print("Read duration: ", read_duration)
         results.append({"operation": "read", "duration": read_duration, "msg_id": msg_id, "epoch": time.time()})
 
         archive_start = time.perf_counter()
         cur.execute("select * from pgmq_archive(%s, %s);", [queue_name, msg_id])
         cur.fetchall()
 
-        # queue.archive(queue_name, msg_id)
         archive_duration = time.perf_counter() - archive_start
         results.append({"operation": "archive", "duration": archive_duration, "msg_id": msg_id, "epoch": time.time()})
 
@@ -395,11 +392,6 @@ if __name__ == "__main__":
     # script merges csvs and summarizes results
     import argparse
     from multiprocessing import Process
-
-    # plot_rolling("/home/ubuntu/repos/pgmq/tembo-pgmq-python/all_results_bench_queue_1692934903.csv", 1692934903, 300,{"duration": 300, "read_conc": 35, "write_conc": 15})
-    # import os
-    # import sys
-    # sys.exit(0)
 
     parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
 
