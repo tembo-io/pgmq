@@ -252,9 +252,26 @@ impl PGMQueueExt {
     pub async fn archive(&self, queue_name: &str, msg_id: i64) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
         let arch = sqlx::query!(
-            "SELECT * from pgmq_archive($1::text, $2)",
+            "SELECT * from pgmq_archive($1::text, $2::bigint)",
             queue_name,
             msg_id
+        )
+        .fetch_one(&self.connection)
+        .await?;
+        Ok(arch.pgmq_archive.expect("no archive result"))
+    }
+
+    /// Move a message to the archive table.
+    pub async fn archive_batch(
+        &self,
+        queue_name: &str,
+        msg_ids: &[i64],
+    ) -> Result<bool, PgmqError> {
+        check_input(queue_name)?;
+        let arch = sqlx::query!(
+            "SELECT * from pgmq_archive($1::text, $2::bigint[])",
+            queue_name,
+            msg_ids
         )
         .fetch_one(&self.connection)
         .await?;
