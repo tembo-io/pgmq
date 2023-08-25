@@ -166,7 +166,6 @@ def produce(
         cur.execute(f"""select * from pgmq_send('{queue_name}', '{{"hello": "world"}}')""")
         msg_id = cur.fetchall()[0][0]
         send_duration = time.perf_counter() - send_start
-        # msg_id: int = queue.send(queue_name, msg)
         all_results.append({"operation": "write", "duration": send_duration, "msg_id": msg_id, "epoch": time.time()})
         num_msg += 1
         running_duration = int(time.time() - start_time)
@@ -296,7 +295,10 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
     df["duration_ms"] = df["duration"] * 1000
     df["time"] = pd.to_datetime(df["epoch"], unit="s")
 
-    result = df.groupby("operation").agg({"time": lambda x: x.max() - x.min(), "operation": "size"})
+    max_read = df[df.operation == "read"].time.max()
+    result = (
+        df[df["time"] <= max_read].groupby("operation").agg({"time": lambda x: x.max() - x.min(), "operation": "size"})
+    )
     result.columns = ["range", "num_messages"]
     result.reset_index(inplace=True)
 
@@ -335,7 +337,7 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
     plt.title(params)
     # Create a second y-axis for 'queue_length'
     ax2 = ax1.twinx()
-    queue_depth_data = df[df["operation"] == "queue_depth"]
+    queue_depth_data = df[df["time"] <= max_read][df["operation"] == "queue_depth"]
     ax2.plot(queue_depth_data["time"], queue_depth_data["queue_length"], color="gray", label="queue_depth")
     ax2.set_ylabel("queue_depth", color="gray")
     ax2.tick_params("y", colors="gray")
@@ -394,10 +396,11 @@ if __name__ == "__main__":
     import argparse
     from multiprocessing import Process
 
-    # plot_rolling("/home/ubuntu/repos/pgmq/tembo-pgmq-python/all_results_bench_queue_1692911915.csv", "0test", "","")
+    # plot_rolling("/home/ubuntu/repos/pgmq/tembo-pgmq-python/all_results_bench_queue_1692934903.csv", 1692934903, 300,{"duration": 300, "read_conc": 35, "write_conc": 15})
     # import os
     # import sys
     # sys.exit(0)
+
     parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
 
     parser.add_argument("--postgres_connection", type=str, required=False, help="postgres connection string")
@@ -512,13 +515,13 @@ if __name__ == "__main__":
         proc.join()
         print(f"{consumer} finished")
 
-    for producer, proc in producer_procs.items():
-        print("Closing producer: ", producer)
-        proc.terminate()
-
     # stop the queue depth proc
     kill_flag.value = True
     queue_depth_proc.join()
+
+    for producer, proc in producer_procs.items():
+        print("Closing producer: ", producer)
+        proc.terminate()
 
     # save pg_stat_statements
     with eng.connect() as con:
