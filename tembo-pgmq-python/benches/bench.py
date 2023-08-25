@@ -205,6 +205,7 @@ def consume(queue_name: str, connection_info: dict):
         stmt = f"select * from pgmq_read('{queue_name}', 1, 1)"
         read_start = time.perf_counter()
         cur.execute(stmt)
+        # cur.execute("select * from pgmq_read(%s, %s, %s);", [queue_name, 1, 1])
         read_duration = time.perf_counter() - read_start
         message = cur.fetchall()
 
@@ -230,17 +231,19 @@ def consume(queue_name: str, connection_info: dict):
         archive_duration = time.perf_counter() - archive_start
         results.append({"operation": "archive", "duration": archive_duration, "msg_id": msg_id, "epoch": time.time()})
 
-    # divide by 2 because we're appending two results (read/archive) per message
     num_consumed = len(results) / 2
+    print(f"Consumed {num_consumed} messages")
+
+    # divide by 2 because we're appending two results (read/archive) per message
     df = pd.DataFrame(results)
     data_tuples = list(df.itertuples(index=False, name=None))
+    print("writing results: ", len(data_tuples))
     insert_query = (
         f"INSERT INTO bench_results_{queue_name} (operation, duration, msg_id, epoch) VALUES (%s, %s, %s, %s);"
     )
     cur.executemany(insert_query, data_tuples)
     cur.close()
     conn.close()
-    print(f"Consumed {num_consumed} messages")
 
 
 def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seconds: int):
@@ -391,6 +394,10 @@ if __name__ == "__main__":
     import argparse
     from multiprocessing import Process
 
+    # plot_rolling("/home/ubuntu/repos/pgmq/tembo-pgmq-python/all_results_bench_queue_1692911915.csv", "0test", "","")
+    # import os
+    # import sys
+    # sys.exit(0)
     parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
 
     parser.add_argument("--postgres_connection", type=str, required=False, help="postgres connection string")
@@ -507,7 +514,7 @@ if __name__ == "__main__":
 
     for producer, proc in producer_procs.items():
         print("Closing producer: ", producer)
-        proc.join()
+        proc.terminate()
 
     # stop the queue depth proc
     kill_flag.value = True
