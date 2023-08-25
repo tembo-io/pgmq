@@ -174,12 +174,16 @@ def produce(
         if time.time() - last_print_time >= 5:
             last_print_time = time.time()
             print(f"Total Messages Sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
-    cur.close()
-    conn.close()
     print(f"Total Messages Sent: {num_msg}, {int(running_duration)} / {duration_seconds} seconds")
     df = pd.DataFrame(all_results)
-    con = create_engine(url)
-    df.to_sql(f"bench_results_{queue_name}", con=con, if_exists="append", index=False)
+    data_tuples = list(df.itertuples(index=False, name=None))
+    insert_query = (
+        f"INSERT INTO bench_results_{queue_name} (operation, duration, msg_id, epoch) VALUES (%s, %s, %s, %s);"
+    )
+    cur.executemany(insert_query, data_tuples)
+
+    cur.close()
+    conn.close()
     print("Finished publishing messages")
 
 
@@ -192,18 +196,6 @@ def consume(queue_name: str, connection_info: dict):
     conn = psycopg2.connect(url)
     cur = conn.cursor()
 
-    # from psycopg2 import pool
-    # db_pool = pool.SimpleConnectionPool(
-    #     1,  # minconn
-    #     5,  # maxconn
-    #     dbname=connection_info['database'],
-    #     user=connection_info['username'],
-    #     password=connection_info['password'],
-    #     host=connection_info['host'],
-    #     port=connection_info['port'],
-    # )
-
-    # conn = db_pool.getconn()
     conn.autocommit = True
 
     cur = conn.cursor()
@@ -213,7 +205,6 @@ def consume(queue_name: str, connection_info: dict):
         stmt = f"select * from pgmq_read('{queue_name}', 1, 1)"
         read_start = time.perf_counter()
         cur.execute(stmt)
-        # cur.execute("select * from pgmq_read(%s, %s, %s);", [queue_name, 1, 1])
         read_duration = time.perf_counter() - read_start
         message = cur.fetchall()
 
@@ -239,17 +230,17 @@ def consume(queue_name: str, connection_info: dict):
         archive_duration = time.perf_counter() - archive_start
         results.append({"operation": "archive", "duration": archive_duration, "msg_id": msg_id, "epoch": time.time()})
 
-    cur.close()
-    # db_pool.closeall()
-    conn.close()
-
     # divide by 2 because we're appending two results (read/archive) per message
     num_consumed = len(results) / 2
-    print(f"Consumed {num_consumed} messages")
     df = pd.DataFrame(results)
-    print(df[df["operation"] == "read"].duration.mean())
-    con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
-    df.to_sql(f"bench_results_{queue_name}", con=con, if_exists="append", index=False)
+    data_tuples = list(df.itertuples(index=False, name=None))
+    insert_query = (
+        f"INSERT INTO bench_results_{queue_name} (operation, duration, msg_id, epoch) VALUES (%s, %s, %s, %s);"
+    )
+    cur.executemany(insert_query, data_tuples)
+    cur.close()
+    conn.close()
+    print(f"Consumed {num_consumed} messages")
 
 
 def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seconds: int):
@@ -400,10 +391,6 @@ if __name__ == "__main__":
     import argparse
     from multiprocessing import Process
 
-    # plot_rolling("/home/ubuntu/repos/pgmq/tembo-pgmq-python/all_results_bench_queue_1692911915.csv", "0test", "","")
-    # import os
-    # import sys
-    # sys.exit(0)
     parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
 
     parser.add_argument("--postgres_connection", type=str, required=False, help="postgres connection string")
@@ -468,6 +455,7 @@ if __name__ == "__main__":
         """
             )
         )
+        con.commit()
 
     with eng.connect() as con:
         con.execute(
@@ -477,6 +465,7 @@ if __name__ == "__main__":
         """
             )
         ).fetchall()
+        con.commit()
 
     queue = PGMQueue(**connection_info)
     if partitioned_queue:
