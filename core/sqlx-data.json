@@ -1,5 +1,26 @@
 {
   "db": "PostgreSQL",
+  "0c81d8ee07fac75c18d9bdebd9b2ac5e473b4ef43a5d332f5d58ae6a0e01e600": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_delete",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_delete($1::text, $2::bigint)"
+  },
   "0e13957cc5c1f96a07ec242ce393f0738d62d79d34182e3c9333e9f9712d4cbb": {
     "describe": {
       "columns": [
@@ -119,6 +140,27 @@
     },
     "query": "SELECT * from pgmq_archive($1::text, $2)"
   },
+  "8e4f6635dc4cfb5ed42ddb87930b985793e81243b8a5609dec4ab566aaab4e9c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_delete",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8Array"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_delete($1::text, $2::bigint[])"
+  },
   "9919286cee87946b387f69e67df94f94eb0acdd3b5f4848faf092c55d484b61a": {
     "describe": {
       "columns": [
@@ -184,27 +226,6 @@
       }
     },
     "query": "SELECT * from pgmq_set_vt($1::text, $2::bigint, $3::integer);"
-  },
-  "c38b0cc48a6744bdb28ad1fa637223b6427eda19c0a52dc8881750d6a50ac0ef": {
-    "describe": {
-      "columns": [
-        {
-          "name": "pgmq_delete",
-          "ordinal": 0,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Int8"
-        ]
-      }
-    },
-    "query": "SELECT * from pgmq_delete($1::text, $2)"
   },
   "c89ad5584222a1f9c0d505fe58bf035d68d033047176b106e289ad6842f49972": {
     "describe": {

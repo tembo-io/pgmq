@@ -6,14 +6,16 @@ use pgrx::warning;
 pgrx::pg_module_magic!();
 
 pub mod api;
+pub mod errors;
 pub mod metrics;
 pub mod partition;
 
 use pgmq_crate::errors::PgmqError;
 use pgmq_crate::query::{
-    archive, check_input, delete, init_queue, pop, read, PGMQ_SCHEMA, TABLE_PREFIX,
+    archive, check_input, delete, delete_batch, init_queue, pop, read, PGMQ_SCHEMA, TABLE_PREFIX,
 };
-use thiserror::Error;
+
+use errors::PgmqExtError;
 use std::time::Duration;
 
 extension_sql!(
@@ -36,21 +38,6 @@ $$ LANGUAGE plpgsql;
 ",
     name = "bootstrap"
 );
-
-#[derive(Error, Debug)]
-pub enum PgmqExtError {
-    #[error("")]
-    SqlError(#[from] pgrx::spi::Error),
-
-    #[error("")]
-    QueueError(#[from] PgmqError),
-
-    #[error("{0} invalid types")]
-    TypeErrorError(String),
-
-    #[error("missing dependency: {0}")]
-    MissingDependency(String),
-}
 
 #[pg_extern]
 fn pgmq_create_non_partitioned(queue_name: &str) -> Result<(), PgmqExtError> {
@@ -246,6 +233,22 @@ fn pgmq_delete(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtErr
             error!("multiple messages found with msg_id: {}", msg_id);
         }
     }
+}
+
+#[pg_extern(name = "pgmq_delete")]
+fn pgmq_delete_batch(queue_name: &str, msg_ids: Vec<i64>) -> Result<Option<bool>, PgmqExtError> {
+    let mut num_deleted = 0;
+    let query = delete_batch(queue_name, &msg_ids)?;
+    Spi::connect(|mut client| {
+        let tup_table = client.update(&query, None, None);
+        match tup_table {
+            Ok(tup_table) => num_deleted = tup_table.len(),
+            Err(e) => {
+                error!("error deleting message: {}", e);
+            }
+        }
+    });
+    Ok(Some(true))
 }
 
 /// archive a message forever instead of deleting it

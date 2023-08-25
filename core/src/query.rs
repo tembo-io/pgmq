@@ -40,7 +40,6 @@ pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
         unassign_queue(name)?,
         unassign_archive(name)?,
         drop_queue(name)?,
-        delete_queue_index(name)?,
         drop_queue_archive(name)?,
         delete_queue_metadata(name)?,
     ])
@@ -50,7 +49,6 @@ pub fn destroy_queue_client_only(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
         drop_queue(name)?,
-        delete_queue_index(name)?,
         drop_queue_archive(name)?,
         delete_queue_metadata(name)?,
     ])
@@ -60,7 +58,7 @@ pub fn create_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (
-            msg_id BIGSERIAL NOT NULL,
+            msg_id BIGSERIAL PRIMARY KEY,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             vt TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -74,7 +72,7 @@ pub fn create_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (
-            msg_id BIGSERIAL NOT NULL,
+            msg_id BIGSERIAL PRIMARY KEY,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             deleted_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
@@ -97,6 +95,10 @@ pub fn create_meta() -> String {
 }
 
 fn grant_stmt(table: &str) -> String {
+    let grant_seq = match &table.contains("pgmq_meta") {
+        true => "".to_string(),
+        false => format!("EXECUTE 'GRANT SELECT ON SEQUENCE {table}_msg_id_seq TO pg_monitor';"),
+    };
     format!(
         "
 DO $$
@@ -106,6 +108,7 @@ BEGIN
     WHERE has_table_privilege('pg_monitor', '{table}', 'SELECT')
   ) THEN
     EXECUTE 'GRANT SELECT ON {table} TO pg_monitor';
+    {grant_seq}
   END IF;
 END;
 $$ LANGUAGE plpgsql;
@@ -134,14 +137,6 @@ pub fn drop_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         DROP TABLE IF EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name};
-        "
-    ))
-}
-
-pub fn delete_queue_index(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(format!(
-        "
-        DROP INDEX IF EXISTS {TABLE_PREFIX}_{name}.vt_idx_{name};
         "
     ))
 }
@@ -196,7 +191,7 @@ pub fn create_archive_index(name: CheckedName<'_>) -> Result<String, PgmqError> 
 pub fn create_index(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        CREATE INDEX IF NOT EXISTS msg_id_vt_idx_{name} ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt ASC, msg_id ASC);
+        CREATE INDEX IF NOT EXISTS {TABLE_PREFIX}_{name}_vt_idx ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt ASC);
         "
     ))
 }
@@ -333,7 +328,7 @@ pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
 }
 
 pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(assign(&format!("{name}_archive; ")))
+    Ok(assign(&format!("{name}_archive")))
 }
 
 pub fn unassign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
@@ -359,14 +354,15 @@ pub fn assign(table_name: &str) -> String {
             SELECT 1
             FROM pg_depend
             WHERE refobjid = (SELECT oid FROM pg_extension WHERE extname = 'pgmq')
-            AND objid = (SELECT oid FROM pg_class WHERE relname = '{TABLE_PREFIX}_{table_name}')
+            AND objid = (
+                SELECT oid
+                FROM pg_class
+                WHERE relname = '{TABLE_PREFIX}_{table_name}'
+            )
         ) THEN
-
             EXECUTE 'ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{table_name}';
-
         END IF;
-
-        END $$;
+    END $$;
     "
     )
 }
@@ -401,6 +397,47 @@ pub fn check_input(input: &str) -> Result<(), PgmqError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_grant() {
+        let q = grant_stmt("my_table");
+        let expected = "
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    WHERE has_table_privilege('pg_monitor', 'my_table', 'SELECT')
+  ) THEN
+    EXECUTE 'GRANT SELECT ON my_table TO pg_monitor';
+    EXECUTE 'GRANT SELECT ON SEQUENCE my_table_msg_id_seq TO pg_monitor';
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+";
+        assert_eq!(q, expected);
+
+        let q = grant_stmt("pgmq_meta");
+        let expected = "
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    WHERE has_table_privilege('pg_monitor', 'pgmq_meta', 'SELECT')
+  ) THEN
+    EXECUTE 'GRANT SELECT ON pgmq_meta TO pg_monitor';
+    
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+";
+        assert_eq!(q, expected)
+    }
+
+    #[test]
+    fn test_assign() {
+        let query = assign("my_queue_archive");
+        assert!(query.contains("WHERE relname = 'pgmq_my_queue_archive'"));
+    }
 
     #[test]
     fn test_create() {

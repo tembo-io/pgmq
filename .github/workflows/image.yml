@@ -71,9 +71,8 @@ jobs:
           # if that file is present
           # and if the branch is 'main' or starts with 'release/'
           tag_cargo_version_if_present: ${{ steps.tags.outputs.tag_cargo }}
-          # Tag with 'latest'
-          # if the branch is 'main'
-          publish_latest: ${{ steps.tags.outputs.tag_latest }}
+          # never publish latest - that is handled in other workflow
+          publish_latest: false
           # If we are publishing latest, also tag it with calver
           publish_calver: ${{ steps.tags_outputs.tag_latest }}
           quay_user: ${{ secrets.QUAY_USER_TEMBO }}

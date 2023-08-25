@@ -17,8 +17,19 @@ async fn connect(url: &str) -> Pool<Postgres> {
 #[tokio::test]
 async fn test_lifecycle() {
     let username = whoami::username();
-    let conn = connect(&format!(
+
+    let conn00 = connect(&format!(
         "postgres://{username}:postgres@localhost:28815/pgmq"
+    ))
+    .await;
+    // ignore the error if the db already exists!
+    let _ = sqlx::query("CREATE DATABASE pgmq_test;")
+        .execute(&conn00)
+        .await;
+    conn00.close().await;
+
+    let conn = connect(&format!(
+        "postgres://{username}:postgres@localhost:28815/pgmq_test"
     ))
     .await;
     let mut rng = rand::thread_rng();
@@ -39,6 +50,13 @@ async fn test_lifecycle() {
 
     // CREATE with default retention and partition strategy
     let test_default_queue = format!("test_default_{test_num}");
+    let _ = sqlx::query(&format!("SELECT pgmq_create('{test_default_queue}');"))
+        .execute(&conn)
+        .await
+        .expect("failed to create queue");
+
+    // creating a queue must be idempotent
+    // create with same name again, must be no  error
     let _ = sqlx::query(&format!("SELECT pgmq_create('{test_default_queue}');"))
         .execute(&conn)
         .await
