@@ -148,7 +148,12 @@ def produce(
         queue_name: The name of the queue to publish to
         duration_seconds: The number of seconds to publish messages
     """
-    url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
+    user = connection_info["username"]
+    host = connection_info["host"]
+    port = connection_info["port"]
+    password = connection_info["password"]
+    database = connection_info["database"]
+    url = f"postgresql://{user}:{password}@{host}:{port}/{database}"
     conn = psycopg2.connect(url)
     conn.autocommit = True
     cur = conn.cursor()
