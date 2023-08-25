@@ -100,7 +100,9 @@ pub fn create_meta() -> String {
 fn grant_stmt(table: &str) -> String {
     let grant_seq = match &table.contains("pgmq_meta") {
         true => "".to_string(),
-        false => format!("EXECUTE 'GRANT SELECT ON SEQUENCE {table}_msg_id_seq TO pg_monitor';"),
+        false => {
+            format!("    EXECUTE 'GRANT SELECT ON SEQUENCE {table}_msg_id_seq TO pg_monitor';")
+        }
     };
     format!(
         "
@@ -111,7 +113,7 @@ BEGIN
     WHERE has_table_privilege('pg_monitor', '{table}', 'SELECT')
   ) THEN
     EXECUTE 'GRANT SELECT ON {table} TO pg_monitor';
-    {grant_seq}
+{grant_seq}
   END IF;
 END;
 $$ LANGUAGE plpgsql;
