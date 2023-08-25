@@ -345,10 +345,6 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn assign_meta() -> String {
-    assign("meta")
-}
-
 pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(assign(&name.to_string()))
 }
