@@ -9,8 +9,6 @@ pub const PGMQ_SCHEMA: &str = "public";
 pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
-        create_meta(),
-        assign_meta(),
         create_queue(name)?,
         assign_queue(name)?,
         create_index(name)?,
@@ -18,7 +16,6 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
         assign_archive(name)?,
         create_archive_index(name)?,
         insert_meta(name)?,
-        grant_pgmon_meta(),
         grant_pgmon_queue(name)?,
     ])
 }
@@ -346,10 +343,6 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
         RETURNING *;
         "
     ))
-}
-
-pub fn assign_meta() -> String {
-    assign("meta")
 }
 
 pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
