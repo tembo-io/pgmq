@@ -154,7 +154,7 @@ def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessi
             queue_name text NULL,
             queue_length int8 NULL,
             total_messages int8 NULL,
-            select1_ms float8 NULL,
+            select1 float8 NULL,
             "time" float8 NULL
         )"""
     )
@@ -170,21 +170,20 @@ def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessi
         cur.execute("select 1")
         cur.fetchall()
         sel_duration = time.perf_counter() - read_start
-        sel_ms = round(sel_duration * 1000, 6)
         duration = int(time.time() - start)
         all_metrics.append(
             {
                 "queue_name": metrics[0],
                 "queue_length": depth,
                 "total_messages": total_messages,
-                "select1_ms": sel_ms,
+                "select1": sel_duration,
                 "time": time.time(),
             }
         )
         log = {
             "queue_depth": depth,
             "duration_sec": f"{duration} / {duration_seconds}",
-            "select1_ms": sel_ms,
+            "select1_sec": round(sel_duration, 6),
             "max_msg_id": total_messages,
         }
         logging.info(log)
@@ -214,6 +213,16 @@ def summarize(
 
     # merge schemas of queue depth so we can plot it in-line with latency results
     queue_depth = pd.read_sql(f'''select * from "bench_results_{queue_name}_queue_depth"''', con=con)
+
+    sel1_df = queue_depth[["time", "select1"]]
+    sel1_df["operation"] = "select1"
+    sel1_df.rename(
+        columns={
+            "select1": "duration",
+            "time": "epoch",
+        },
+        inplace=True,
+    )
     queue_depth["operation"] = "queue_depth"
     queue_depth.rename(
         columns={
@@ -222,7 +231,7 @@ def summarize(
         },
         inplace=True,
     )
-    df = pd.concat([df, queue_depth[["operation", "queue_length", "msg_id", "epoch", "select1_ms"]]])
+    df = pd.concat([df, sel1_df, queue_depth[["operation", "queue_length", "msg_id", "epoch"]]])
 
     # iteration
     all_results_csv = f"all_results_{queue_name}.csv"
@@ -277,16 +286,15 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict, pg_
     fig, ax1 = plt.subplots(figsize=(20, 10))
     plt.suptitle("PGMQ Concurrent Produce/Consumer Benchmark")
     ax1.text(0, -0.05, json.dumps(pg_settings, indent=2), transform=ax1.transAxes, va="top", ha="left")
-    ax1.text(0.9, -0.05, json.dumps(params, indent=2), transform=ax1.transAxes, va="top", ha="left")
+    ax1.text(0.85, -0.05, json.dumps(params, indent=2), transform=ax1.transAxes, va="top", ha="left")
 
     # Prepare the throughput table
     columns = ["Operation", "Duration (s)", "Total Messages", "msg/s"]
     cell_text = []
     for _, row in result.iterrows():
         operation = row["operation"]
-        if operation == "queue_depth":
+        if operation in ["queue_depth", "select1"]:
             continue
-
         dur = int_to_comma_string(int(row["total_duration_seconds"]))
         n_msg = int_to_comma_string(row["num_messages"])
         msg_per_sec = int_to_comma_string(int(row["messages_per_second"]))
@@ -300,13 +308,18 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict, pg_
     fig.subplots_adjust(top=0.8)
 
     # plot the operations
-    color_map = {"read": "orange", "write": "blue", "archive": "green"}
+    color_map = {"read": "orange", "write": "blue", "archive": "green", "select1": "red"}
     sigma = 1000  # Adjust as needed for the desired smoothing level
-    for op in ["read", "write", "archive"]:
+    for op in ["read", "write", "archive", "select1"]:
         _df = df[df["operation"] == op].sort_values("time")
+
+        if op != "select1":
+            y_data = _df[["duration_ms"]].apply(lambda x: gaussian_filter1d(x, sigma))
+        else:
+            y_data = _df[["duration_ms"]]
         ax1.plot(
             _df["time"],
-            _df[["duration_ms"]].apply(lambda x: gaussian_filter1d(x, sigma)),
+            y_data,
             label=op,
             color=color_map[op],
         )
@@ -359,7 +372,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # default postgres connection
+    # default postgres connection - localhost pgrx
     if args.postgres_connection is None:
         import getpass
 
@@ -435,7 +448,6 @@ if __name__ == "__main__":
 
     # Convert results to dictionary
     config_dict = {row[0]: row[1] for row in results}
-    print(config_dict)
 
     queue = PGMQueue(**connection_info)
     if partitioned_queue:
@@ -470,7 +482,7 @@ if __name__ == "__main__":
         consume_procs[conumser] = Process(target=consume, args=(test_queue, connection_info))
         consume_procs[conumser].start()
 
-    logging.info("stopping consumers")
+    logging.info("waiting for consumers")
     for consumer, proc in consume_procs.items():
         logging.debug(f"Waiting for {consumer}")
         proc.join()
