@@ -183,7 +183,7 @@ def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessi
         log = {
             "queue_depth": depth,
             "duration_sec": f"{duration} / {duration_seconds}",
-            "select1_sec": round(sel_duration, 6),
+            "select1_ms": round(sel_duration * 1000, 4),
             "max_msg_id": total_messages,
         }
         logging.info(log)
