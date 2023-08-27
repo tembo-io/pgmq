@@ -326,7 +326,7 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
 }
 
 pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(assign(&name.to_string()))
+    Ok(assign(name.as_ref()))
 }
 
 pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
