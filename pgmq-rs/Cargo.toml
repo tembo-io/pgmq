@@ -1,0 +1,31 @@
+[package]
+name = "pgmq"
+version = "0.19.0"
+edition = "2021"
+authors = ["Tembo.io"]
+description = "A distributed message queue for Rust applications, on Postgres."
+documentation = "https://docs.rs/pgmq"
+homepage = "https://github.com/tembo-io/pgmq"
+keywords = ["messaging", "queues", "postgres"]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/tembo-io/pgmq"
+
+[dependencies]
+pgmq_core = { path = "../core", package = "pgmq-core" }
+chrono = { version = "0.4.23", features = [ "serde" ] }
+serde = { version = "1.0.152" }
+serde_json = { version = "1.0.91", features = [ "raw_value" ] }
+sqlx = { version = "0.6.3", features = [ "offline", "runtime-tokio-native-tls" , "postgres", "chrono", "json" ] }
+thiserror = "1.0.38"
+tokio = { version = "1", features = ["macros"] }
+log = "0.4.17"
+url = "2.3.1"
+
+[dev-dependencies]
+cargo-readme = "3.2.0"
+criterion = "0.4"
+env_logger = "0.10.0"
+rand = "0.8.5"
+regex = "1.5.4"
+lazy_static = "1.4.0"

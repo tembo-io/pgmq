@@ -1,0 +1,386 @@
+{
+  "db": "PostgreSQL",
+  "0c81d8ee07fac75c18d9bdebd9b2ac5e473b4ef43a5d332f5d58ae6a0e01e600": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_delete",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_delete($1::text, $2::bigint)"
+  },
+  "0e13957cc5c1f96a07ec242ce393f0738d62d79d34182e3c9333e9f9712d4cbb": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "read_ct",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "enqueued_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "vt",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 4,
+          "type_info": "Jsonb"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_pop($1::text)"
+  },
+  "10ea79c92326fbee074db2d9629f60abb320be01d069b12b2360816267a64e3a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "queue_name",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 1,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT * from pgmq_list_queues();"
+  },
+  "213c722c2cab09b2042dc989130c4131b322b5d0b616dbb91f8e8e8f411406f9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_create",
+          "ordinal": 0,
+          "type_info": "Void"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_create($1::text);"
+  },
+  "36b2ecea83484248d99c8d091f8d9b7fa6ce368d7db8fe14e3ab491eb52c723c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_archive",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8Array"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_archive($1::text, $2::bigint[])"
+  },
+  "3a3440841fba7d0f8744f5873cdb93a64b6e2f6481c3b14af701c5189f5e73f0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;"
+  },
+  "8e4f6635dc4cfb5ed42ddb87930b985793e81243b8a5609dec4ab566aaab4e9c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_delete",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8Array"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_delete($1::text, $2::bigint[])"
+  },
+  "9919286cee87946b387f69e67df94f94eb0acdd3b5f4848faf092c55d484b61a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_drop_queue",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_drop_queue($1::text);"
+  },
+  "b42aa546a8e1f83b4da63a6a20aaa51778e01d8525b4b9b307576b2921eec305": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "read_ct",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "enqueued_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "vt",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 4,
+          "type_info": "Jsonb"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8",
+          "Int4"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_set_vt($1::text, $2::bigint, $3::integer);"
+  },
+  "c89ad5584222a1f9c0d505fe58bf035d68d033047176b106e289ad6842f49972": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "read_ct",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "enqueued_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "vt",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 4,
+          "type_info": "Jsonb"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_read($1::text, $2, $3)"
+  },
+  "cb7072cc0f81a187953b6210a40d799b0ff301b73ad873f767c29fd383724a32": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_archive",
+          "ordinal": 0,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_archive($1::text, $2::bigint)"
+  },
+  "cd7b28f6bd348038e7c26d89292f2445841e7c13143b453277a010390699d1fc": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Jsonb"
+        ]
+      }
+    },
+    "query": "SELECT pgmq_send as msg_id from pgmq_send($1::text, $2::jsonb);"
+  },
+  "e4c38347b44aed05aa890d3351a362d3b6f81387e98fc564ec922cefa1e96f71": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "read_ct",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "enqueued_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "vt",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "message",
+          "ordinal": 4,
+          "type_info": "Jsonb"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int4",
+          "Int4",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_read_with_poll($1::text, $2, $3, $4, $5)"
+  },
+  "ed8b7aacd0d94fe647899b6d2fe61a29372cd7d6dbc28bf59ac6bb3118e3fe6c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_create_partitioned",
+          "ordinal": 0,
+          "type_info": "Void"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_create_partitioned($1::text);"
+  }
+}
