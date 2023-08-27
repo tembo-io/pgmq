@@ -17,7 +17,7 @@ run.postgres:
 test: run.postgres
 	sleep 4;
 	echo "Running all tests..."
-	DATABASE_URL=postgres://postgres:postgres@0.0.0.0:5432 sqlx migrate run &&
+	sqlx migrate run
 	DATABASE_URL=postgres://postgres:postgres@0.0.0.0:5432 cargo test
 
 test.cleanup:
