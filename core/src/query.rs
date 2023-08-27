@@ -1,10 +1,13 @@
 //! Query constructors
 
-use crate::{errors::PgmqError, util::CheckedName};
+use crate::{
+    errors::PgmqError,
+    types::{PGMQ_SCHEMA, TABLE_PREFIX},
+    util::check_input,
+    util::CheckedName,
+};
 
 use sqlx::types::chrono::Utc;
-pub const TABLE_PREFIX: &str = r#"pgmq"#;
-pub const PGMQ_SCHEMA: &str = "public";
 
 pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
@@ -20,34 +23,11 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     ])
 }
 
-pub fn init_queue_client_only(name: &str) -> Result<Vec<String>, PgmqError> {
-    let name = CheckedName::new(name)?;
-    Ok(vec![
-        create_meta(),
-        create_queue(name)?,
-        create_index(name)?,
-        create_archive(name)?,
-        create_archive_index(name)?,
-        insert_meta(name)?,
-        grant_pgmon_meta(),
-        grant_pgmon_queue(name)?,
-    ])
-}
-
 pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
         unassign_queue(name)?,
         unassign_archive(name)?,
-        drop_queue(name)?,
-        drop_queue_archive(name)?,
-        delete_queue_metadata(name)?,
-    ])
-}
-
-pub fn destroy_queue_client_only(name: &str) -> Result<Vec<String>, PgmqError> {
-    let name = CheckedName::new(name)?;
-    Ok(vec![
         drop_queue(name)?,
         drop_queue_archive(name)?,
         delete_queue_metadata(name)?,
@@ -387,33 +367,6 @@ pub fn assign(table_name: &str) -> String {
     END $$;
     "
     )
-}
-
-/// panics if input is invalid. otherwise does nothing.
-pub fn check_input(input: &str) -> Result<(), PgmqError> {
-    // Docs:
-    // https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
-
-    // Default value of `NAMEDATALEN`, set in `src/include/pg_config_manual.h`
-    const NAMEDATALEN: usize = 64;
-    // The maximum length of an identifier.
-    // Longer names can be used in commands, but they'll be truncated
-    const MAX_IDENTIFIER_LEN: usize = NAMEDATALEN - 1;
-    // The max length of a PGMQ table, considering its prefix and the underline after it (e.g. "pgmq_")
-    const MAX_PGMQ_TABLE_LEN: usize = MAX_IDENTIFIER_LEN - TABLE_PREFIX.len() - 1;
-
-    let is_short_enough = input.len() <= MAX_PGMQ_TABLE_LEN;
-    let has_valid_characters = input
-        .as_bytes()
-        .iter()
-        .all(|&c| c.is_ascii_alphanumeric() || c == b'_');
-    let valid = is_short_enough && has_valid_characters;
-    match valid {
-        true => Ok(()),
-        false => Err(PgmqError::InvalidQueueName {
-            name: input.to_owned(),
-        }),
-    }
 }
 
 #[cfg(test)]

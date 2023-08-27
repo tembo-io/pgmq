@@ -1,15 +1,16 @@
 [package]
-name = "pgmq"
-version = "0.19.0"
+name = "pgmq-core"
+version = "0.1.0"
 edition = "2021"
 authors = ["Tembo.io"]
-description = "A distributed message queue for Rust applications, on Postgres."
+description = "Core functionality shared between the PGMQ Rust SDK and Postgres Extension"
 documentation = "https://docs.rs/pgmq"
 homepage = "https://github.com/tembo-io/pgmq"
 keywords = ["messaging", "queues", "postgres"]
-license = "Apache-2.0"
+license = "Postgresql"
 readme = "README.md"
 repository = "https://github.com/tembo-io/pgmq"
+publish = false
 
 [dependencies]
 chrono = { version = "0.4.23", features = [ "serde" ] }
@@ -22,7 +23,6 @@ log = "0.4.17"
 url = "2.3.1"
 
 [dev-dependencies]
-cargo-readme = "3.2.0"
 criterion = "0.4"
 env_logger = "0.10.0"
 rand = "0.8.5"

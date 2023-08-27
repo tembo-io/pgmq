@@ -1,7 +1,9 @@
 use std::fmt::Display;
 
-use crate::query::check_input;
-use crate::{Message, PgmqError};
+use crate::{
+    errors::PgmqError,
+    types::{Message, TABLE_PREFIX}
+};
 use log::LevelFilter;
 use serde::Deserialize;
 use sqlx::error::Error;
@@ -89,5 +91,32 @@ impl AsRef<str> for CheckedName<'_> {
 impl Display for CheckedName<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.0)
+    }
+}
+
+/// panics if input is invalid. otherwise does nothing.
+pub fn check_input(input: &str) -> Result<(), PgmqError> {
+    // Docs:
+    // https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+
+    // Default value of `NAMEDATALEN`, set in `src/include/pg_config_manual.h`
+    const NAMEDATALEN: usize = 64;
+    // The maximum length of an identifier.
+    // Longer names can be used in commands, but they'll be truncated
+    const MAX_IDENTIFIER_LEN: usize = NAMEDATALEN - 1;
+    // The max length of a PGMQ table, considering its prefix and the underline after it (e.g. "pgmq_")
+    const MAX_PGMQ_TABLE_LEN: usize = MAX_IDENTIFIER_LEN - TABLE_PREFIX.len() - 1;
+
+    let is_short_enough = input.len() <= MAX_PGMQ_TABLE_LEN;
+    let has_valid_characters = input
+        .as_bytes()
+        .iter()
+        .all(|&c| c.is_ascii_alphanumeric() || c == b'_');
+    let valid = is_short_enough && has_valid_characters;
+    match valid {
+        true => Ok(()),
+        false => Err(PgmqError::InvalidQueueName {
+            name: input.to_owned(),
+        }),
     }
 }

@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use lazy_static::lazy_static;
-use pgmq::query::check_input;
+use pgmq_core::util::check_input;
 use regex::Regex;
 
 pub fn check_regex(input: &str) {
