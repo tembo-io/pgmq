@@ -44,7 +44,7 @@ If you'd like to build from source, you can follow the instructions in [CONTRIBU
 
 ## Client Libraries
 
-- [Rust](https://github.com/tembo-io/pgmq/tree/main/core)
+- [Rust](https://github.com/tembo-io/pgmq/tree/main/pgmq-rs)
 - [Python](https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python)
 
 Community
