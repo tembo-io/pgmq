@@ -10,7 +10,7 @@ keywords = ["messaging", "queues", "postgres"]
 license = "Postgresql"
 readme = "README.md"
 repository = "https://github.com/tembo-io/pgmq"
-publish = false
+publish = true
 
 [dependencies]
 chrono = { version = "0.4.23", features = [ "serde" ] }
