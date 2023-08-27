@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::{
     errors::PgmqError,
-    types::{Message, TABLE_PREFIX}
+    types::{Message, TABLE_PREFIX},
 };
 use log::LevelFilter;
 use serde::Deserialize;

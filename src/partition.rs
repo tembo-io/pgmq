@@ -1,12 +1,13 @@
 use pgrx;
 use pgrx::prelude::*;
 
-use pgmq_crate::{
+use pgmq_core::{
     errors::PgmqError,
     query::{
         assign_archive, assign_queue, create_archive, create_index, create_meta, grant_pgmon_meta,
-        grant_pgmon_queue, grant_pgmon_queue_seq, insert_meta, PGMQ_SCHEMA, TABLE_PREFIX,
+        grant_pgmon_queue, grant_pgmon_queue_seq, insert_meta,
     },
+    types::{PGMQ_SCHEMA, TABLE_PREFIX},
     util::CheckedName,
 };
 

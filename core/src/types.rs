@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sqlx::types::chrono::{DateTime, Utc};
 use std::time::Duration;
 
-use sqlx::{FromRow, Pool, Postgres, Row};
+use sqlx::FromRow;
 
 pub const VT_DEFAULT: i32 = 30;
 pub const READ_LIMIT_DEFAULT: i32 = 1;

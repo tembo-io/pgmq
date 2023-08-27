@@ -1,4 +1,4 @@
-use pgmq_crate::errors::PgmqError;
+use pgmq_core::errors::PgmqError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

@@ -10,10 +10,11 @@ pub mod errors;
 pub mod metrics;
 pub mod partition;
 
-use pgmq_crate::errors::PgmqError;
-use pgmq_crate::query::{
-    archive, archive_batch, check_input, delete, delete_batch, init_queue, pop, read, PGMQ_SCHEMA,
-    TABLE_PREFIX,
+use pgmq_core::{
+    errors::PgmqError,
+    query::{archive, archive_batch, delete, delete_batch, init_queue, pop, read},
+    types::{PGMQ_SCHEMA, TABLE_PREFIX},
+    util::check_input,
 };
 
 use errors::PgmqExtError;
@@ -409,7 +410,7 @@ fn pgmq_set_vt(
 #[pg_schema]
 mod tests {
     use crate::*;
-    use pgmq_crate::query::TABLE_PREFIX;
+    use pgmq_core::types::TABLE_PREFIX;
 
     #[pg_test]
     fn test_creat_non_partitioned() {
