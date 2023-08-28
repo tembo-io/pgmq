@@ -1,5 +1,8 @@
 use chrono::{Duration, Utc};
-use pgmq::{self, query::TABLE_PREFIX, Message};
+use pgmq_core::{
+    errors::PgmqError,
+    types::{Message, TABLE_PREFIX},
+};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -56,10 +59,7 @@ async fn rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
 // we need to check whether table exists
 // simple solution: our existing rowcount() helper will fail
 // wrap it in a Result<> so we can use it
-async fn fallible_rowcount(
-    qname: &str,
-    connection: &Pool<Postgres>,
-) -> Result<i64, pgmq::errors::PgmqError> {
+async fn fallible_rowcount(qname: &str, connection: &Pool<Postgres>) -> Result<i64, PgmqError> {
     let row_ct_query = format!("SELECT count(*) as ct FROM {TABLE_PREFIX}_{qname}");
     Ok(sqlx::query(&row_ct_query)
         .fetch_one(connection)
@@ -542,7 +542,7 @@ async fn test_serde() {
     });
     let msg5 = queue.send(&test_queue, &msg).await.unwrap();
     assert_eq!(msg5, 5);
-    let msg_read: crate::pgmq::Message = queue
+    let msg_read: Message = queue
         .read(&test_queue, Some(30_i32)) // no turbofish on this line
         .await
         .unwrap()
@@ -607,7 +607,7 @@ async fn test_database_error_modes() {
     // we expect a url parsing error
     match queue {
         Err(e) => {
-            if let pgmq::errors::PgmqError::UrlParsingError { .. } = e {
+            if let PgmqError::UrlParsingError { .. } = e {
                 // got the url parsing error error. good.
             } else {
                 // got some other error. bad.
@@ -623,7 +623,7 @@ async fn test_database_error_modes() {
     // we expect a database error
     match queue {
         Err(e) => {
-            if let pgmq::errors::PgmqError::DatabaseError { .. } = e {
+            if let PgmqError::DatabaseError { .. } = e {
                 // got the db error. good.
             } else {
                 // got some other error. bad.
@@ -649,7 +649,7 @@ async fn test_parsing_error_modes() {
     // we expect a parse error
     match read_msg {
         Err(e) => {
-            if let pgmq::errors::PgmqError::JsonParsingError { .. } = e {
+            if let PgmqError::JsonParsingError { .. } = e {
                 // got the parsing error. good.
             } else {
                 // got some other error. bad.

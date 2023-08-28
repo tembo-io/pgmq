@@ -1,4 +1,4 @@
-use pgmq::{self, query::TABLE_PREFIX, util::connect};
+use pgmq_core::{types::TABLE_PREFIX, util::connect};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres, Row};

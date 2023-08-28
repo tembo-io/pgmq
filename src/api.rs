@@ -4,7 +4,10 @@ use pgrx::spi::SpiTupleTable;
 
 use crate::errors::PgmqExtError;
 use crate::partition::PARTMAN_SCHEMA;
-use pgmq_crate::query::{destroy_queue, PGMQ_SCHEMA, TABLE_PREFIX};
+use pgmq_core::{
+    query::destroy_queue,
+    types::{PGMQ_SCHEMA, TABLE_PREFIX},
+};
 
 #[pg_extern]
 fn pgmq_drop_queue(

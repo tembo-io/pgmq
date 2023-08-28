@@ -1,9 +1,9 @@
-name: pgmq-rs client crate CI workflow
+name: pgmq-core CI workflow
 
 defaults:
   run:
     shell: bash
-    working-directory: pgmq-rs/
+    working-directory: core/
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ on:
      - main
     paths:
       - '.github/workflows/crate_ci.yml'
-      - 'pgmq-rs/**'
+      - 'core/**'
   push:
     branches:
       - main
@@ -47,12 +47,5 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
-      - name: install dependencies
-        run: cargo install sqlx-cli
       - name: run all tests
-        run: make test
-      - name: Migrations
-        # ensure migration cache is up to date
-        run: cargo sqlx prepare --check
-      - name: teardown
-        run: make test.cleanup
+        run: cargo test

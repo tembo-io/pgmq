@@ -5,7 +5,7 @@ use pgrx::spi::SpiTupleTable;
 use pgrx::warning;
 
 use crate::api::listit;
-use pgmq_crate::query::{PGMQ_SCHEMA, TABLE_PREFIX};
+use pgmq_core::types::{PGMQ_SCHEMA, TABLE_PREFIX};
 
 type MetricResult = Vec<(
     String,
