@@ -1,18 +1,18 @@
 [package]
-name = "pgmq-core"
-version = "0.1.1"
+name = "pgmq"
+version = "0.19.1"
 edition = "2021"
 authors = ["Tembo.io"]
-description = "Core functionality shared between the PGMQ Rust SDK and Postgres Extension"
+description = "A distributed message queue for Rust applications, on Postgres."
 documentation = "https://docs.rs/pgmq"
 homepage = "https://github.com/tembo-io/pgmq"
 keywords = ["messaging", "queues", "postgres"]
-license = "PostgreSQL"
+license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/tembo-io/pgmq"
-publish = true
 
 [dependencies]
+pgmq_core = { package = "pgmq-core", version = "0.1.0" }
 chrono = { version = "0.4.23", features = [ "serde" ] }
 serde = { version = "1.0.152" }
 serde_json = { version = "1.0.91", features = [ "raw_value" ] }
@@ -23,12 +23,9 @@ log = "0.4.17"
 url = "2.3.1"
 
 [dev-dependencies]
+cargo-readme = "3.2.0"
 criterion = "0.4"
 env_logger = "0.10.0"
 rand = "0.8.5"
 regex = "1.5.4"
 lazy_static = "1.4.0"
-
-[[bench]]
-name = "parsing"
-harness = false
