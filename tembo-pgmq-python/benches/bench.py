@@ -1,7 +1,9 @@
+import json
+import logging
 import multiprocessing
-import random
+import os
+import subprocess
 import time
-from typing import Optional
 
 import pandas as pd
 import psycopg2
@@ -9,131 +11,9 @@ from matplotlib import pyplot as plt  # type: ignore
 from scipy.ndimage import gaussian_filter1d
 from sqlalchemy import create_engine, text
 
-from tembo_pgmq_python import Message, PGMQueue
+from tembo_pgmq_python import PGMQueue
 
-
-def bench_send(queue: PGMQueue, queue_name: str, msg: dict, num_messages: int) -> list[dict]:
-    all_msg_ids = []
-    write_start = time.time()
-    results = []
-    print("Writing Messages")
-    for x in range(num_messages):
-        start = time.time()
-        msg_id = queue.send(queue_name, msg)
-        results.append({"operation": "write", "duration": time.time() - start, "msg_id": msg_id})
-        all_msg_ids.append(msg_id)
-        if (x + 1) % 10000 == 0:
-            print(f"write {x+1} messages")
-            elapsed = time.time() - write_start
-            avg_write = elapsed / (x + 1)
-            print(f"running avg write time (seconds): {avg_write}")
-    print(f"Sent {x+1} messages")
-    return results
-
-
-def bench_read_archive(queue: PGMQueue, queue_name: str, num_messages: int) -> list[dict]:
-    """Benchmarks the read and archive of messages"""
-    read_elapsed = 0.0
-    archive_elapsed = 0.0
-    results = []
-    for x in range(num_messages):
-        read_start = time.time()
-        message: Message = queue.read(queue_name, vt=2)  # type: ignore
-        read_duration = time.time() - read_start
-        results.append({"operation": "read", "duration": read_duration, "msg_id": message.msg_id})
-        read_elapsed += read_duration
-
-        archive_start = time.time()
-        queue.archive(queue_name, message.msg_id)
-        archive_duration = time.time() - archive_start
-        results.append({"operation": "archive", "duration": archive_duration, "msg_id": message.msg_id})
-        archive_elapsed += archive_duration
-
-        if (x + 1) % 10000 == 0:
-            avg_read = read_elapsed / (x + 1)
-            print(f"read {x+1} messages, avg read time (seconds): {avg_read}")
-            avg_archive = archive_elapsed / (x + 1)
-            print(f"archived {x+1} messages, avg archive time (seconds): {avg_archive}")
-    print(f"Read {x+1} messages")
-    return results
-
-
-def bench_line_item(
-    host: str,
-    port: str,
-    username: str = "postgres",
-    num_messages: int = 10000,
-    vt=10,
-    password: str = "postgres",
-    database: str = "postgres",
-    partition_interval: int = 10000,
-    retention_interval: Optional[int] = None,
-) -> list[dict]:
-    """records each transaction as a separate line item. Captures results into a list.
-
-    returns:
-            [{
-                "operation": <operation>,
-                "duration": <duration, in seconds>,
-                "msg_id": <msg_id>
-            }]
-    """
-    rnd = random.randint(0, 100)
-    test_queue = f"bench_queue_{rnd}"
-    print(f"Test queue: {test_queue}")
-
-    test_message = {"hello": "world"}
-    bench_0_start = time.time()
-    queue = PGMQueue(host=host, port=port, username=username, password=password, database=database)
-    try:
-        print(f"Queue retention: {retention_interval}")
-        if retention_interval is None:
-            print("Defaulting to retaining all messages: {}")
-            retention_interval = num_messages
-        queue.create_partitioned_queue(
-            test_queue, partition_interval=partition_interval, retention_interval=retention_interval
-        )
-    except Exception as e:
-        print(f"{e}")
-
-    print(
-        f"""
-    Starting benchmark
-    Total messages: {num_messages}
-    """
-    )
-
-    total_results = []
-
-    # publish messages
-    write_results: list[dict] = bench_send(queue, test_queue, test_message, num_messages)
-    total_results.extend(write_results)
-
-    # read them all once, each
-    print("Reading Messages")
-    read_arch_results: list[dict] = bench_read_archive(queue, test_queue, num_messages)
-    total_results.extend(read_arch_results)
-
-    # wait for all VT to expire
-    while time.time() - bench_0_start < vt:
-        print("waiting for all VTs to expire")
-        time.sleep(2)
-
-    print("Benchmarking: Message Deletion")
-    all_msg_ids = []
-    # publish messages
-    for x in range(num_messages):
-        start = time.time()
-        msg_id = queue.send(test_queue, test_message)
-        all_msg_ids.append(msg_id)
-
-    print("Deleting Messages")
-    for x in all_msg_ids:
-        start = time.time()
-        queue.delete(test_queue, x)
-        total_results.append({"operation": "delete", "duration": time.time() - start, "msg_id": x})
-
-    return total_results
+logging.basicConfig(level=logging.INFO)
 
 
 def produce(
@@ -148,12 +28,13 @@ def produce(
         queue_name: The name of the queue to publish to
         duration_seconds: The number of seconds to publish messages
     """
-    user = connection_info["username"]
+    pid = os.getpid()
+    username = connection_info["username"]
+    password = connection_info["password"]
     host = connection_info["host"]
     port = connection_info["port"]
-    password = connection_info["password"]
     database = connection_info["database"]
-    url = f"postgresql://{user}:{password}@{host}:{port}/{database}"
+    url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
     conn = psycopg2.connect(url)
     conn.autocommit = True
     cur = conn.cursor()
@@ -177,18 +58,19 @@ def produce(
         # log every 5 seconds
         if time.time() - last_print_time >= 5:
             last_print_time = time.time()
-            print(f"Total Messages Sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
-    print(f"Total Messages Sent: {num_msg}, {int(running_duration)} / {duration_seconds} seconds")
-    df = pd.DataFrame(all_results)
-    data_tuples = list(df.itertuples(index=False, name=None))
-    insert_query = (
-        f"INSERT INTO bench_results_{queue_name} (operation, duration, msg_id, epoch) VALUES (%s, %s, %s, %s);"
-    )
-    cur.executemany(insert_query, data_tuples)
-
+            logging.debug(f"pid: {pid}, total_sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
     cur.close()
     conn.close()
-    print("Finished publishing messages")
+    logging.debug(f"pid: {pid}, total_sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
+
+    csv_name = f"/tmp/tmp_produce_{pid}_{queue_name}.csv"
+    df = pd.DataFrame(all_results)
+    df.to_csv(csv_name, index=None)
+    copy_command = f"\COPY bench_results_{queue_name} FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa
+    psql_command = ["psql", url, "-c", copy_command]
+    subprocess.run(psql_command)
+    os.remove(csv_name)
+    logging.info(f"producer complete, pid: {pid}")
 
 
 def consume(queue_name: str, connection_info: dict):
@@ -196,7 +78,13 @@ def consume(queue_name: str, connection_info: dict):
 
     Halts consumption after 5 seconds of no messages.
     """
-    url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
+    pid = os.getpid()
+    username = connection_info["username"]
+    password = connection_info["password"]
+    host = connection_info["host"]
+    port = connection_info["port"]
+    database = connection_info["database"]
+    url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
     conn = psycopg2.connect(url)
     cur = conn.cursor()
 
@@ -216,7 +104,7 @@ def consume(queue_name: str, connection_info: dict):
         if len(message) == 0:
             no_message_timeout += 1
             if no_message_timeout > 2:
-                print(f"No messages for {no_message_timeout} consecutive reads")
+                logging.debug(f"No messages for {no_message_timeout} consecutive reads")
             time.sleep(0.500)
             continue
         else:
@@ -231,30 +119,110 @@ def consume(queue_name: str, connection_info: dict):
 
         archive_duration = time.perf_counter() - archive_start
         results.append({"operation": "archive", "duration": archive_duration, "msg_id": msg_id, "epoch": time.time()})
-
-    num_consumed = len(results) / 2
-    print(f"Consumed {num_consumed} messages")
-
-    # divide by 2 because we're appending two results (read/archive) per message
-    df = pd.DataFrame(results)
-    data_tuples = list(df.itertuples(index=False, name=None))
-    print("writing results: ", len(data_tuples))
-    insert_query = (
-        f"INSERT INTO bench_results_{queue_name} (operation, duration, msg_id, epoch) VALUES (%s, %s, %s, %s);"
-    )
-    cur.executemany(insert_query, data_tuples)
     cur.close()
     conn.close()
 
+    # divide by 2 because we're appending two results (read/archive) per message
+    num_consumed = len(results) / 2
+    logging.info(f"pid: {pid}, read {num_consumed} messages")
 
-def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seconds: int):
-    """summarizes results from two csvs into pdf"""
+    df = pd.DataFrame(results)
+    csv_name = f"/tmp/tmp_consume_{pid}_{queue_name}.csv"
+    df.to_csv(csv_name, index=None)
+    copy_command = f"\COPY bench_results_{queue_name} FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa: W605
+    psql_command = ["psql", url, "-c", copy_command]
+    subprocess.run(psql_command)
+    os.remove(csv_name)
+
+
+def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessing.Value, duration_seconds: int):
+    username = connection_info["username"]
+    password = connection_info["password"]
+    host = connection_info["host"]
+    port = connection_info["port"]
+    database = connection_info["database"]
+    url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
+    conn = psycopg2.connect(url)
+    pid = os.getpid()
+    cur = conn.cursor()
+    conn.autocommit = True
+    all_metrics = []
+
+    cur.execute(
+        f"""
+        CREATE TABLE bench_results_{queue_name}_queue_depth(
+            queue_name text NULL,
+            queue_length int8 NULL,
+            total_messages int8 NULL,
+            select1 float8 NULL,
+            "time" float8 NULL
+        )"""
+    )
+
+    start = time.time()
+    while not kill_flag.value:
+        cur.execute(f"select * from pgmq_metrics('{queue_name}')")
+        metrics = cur.fetchall()[0]
+        depth = metrics[1]
+        total_messages = metrics[-2]
+
+        read_start = time.perf_counter()
+        cur.execute("select 1")
+        cur.fetchall()
+        sel_duration = time.perf_counter() - read_start
+        duration = int(time.time() - start)
+        all_metrics.append(
+            {
+                "queue_name": metrics[0],
+                "queue_length": depth,
+                "total_messages": total_messages,
+                "select1": sel_duration,
+                "time": time.time(),
+            }
+        )
+        log = {
+            "q_len": depth,
+            "elapsed": f"{duration}/{duration_seconds}",
+            "select1_ms": round(sel_duration * 1000, 2),
+            "tot_msg": total_messages,
+        }
+        logging.info(log)
+        time.sleep(5)
+    cur.close()
+    conn.close()
+    df = pd.DataFrame(all_metrics)
+    csv_name = f"/tmp/tmp_consume_{pid}_{queue_name}.csv"
+    df.to_csv(csv_name, index=None)
+    copy_command = (
+        f"\COPY bench_results_{queue_name}_queue_depth FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa: W605
+    )
+    psql_command = ["psql", url, "-c", copy_command]
+    subprocess.run(psql_command)
+    os.remove(csv_name)
+
+    return all_metrics
+
+
+def summarize(
+    queue_name: str, queue: PGMQueue, results_file: str, duration_seconds: int, boxplots: bool = False
+) -> str:
+    """summarizes bench results from postgres"""
 
     con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
     df = pd.read_sql(f'''select * from "bench_results_{queue_name}"''', con=con)
 
     # merge schemas of queue depth so we can plot it in-line with latency results
     queue_depth = pd.read_sql(f'''select * from "bench_results_{queue_name}_queue_depth"''', con=con)
+
+    sel1_df = queue_depth[["time", "select1"]]
+    sel1_df["operation"] = "select1"
+    sel1_df.rename(
+        columns={
+            "select1": "duration",
+            "time": "epoch",
+        },
+        inplace=True,
+    )
     queue_depth["operation"] = "queue_depth"
     queue_depth.rename(
         columns={
@@ -263,7 +231,7 @@ def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seco
         },
         inplace=True,
     )
-    df = pd.concat([df, queue_depth[["operation", "queue_length", "msg_id", "epoch"]]])
+    df = pd.concat([df, sel1_df, queue_depth[["operation", "queue_length", "msg_id", "epoch"]]])
 
     # iteration
     all_results_csv = f"all_results_{queue_name}.csv"
@@ -274,60 +242,84 @@ def summarize(queue_name: str, queue: PGMQueue, results_file: str, duration_seco
     # convert seconds to milliseconds
     df["duration"] = df["duration"] * 1000
 
-    for op in ["read", "archive", "write"]:
-        _df = df[df["operation"] == op]
-        bbplot = _df.boxplot(
-            column="duration", by="operation", fontsize=12, layout=(2, 1), rot=90, figsize=(25, 20), return_type="axes"
-        )
-        title = f"""
-        num_messages = {num_messages}
-        duration = {duration_seconds}
-        """
-        bbplot[0].set_title(title)
+    if boxplots:
+        for op in ["read", "archive", "write"]:
+            _df = df[df["operation"] == op]
+            bbplot = _df.boxplot(
+                column="duration",
+                by="operation",
+                fontsize=12,
+                layout=(2, 1),
+                rot=90,
+                figsize=(25, 20),
+                return_type="axes",
+            )
+            title = f"""
+            num_messages = {num_messages}
+            duration = {duration_seconds}
+            """
+            bbplot[0].set_title(title)
 
-        filename = f"{op}_{results_file}"
-        bbplot[0].get_figure().savefig(filename)
-        print("Saved: ", filename)
+            filename = f"{op}_{results_file}"
+            bbplot[0].get_figure().savefig(filename)
+            logging.info("Saved: %s", filename)
     return all_results_csv
 
 
-def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
+def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict, pg_settings: dict):
     df = pd.read_csv(csv)
     # convert seconds to milliseconds
     df["duration_ms"] = df["duration"] * 1000
     df["time"] = pd.to_datetime(df["epoch"], unit="s")
-
-    max_read = df[df.operation == "read"].time.max()
-    result = (
-        df[df["time"] <= max_read].groupby("operation").agg({"time": lambda x: x.max() - x.min(), "operation": "size"})
-    )
+    result = df.groupby("operation").agg({"time": lambda x: x.max() - x.min(), "operation": "size"})
     result.columns = ["range", "num_messages"]
     result.reset_index(inplace=True)
 
     result.columns = ["operation", "range", "num_messages"]
     result["total_duration_seconds"] = result["range"].apply(lambda x: x.total_seconds())
     result["messages_per_second"] = result["num_messages"] / result["total_duration_seconds"]
-    output_str = []
-    for _, row in result.iterrows():
-        operation = row["operation"]
-        if operation == "queue_depth":
-            continue
-        s = f"{operation}: total seconds: {row['total_duration_seconds']}, total messages: {row['num_messages']}, message / sec = {row['messages_per_second']:.2f}"
-        output_str.append(s)
 
-    output_str = "\n".join(output_str)
+    def int_to_comma_string(n):
+        return "{:,}".format(n)
 
     # Plotting
-    _, ax1 = plt.subplots(figsize=(20, 10))
+    fig, ax1 = plt.subplots(figsize=(20, 10))
+    plt.suptitle("PGMQ Concurrent Produce/Consumer Benchmark")
+    ax1.text(0, -0.05, json.dumps(pg_settings, indent=2), transform=ax1.transAxes, va="top", ha="left")
+    ax1.text(0.85, -0.05, json.dumps(params, indent=2), transform=ax1.transAxes, va="top", ha="left")
+
+    # Prepare the throughput table
+    columns = ["Operation", "Duration (s)", "Total Messages", "msg/s"]
+    cell_text = []
+    for _, row in result.iterrows():
+        operation = row["operation"]
+        if operation in ["queue_depth", "select1"]:
+            continue
+        dur = int_to_comma_string(int(row["total_duration_seconds"]))
+        n_msg = int_to_comma_string(row["num_messages"])
+        msg_per_sec = int_to_comma_string(int(row["messages_per_second"]))
+        cell_text.append([operation, dur, n_msg, msg_per_sec])
+    table = ax1.table(cellText=cell_text, colLabels=columns, loc="top", cellLoc="left")
+    table.set_fontsize(16)
+    for i, _ in enumerate(columns):
+        table.auto_set_column_width(i)
+        for row in range(4):
+            table[(row, i)].set_height(0.05)
+    fig.subplots_adjust(top=0.8)
 
     # plot the operations
-    color_map = {"read": "orange", "write": "blue", "archive": "green"}
+    color_map = {"read": "orange", "write": "blue", "archive": "green", "select1": "red"}
     sigma = 1000  # Adjust as needed for the desired smoothing level
-    for op in ["read", "write", "archive"]:
+    for op in ["read", "write", "archive", "select1"]:
         _df = df[df["operation"] == op].sort_values("time")
+
+        if op != "select1":
+            y_data = _df[["duration_ms"]].apply(lambda x: gaussian_filter1d(x, sigma))
+        else:
+            y_data = _df[["duration_ms"]]
         ax1.plot(
             _df["time"],
-            _df[["duration_ms"]].apply(lambda x: gaussian_filter1d(x, sigma)),
+            y_data,
             label=op,
             color=color_map[op],
         )
@@ -335,11 +327,10 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
 
     ax1.set_xlabel("time")
     ax1.set_ylabel("Duration (ms)")
-    plt.suptitle(f"PGMQ Concurrent Produce/Consumer Benchmark\n{output_str}")
-    plt.title(params)
+
     # Create a second y-axis for 'queue_length'
     ax2 = ax1.twinx()
-    queue_depth_data = df[df["time"] <= max_read][df["operation"] == "queue_depth"]
+    queue_depth_data = df[df["operation"] == "queue_depth"]
     ax2.plot(queue_depth_data["time"], queue_depth_data["queue_length"], color="gray", label="queue_depth")
     ax2.set_ylabel("queue_depth", color="gray")
     ax2.tick_params("y", colors="gray")
@@ -347,46 +338,11 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict):
     # Show the plot
     ax1.legend(loc="upper left")
     ax2.legend(loc="upper right")
+    fig.subplots_adjust(bottom=0.25)
 
     output_plot = f"{bench_name}_{duration_sec}.png"
     plt.savefig(output_plot)
-    print(f"Saved plot to: {output_plot}")
-
-
-def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessing.Value):
-    url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
-    conn = psycopg2.connect(url)
-    eng = create_engine(url)
-    cur = conn.cursor()
-    conn.autocommit = True
-    all_metrics = []
-    while not kill_flag.value:
-        cur.execute(f"select * from pgmq_metrics('{queue_name}')")
-        metrics = cur.fetchall()[0]
-        depth = metrics[1]
-        total_messages = metrics[-2]
-        all_metrics.append(
-            {
-                "queue_name": metrics[0],
-                "queue_length": depth,
-                "total_messages": total_messages,
-                "time": time.time(),
-            }
-        )
-        print(f"Number messages in queue: {depth}, max_msg_id: {total_messages}")
-
-        read_start = time.perf_counter()
-        cur.execute("select 1")
-        cur.fetchall()
-        sel_duration = time.perf_counter() - read_start
-        print("Select 1 latency (ms): ", sel_duration * 1000)
-        time.sleep(5)
-    cur.close()
-    conn.close()
-    print("Writing queue length results")
-    df = pd.DataFrame(all_metrics)
-    df.to_sql(f"bench_results_{queue_name}_queue_depth", con=eng, if_exists="append", index=False)
-    return all_metrics
+    logging.info(f"Saved plot to: {output_plot}")
 
 
 if __name__ == "__main__":
@@ -416,7 +372,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # default postgres connection
+    # default postgres connection - localhost pgrx
     if args.postgres_connection is None:
         import getpass
 
@@ -444,7 +400,7 @@ if __name__ == "__main__":
     if bench_name is None:
         bench_name = int(time.time())
 
-    url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
+    url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"  # noqa: E501
     eng = create_engine(url)
 
     # setup results table
@@ -465,23 +421,42 @@ if __name__ == "__main__":
         con.commit()
 
     with eng.connect() as con:
-        con.execute(
-            text(
-                f"""
-            select pg_stat_statements_reset()
-        """
-            )
-        ).fetchall()
+        con.execute(text("select pg_stat_statements_reset()")).fetchall()
         con.commit()
+
+    # capture postgres settings
+    query = """
+    SELECT
+        name, setting
+    FROM
+        pg_settings
+    WHERE name IN
+        (
+            'autovacuum_vacuum_scale_factor',
+            'autovacuum_vacuum_insert_scale_factor',
+            'autovacuum_analyze_scale_factor',
+            'autovacuum_vacuum_cost_limit',
+            'autovacuum_vacuum_cost_delay',
+            'autovacuum_naptime',
+            'random_page_cost',
+            'checkpoint_timeout'
+        )
+    """
+
+    with eng.connect() as con:
+        results = con.execute(text(query)).fetchall()
+
+    # Convert results to dictionary
+    config_dict = {row[0]: row[1] for row in results}
 
     queue = PGMQueue(**connection_info)
     if partitioned_queue:
-        print(f"Creating partitioned queue: {test_queue}")
+        logging.debug(f"Creating partitioned queue: {test_queue}")
         queue.create_partitioned_queue(
             test_queue, partition_interval=partition_interval, retention_interval=retention_interval
         )
     else:
-        print(f"Creating non-partitioned queue: {test_queue}")
+        logging.debug(f"Creating non-partitioned queue: {test_queue}")
         queue.create_queue(
             test_queue,
         )
@@ -498,7 +473,7 @@ if __name__ == "__main__":
 
     # start a proc to poll for queue depth
     kill_flag = multiprocessing.Value("b", False)
-    queue_depth_proc = Process(target=queue_depth, args=(test_queue, connection_info, kill_flag))
+    queue_depth_proc = Process(target=queue_depth, args=(test_queue, connection_info, kill_flag, duration_seconds))
     queue_depth_proc.start()
 
     consume_procs = {}
@@ -507,18 +482,21 @@ if __name__ == "__main__":
         consume_procs[conumser] = Process(target=consume, args=(test_queue, connection_info))
         consume_procs[conumser].start()
 
+    logging.info("waiting for consumers")
     for consumer, proc in consume_procs.items():
-        print(f"Waiting for {consumer} to finish")
+        logging.debug(f"Waiting for {consumer}")
         proc.join()
-        print(f"{consumer} finished")
+        logging.debug(f"{consumer} finished")
+
+    logging.info("stopping producers")
+    for producer, proc in producer_procs.items():
+        logging.debug("Closing: %s", producer)
+        proc.terminate()
+        logging.debug(f"{producer} finished")
 
     # stop the queue depth proc
     kill_flag.value = True
     queue_depth_proc.join()
-
-    for producer, proc in producer_procs.items():
-        print("Closing producer: ", producer)
-        proc.terminate()
 
     # save pg_stat_statements
     with eng.connect() as con:
@@ -541,4 +519,4 @@ if __name__ == "__main__":
         params["partition_interval"] = partition_interval
         params["retention_interval"] = retention_interval
 
-    plot_rolling(filename, bench_name, duration_seconds, params=params)
+    plot_rolling(filename, bench_name, duration_seconds, params=params, pg_settings=config_dict)
