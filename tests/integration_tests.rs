@@ -123,6 +123,20 @@ async fn test_lifecycle() {
         .expect("expected message");
     assert_eq!(message.msg_id, 1);
 
+    // send a batch of 2 messages
+    let batch_queue = format!("test_batch_{test_num}");
+    let _ = sqlx::query(&format!("SELECT pgmq_create('{batch_queue}');"))
+    .execute(&conn)
+    .await
+    .expect("failed to create queue");
+    let msg_ids = sqlx::query(
+        &format!("select pgmq_send_batch('{batch_queue}', ARRAY['{{\"hello\": \"world_0\"}}'::jsonb, '{{\"hello\": \"world_1\"}}'::jsonb])")
+    )
+    .fetch_all(&conn).await.expect("failed to send batch");
+    assert_eq!(msg_ids.len(), 2);
+    assert_eq!(msg_ids[0].get::<i64, usize>(0), 1);
+    assert_eq!(msg_ids[1].get::<i64, usize>(0), 2);
+
     let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_partman")
         .execute(&conn)
         .await
@@ -218,4 +232,7 @@ async fn test_lifecycle() {
             .await
             .expect("failed to query partman config");
     assert_eq!(partmans.num_partmans, 0);
+
+    
 }
+
