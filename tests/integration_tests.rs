@@ -126,9 +126,9 @@ async fn test_lifecycle() {
     // send a batch of 2 messages
     let batch_queue = format!("test_batch_{test_num}");
     let _ = sqlx::query(&format!("SELECT pgmq_create('{batch_queue}');"))
-    .execute(&conn)
-    .await
-    .expect("failed to create queue");
+        .execute(&conn)
+        .await
+        .expect("failed to create queue");
     let msg_ids = sqlx::query(
         &format!("select pgmq_send_batch('{batch_queue}', ARRAY['{{\"hello\": \"world_0\"}}'::jsonb, '{{\"hello\": \"world_1\"}}'::jsonb])")
     )
@@ -136,6 +136,11 @@ async fn test_lifecycle() {
     assert_eq!(msg_ids.len(), 2);
     assert_eq!(msg_ids[0].get::<i64, usize>(0), 1);
     assert_eq!(msg_ids[1].get::<i64, usize>(0), 2);
+    let rowcount: i64 = sqlx::query_scalar(&format!("SELECT count(*) from pgmq_{batch_queue}"))
+        .fetch_one(&conn)
+        .await
+        .expect("failed to get rowcount");
+    assert_eq!(rowcount, 2);
 
     let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_partman")
         .execute(&conn)
@@ -232,7 +237,4 @@ async fn test_lifecycle() {
             .await
             .expect("failed to query partman config");
     assert_eq!(partmans.num_partmans, 0);
-
-    
 }
-
