@@ -15,6 +15,6 @@ pub enum PgmqExtError {
     #[error("missing dependency: {0}")]
     MissingDependency(String),
 
-    #[error("invalid delay: {0}, must be an integer greater or equal 0")]
+    #[error("invalid delay: {0}, must be an integer >= 0")]
     InvalidDelay(i32),
 }
