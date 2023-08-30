@@ -260,7 +260,8 @@ pub fn delete_batch(name: &str, msg_ids: &[i64]) -> Result<String, PgmqError> {
     Ok(format!(
         "
         DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
-        WHERE msg_id in ({msg_id_list});
+        WHERE msg_id in ({msg_id_list})
+        RETURNING msg_id;
         "
     ))
 }
@@ -300,7 +301,8 @@ pub fn archive_batch(name: &str, msg_ids: &[i64]) -> Result<String, PgmqError> {
         )
         INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (msg_id, vt, read_ct, enqueued_at, message)
         SELECT msg_id, vt, read_ct, enqueued_at, message
-        FROM archived;
+        FROM archived
+        RETURNING msg_id;
         "
     ))
 }

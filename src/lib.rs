@@ -238,17 +238,34 @@ fn pgmq_delete(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtErr
 }
 
 #[pg_extern(name = "pgmq_delete")]
-fn pgmq_delete_batch(queue_name: &str, msg_ids: Vec<i64>) -> Result<Option<bool>, PgmqExtError> {
+fn pgmq_delete_batch(
+    queue_name: &str,
+    msg_ids: Vec<i64>,
+) -> Result<TableIterator<'static, (name!(archived, bool),)>, PgmqExtError> {
     let query = delete_batch(queue_name, &msg_ids)?;
-    Spi::connect(|mut client| {
-        let tup_table = client.update(&query, None, None);
-        match tup_table {
-            Ok(_) => Ok(Some(true)),
-            Err(e) => {
-                error!("error deleting message: {}", e);
-            }
+
+    let mut deleted: Vec<i64> = Vec::new();
+    let _: Result<(), spi::Error> = Spi::connect(|mut client| {
+        let tup_table = client.update(&query, None, None)?;
+        for row in tup_table {
+            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
+            deleted.push(msg_id);
         }
-    })
+        Ok(())
+    });
+
+    let results = msg_ids
+        .iter()
+        .map(|msg_id| {
+            if deleted.contains(msg_id) {
+                (true,)
+            } else {
+                (false,)
+            }
+        })
+        .collect::<Vec<(bool,)>>();
+
+    Ok(TableIterator::new(results))
 }
 
 /// archive a message forever instead of deleting it
@@ -278,17 +295,34 @@ fn pgmq_archive(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtEr
 }
 
 #[pg_extern(name = "pgmq_archive")]
-fn pgmq_archive_batch(queue_name: &str, msg_ids: Vec<i64>) -> Result<Option<bool>, PgmqExtError> {
+fn pgmq_archive_batch(
+    queue_name: &str,
+    msg_ids: Vec<i64>,
+) -> Result<TableIterator<'static, (name!(archived, bool),)>, PgmqExtError> {
     let query = archive_batch(queue_name, &msg_ids)?;
-    Spi::connect(|mut client| {
-        let tup_table = client.update(&query, None, None);
-        match tup_table {
-            Ok(_) => Ok(Some(true)),
-            Err(e) => {
-                error!("error deleting message: {}", e);
-            }
+
+    let mut archived: Vec<i64> = Vec::new();
+    let _: Result<(), spi::Error> = Spi::connect(|mut client| {
+        let tup_table: SpiTupleTable = client.update(&query, None, None)?;
+        for row in tup_table {
+            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
+            archived.push(msg_id);
         }
-    })
+        Ok(())
+    });
+
+    let results = msg_ids
+        .iter()
+        .map(|msg_id| {
+            if archived.contains(msg_id) {
+                (true,)
+            } else {
+                (false,)
+            }
+        })
+        .collect::<Vec<(bool,)>>();
+
+    Ok(TableIterator::new(results))
 }
 
 // reads and deletes at same time
@@ -578,7 +612,6 @@ mod tests {
     #[pg_test]
     fn test_archive() {
         let qname = r#"test_archive"#;
-        let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman").expect("SQL select failed");
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
         // no messages in the queue
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
