@@ -221,7 +221,7 @@ fn pgmq_delete(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtErr
 fn pgmq_delete_batch(
     queue_name: &str,
     msg_ids: Vec<i64>,
-) -> Result<TableIterator<'static, (name!(archived, bool),)>, PgmqExtError> {
+) -> Result<TableIterator<'static, (name!(pgmq_delete, bool),)>, PgmqExtError> {
     let query = delete_batch(queue_name, &msg_ids)?;
 
     let mut deleted: Vec<i64> = Vec::new();
@@ -258,7 +258,7 @@ fn pgmq_archive(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtEr
 fn pgmq_archive_batch(
     queue_name: &str,
     msg_ids: Vec<i64>,
-) -> Result<TableIterator<'static, (name!(archived, bool),)>, PgmqExtError> {
+) -> Result<TableIterator<'static, (name!(pgmq_archive, bool),)>, PgmqExtError> {
     let query = archive_batch(queue_name, &msg_ids)?;
 
     let mut archived: Vec<i64> = Vec::new();
