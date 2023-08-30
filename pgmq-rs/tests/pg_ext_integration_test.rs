@@ -20,7 +20,7 @@ async fn init_queue_ext(qname: &str) -> pgmq::PGMQueueExt {
     queue
 }
 
-#[derive(Serialize, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Clone, Debug, Deserialize, Eq, PartialEq)]
 struct MyMessage {
     foo: String,
     num: u64,
@@ -297,4 +297,53 @@ async fn test_byop() {
         .await
         .expect("failed to create queue");
     assert!(created);
+}
+
+#[tokio::test]
+async fn test_ext_send_batch() {
+    let test_queue = format!(
+        "test_ext_sendb_batch_{}",
+        rand::thread_rng().gen_range(0..100000)
+    );
+    let queue = init_queue_ext(&test_queue).await;
+
+    let messages = vec![
+        MyMessage::default(),
+        MyMessage::default(),
+        MyMessage::default(),
+    ];
+    let msg_ids = queue
+        .send_batch(&test_queue, &messages, None)
+        .await
+        .unwrap();
+    assert_eq!(msg_ids.len(), messages.len());
+    assert_eq!(msg_ids, vec![1, 2, 3]);
+
+    let msg_envelopes = queue
+        .read_batch_with_poll::<MyMessage>(&test_queue, 60, 5, None, None)
+        .await
+        .expect("error querying")
+        .expect("no messages");
+    let read_messages = msg_envelopes
+        .iter()
+        .map(|e| e.message.clone())
+        .collect::<Vec<MyMessage>>();
+    assert_eq!(read_messages, messages);
+
+    // send with30 second delay
+    // previous will be invisible
+    let delay = std::time::Duration::from_secs(30);
+    let msg_ids = queue
+        .send_batch(&test_queue, &messages, Some(delay))
+        .await
+        .unwrap();
+    assert_eq!(msg_ids.len(), messages.len());
+    assert_eq!(msg_ids, vec![4, 5, 6]);
+    // must not receive any messages on subsequent read
+    let read_messages = queue
+        .read_batch_with_poll::<MyMessage>(&test_queue, 60, 5, None, None)
+        .await
+        .expect("error querying")
+        .unwrap();
+    assert!(read_messages.is_empty());
 }
