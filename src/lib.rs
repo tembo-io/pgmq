@@ -102,7 +102,7 @@ fn pgmq_send(
     delay: default!(i32, 0),
 ) -> Result<Option<i64>, PgmqExtError> {
     let delay = util::delay_to_u64(delay)?;
-    let query = enqueue(queue_name, &[message.0], &(delay as u64))?;
+    let query = enqueue(queue_name, &[message.0], &delay)?;
     Spi::connect(|mut client| {
         let tup_table: SpiTupleTable = client.update(&query, None, None)?;
         Ok(tup_table.first().get_one::<i64>()?)
