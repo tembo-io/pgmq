@@ -422,17 +422,6 @@ $$ LANGUAGE plpgsql;
     }
 
     #[test]
-    fn test_delete() {
-        let qname = "myqueue";
-        let msg_id: i64 = 42;
-
-        let query = delete(&qname, msg_id).unwrap();
-
-        assert!(query.contains(&qname));
-        assert!(query.contains(&msg_id.to_string()));
-    }
-
-    #[test]
     fn test_delete_batch() {
         let mut msg_ids: Vec<i64> = Vec::new();
         let qname = "myqueue";
