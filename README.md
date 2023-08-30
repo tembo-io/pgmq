@@ -118,7 +118,7 @@ pgmq=# SELECT * from pgmq_read('my_queue', 30, 2);
 ```
 
 ```text
- msg_id | read_ct |          enqueued_at          |              vt               |     message     
+ msg_id | read_ct |          enqueued_at          |              vt               |     message
 --------+---------+-------------------------------+-------------------------------+-----------------
       1 |       1 | 2023-08-16 08:37:54.567283-05 | 2023-08-16 08:38:29.989841-05 | {"foo": "bar1"}
       2 |       1 | 2023-08-16 08:37:54.572933-05 | 2023-08-16 08:38:29.989841-05 | {"foo": "bar2"}
@@ -131,7 +131,7 @@ pgmq=# SELECT * from pgmq_read('my_queue', 30, 1);
 ```
 
 ```text
- msg_id | read_ct | enqueued_at | vt | message 
+ msg_id | read_ct | enqueued_at | vt | message
 --------+---------+-------------+----+---------
 ```
 
@@ -143,7 +143,7 @@ pgmq=# SELECT * from pgmq_pop('my_queue');
 ```
 
 ```text
- msg_id | read_ct |          enqueued_at          |              vt               |     message     
+ msg_id | read_ct |          enqueued_at          |              vt               |     message
 --------+---------+-------------------------------+-------------------------------+-----------------
       1 |       1 | 2023-08-16 08:37:54.567283-05 | 2023-08-16 08:38:29.989841-05 | {"foo": "bar1"}
 ```
@@ -170,7 +170,7 @@ pgmq=#  SELECT * from pgmq_my_queue_archive;
 ```
 
 ```text
- msg_id | read_ct |         enqueued_at          |          deleted_at           |              vt               |     message
+ msg_id | read_ct |         enqueued_at          |          archived_at          |              vt               |     message
 --------+---------+------------------------------+-------------------------------+-------------------------------+-----------------
       2 |       1 | 2023-04-25 00:55:40.68417-05 | 2023-04-25 00:56:35.937594-05 | 2023-04-25 00:56:20.532012-05 | {"foo": "bar2"}```
 ```
