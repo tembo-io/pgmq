@@ -55,7 +55,7 @@ pub fn create_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
             msg_id BIGSERIAL PRIMARY KEY,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
-            deleted_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+            archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             vt TIMESTAMP WITH TIME ZONE NOT NULL,
             message JSONB
         );
@@ -164,7 +164,7 @@ pub fn insert_meta(name: CheckedName<'_>) -> Result<String, PgmqError> {
 pub fn create_archive_index(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        CREATE INDEX IF NOT EXISTS deleted_at_idx_{name} ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (deleted_at);
+        CREATE INDEX IF NOT EXISTS archived_at_idx_{name} ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (archived_at);
         "
     ))
 }
