@@ -89,6 +89,28 @@
     },
     "query": "SELECT * from pgmq_list_queues();"
   },
+  "17ec61eb89601f40fa50ed13fd842415e0601e2910c3b47e9ac36ea64df4d271": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "JsonbArray",
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT pgmq_send_batch as msg_id\n            FROM pgmq_send_batch(\n                queue_name => $1::text,\n                messages => $2::jsonb[],\n                delay => $3::bigint\n            );"
+  },
   "213c722c2cab09b2042dc989130c4131b322b5d0b616dbb91f8e8e8f411406f9": {
     "describe": {
       "columns": [
