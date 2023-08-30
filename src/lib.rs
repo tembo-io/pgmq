@@ -645,6 +645,50 @@ mod tests {
     }
 
     #[pg_test]
+    fn test_archive_batch() {
+        let qname = r#"test_archive_batch"#;
+        let _ = pgmq_create_non_partitioned(&qname).unwrap();
+        // no messages in the queue
+        let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
+            .expect("SQL select failed");
+        assert_eq!(retval.unwrap(), 0);
+        // no messages in queue archive
+        let retval = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {TABLE_PREFIX}_{qname}_archive"
+        ))
+        .expect("SQL select failed");
+        assert_eq!(retval.unwrap(), 0);
+        // put messages on the queue
+        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})))
+            .unwrap()
+            .unwrap();
+        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})))
+            .unwrap()
+            .unwrap();
+        let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
+            .expect("SQL select failed");
+        assert_eq!(retval.unwrap(), 2);
+
+        // archive the message. The first two exist so should return true, the
+        // last one doesn't so should return false.
+        let mut archived = pgmq_archive_batch(&qname, vec![msg_id1, msg_id2, -1]).unwrap();
+        assert!(archived.next().unwrap().0);
+        assert!(archived.next().unwrap().0);
+        assert!(!archived.next().unwrap().0);
+
+        // should be no messages left on the queue table
+        let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
+            .expect("SQL select failed");
+        assert_eq!(retval.unwrap(), 0);
+        // but two on the archive table
+        let retval = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {TABLE_PREFIX}_{qname}_archive"
+        ))
+        .expect("SQL select failed");
+        assert_eq!(retval.unwrap(), 2);
+    }
+
+    #[pg_test]
     fn test_validate_same_type() {
         let invalid = validate_same_type("10", "daily");
         assert!(invalid.is_err());
