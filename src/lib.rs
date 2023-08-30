@@ -12,7 +12,7 @@ pub mod partition;
 
 use pgmq_core::{
     errors::PgmqError,
-    query::{archive, archive_batch, delete, delete_batch, init_queue, pop, read},
+    query::{archive_batch, delete_batch, init_queue, pop, read},
     types::{PGMQ_SCHEMA, TABLE_PREFIX},
     util::check_input,
 };
@@ -214,27 +214,7 @@ fn readit(
 
 #[pg_extern]
 fn pgmq_delete(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtError> {
-    let mut num_deleted = 0;
-    let query = delete(queue_name, msg_id)?;
-    Spi::connect(|mut client| {
-        let tup_table = client.update(&query, None, None);
-        match tup_table {
-            Ok(tup_table) => num_deleted = tup_table.len(),
-            Err(e) => {
-                error!("error deleting message: {}", e);
-            }
-        }
-    });
-    match num_deleted {
-        1 => Ok(Some(true)),
-        0 => {
-            warning!("no message found with msg_id: {}", msg_id);
-            Ok(Some(false))
-        }
-        _ => {
-            error!("multiple messages found with msg_id: {}", msg_id);
-        }
-    }
+    pgmq_delete_batch(queue_name, vec![msg_id]).map(|mut iter| iter.next().map(|b| b.0))
 }
 
 #[pg_extern(name = "pgmq_delete")]
@@ -271,27 +251,7 @@ fn pgmq_delete_batch(
 /// archive a message forever instead of deleting it
 #[pg_extern]
 fn pgmq_archive(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtError> {
-    let mut num_deleted = 0;
-    let query = archive(queue_name, msg_id)?;
-    Spi::connect(|mut client| {
-        let tup_table = client.update(&query, None, None);
-        match tup_table {
-            Ok(tup_table) => num_deleted = tup_table.len(),
-            Err(e) => {
-                error!("error deleting message: {}", e);
-            }
-        }
-    });
-    match num_deleted {
-        1 => Ok(Some(true)),
-        0 => {
-            warning!("no message found with msg_id: {}", msg_id);
-            Ok(Some(false))
-        }
-        _ => {
-            error!("multiple messages found with msg_id: {}", msg_id);
-        }
-    }
+    pgmq_archive_batch(queue_name, vec![msg_id]).map(|mut iter| iter.next().map(|b| b.0))
 }
 
 #[pg_extern(name = "pgmq_archive")]

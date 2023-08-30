@@ -224,16 +224,6 @@ pub fn read(name: &str, vt: i32, limit: i32) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn delete(name: &str, msg_id: i64) -> Result<String, PgmqError> {
-    check_input(name)?;
-    Ok(format!(
-        "
-        DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
-        WHERE msg_id = {msg_id};
-        "
-    ))
-}
-
 pub fn set_vt(name: &str, msg_id: i64, vt: chrono::DateTime<Utc>) -> Result<String, PgmqError> {
     check_input(name)?;
     Ok(format!(
@@ -262,22 +252,6 @@ pub fn delete_batch(name: &str, msg_ids: &[i64]) -> Result<String, PgmqError> {
         DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
         WHERE msg_id in ({msg_id_list})
         RETURNING msg_id;
-        "
-    ))
-}
-
-pub fn archive(name: &str, msg_id: i64) -> Result<String, PgmqError> {
-    check_input(name)?;
-    Ok(format!(
-        "
-        WITH archived AS (
-            DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
-            WHERE msg_id = {msg_id}
-            RETURNING msg_id, vt, read_ct, enqueued_at, message
-        )
-        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (msg_id, vt, read_ct, enqueued_at, message)
-        SELECT msg_id, vt, read_ct, enqueued_at, message
-        FROM archived;
         "
     ))
 }
