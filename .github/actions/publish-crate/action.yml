@@ -72,8 +72,9 @@ runs:
 
         # Set --dry-run flag, if configured
         DRY_RUN=""
-        if [ "${{ inputs.dry-run }}" == "true" ]; then
-          DRY_RUN="--dry-run"
+        if [ "${{ inputs.dry-run }}" == "true" ];
+        then
+          cargo publish --dry-run
+        else
+          cargo publish --token ${{ inputs.cargo-registry-token }}
         fi
-
-        cargo publish ${DRY_RUN} --token ${{ inputs.cargo-registry-token }}
