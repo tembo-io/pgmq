@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use sqlx::types::chrono::{DateTime, Utc};
-use std::time::Duration;
+use std::{fmt, time::Duration};
 
 use sqlx::FromRow;
 
@@ -14,8 +14,23 @@ use chrono::serde::ts_seconds::deserialize as from_ts;
 pub const TABLE_PREFIX: &str = r#"pgmq"#;
 pub const PGMQ_SCHEMA: &str = "public";
 
+pub enum PartitionType {
+    Partitioned,
+    NonPartitioned,
+}
+
+impl fmt::Display for PartitionType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PartitionType::Partitioned => write!(f, "partitioned"),
+            PartitionType::NonPartitioned => write!(f, "non_partitioned"),
+        }
+    }
+}
+
 pub struct PGMQueueMeta {
     pub queue_name: String,
+    pub partition_type: PartitionType,
     pub created_at: DateTime<Utc>,
 }
 

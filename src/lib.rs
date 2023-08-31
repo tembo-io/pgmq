@@ -24,6 +24,7 @@ extension_sql!(
     "
 CREATE TABLE public.pgmq_meta (
     queue_name VARCHAR UNIQUE NOT NULL,
+    partition_type TEXT NOT NULL check(partition_type in ('non_partitioned','partitioned')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
 );
 

@@ -2,7 +2,7 @@
 
 use crate::{
     errors::PgmqError,
-    types::{PGMQ_SCHEMA, TABLE_PREFIX},
+    types::{PartitionType, PGMQ_SCHEMA, TABLE_PREFIX},
     util::check_input,
     util::CheckedName,
 };
@@ -18,7 +18,7 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
         create_archive(name)?,
         assign_archive(name)?,
         create_archive_index(name)?,
-        insert_meta(name)?,
+        insert_meta(name, PartitionType::NonPartitioned)?,
         grant_pgmon_queue(name)?,
     ])
 }
@@ -150,14 +150,18 @@ pub fn drop_queue_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn insert_meta(name: CheckedName<'_>) -> Result<String, PgmqError> {
+pub fn insert_meta(
+    name: CheckedName<'_>,
+    partition_type: PartitionType,
+) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (queue_name)
-        VALUES ('{name}')
+        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (queue_name, partition_type)
+        VALUES ('{name}', '{}')
         ON CONFLICT
         DO NOTHING;
-        "
+        ",
+        partition_type.to_string(),
     ))
 }
 
