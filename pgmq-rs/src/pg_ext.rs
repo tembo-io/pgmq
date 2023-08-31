@@ -162,6 +162,25 @@ impl PGMQueueExt {
         Ok(sent.msg_id.expect("no message id"))
     }
 
+    pub async fn send_delay<T: Serialize>(
+        &self,
+        queue_name: &str,
+        message: &T,
+        delay: u32,
+    ) -> Result<i64, PgmqError> {
+        check_input(queue_name)?;
+        let msg = serde_json::json!(&message);
+        let sent = sqlx::query!(
+            "SELECT pgmq_send as msg_id from pgmq_send($1::text, $2::jsonb, $3::int);",
+            queue_name,
+            msg,
+            delay as i32
+        )
+        .fetch_one(&self.connection)
+        .await?;
+        Ok(sent.msg_id.expect("no message id"))
+    }
+
     pub async fn read<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
