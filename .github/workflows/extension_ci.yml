@@ -9,7 +9,17 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
+      - 'pgmq-rs/**'
+      - 'tembo-pgmq-python/**'
+      - 'examples/**'
   push:
+    paths-ignore:
+      - 'README.md'
+      - 'pgmq-rs/**'
+      - 'tembo-pgmq-python/**'
+      - 'examples/**'
     branches:
       - main
   release:
