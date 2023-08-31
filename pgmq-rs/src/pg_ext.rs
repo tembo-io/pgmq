@@ -98,6 +98,16 @@ impl PGMQueueExt {
         Ok(())
     }
 
+    /// Drop an existing queue table.
+    pub async fn purge_queue(&self, queue_name: &str) -> Result<i64, PgmqError> {
+        check_input(queue_name)?;
+        let purged = sqlx::query!("SELECT * from pgmq_purge_queue($1::text);", queue_name)
+            .fetch_one(&self.connection)
+            .await?;
+
+        Ok(purged.pgmq_purge_queue.expect("no purged count"))
+    }
+
     /// List all queues in the Postgres instance.
     pub async fn list_queues(&self) -> Result<Option<Vec<PGMQueueMeta>>, PgmqError> {
         let queues = sqlx::query!("SELECT * from pgmq_list_queues();")
