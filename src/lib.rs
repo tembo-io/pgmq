@@ -9,11 +9,11 @@ pub mod api;
 pub mod errors;
 pub mod metrics;
 pub mod partition;
+pub mod util;
 
 use pgmq_core::{
-    errors::PgmqError,
-    query::{archive_batch, delete_batch, init_queue, pop, read},
-    types::{PGMQ_SCHEMA, TABLE_PREFIX},
+    query::{archive_batch, delete_batch, enqueue, init_queue, pop, read},
+    types::TABLE_PREFIX,
     util::check_input,
 };
 
@@ -96,23 +96,17 @@ fn validate_same_type(a: &str, b: &str) -> Result<(), PgmqExtError> {
 }
 
 #[pg_extern]
-fn pgmq_send(queue_name: &str, message: pgrx::JsonB) -> Result<Option<i64>, PgmqExtError> {
-    let query = enqueue_str(queue_name)?;
-    Ok(Spi::get_one_with_args(
-        &query,
-        vec![(PgBuiltInOids::JSONBOID.oid(), message.into_datum())],
-    )?)
-}
-
-fn enqueue_str(name: &str) -> Result<String, PgmqError> {
-    check_input(name)?;
-    Ok(format!(
-        "
-        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt, message)
-        VALUES (now(), $1)
-        RETURNING msg_id;
-        "
-    ))
+fn pgmq_send(
+    queue_name: &str,
+    message: pgrx::JsonB,
+    delay: default!(i32, 0),
+) -> Result<Option<i64>, PgmqExtError> {
+    let delay = util::delay_to_u64(delay)?;
+    let query = enqueue(queue_name, &[message.0], &delay)?;
+    Spi::connect(|mut client| {
+        let tup_table: SpiTupleTable = client.update(&query, None, None)?;
+        Ok(tup_table.first().get_one::<i64>()?)
+    })
 }
 
 #[pg_extern]
@@ -413,7 +407,7 @@ mod tests {
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
             .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
-        let _ = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"}))).unwrap();
+        let _ = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"})), 0).unwrap();
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
             .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
@@ -431,7 +425,7 @@ mod tests {
         assert_eq!(init_count.unwrap(), 0);
 
         // put a message on the queue
-        let _ = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"})));
+        let _ = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"})), 0);
 
         // read the message with the pg_extern, sets message invisible
         let _ = pgmq_read(&qname, 10_i32, 1_i32);
@@ -457,10 +451,10 @@ mod tests {
         assert_eq!(queues.len(), 1);
 
         // put two message on the queue
-        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})))
+        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})), 0)
             .unwrap()
             .unwrap();
-        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})))
+        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})), 0)
             .unwrap()
             .unwrap();
         assert_eq!(msg_id1, 1);
@@ -526,10 +520,10 @@ mod tests {
         assert_eq!(queues.len(), 1);
 
         // put two message on the queue
-        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})))
+        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})), 0)
             .unwrap()
             .unwrap();
-        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})))
+        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})), 0)
             .unwrap()
             .unwrap();
         assert_eq!(msg_id1, 1);
@@ -584,7 +578,7 @@ mod tests {
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
         // put a message on the queue
-        let msg_id = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"}))).unwrap();
+        let msg_id = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"})), 0).unwrap();
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
             .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
@@ -619,10 +613,10 @@ mod tests {
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
         // put messages on the queue
-        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})))
+        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})), 0)
             .unwrap()
             .unwrap();
-        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})))
+        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})), 0)
             .unwrap()
             .unwrap();
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
