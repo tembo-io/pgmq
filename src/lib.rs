@@ -407,7 +407,7 @@ mod tests {
     use pgmq_core::types::TABLE_PREFIX;
 
     #[pg_test]
-    fn test_creat_non_partitioned() {
+    fn test_create_non_partitioned() {
         let qname = r#"test_queue"#;
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
