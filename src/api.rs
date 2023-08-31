@@ -93,10 +93,10 @@ fn pgmq_send_batch(
 }
 
 #[pg_extern]
-fn pgmq_purge_queue(queue_name: String) -> Result<(), PgmqExtError> {
+fn pgmq_purge_queue(queue_name: String) -> Result<i64, PgmqExtError> {
     Spi::connect(|mut client| {
         let query = purge_queue(&queue_name)?;
-        client.update(query.as_str(), None, None)?;
-        Ok(())
+        let tup_table = client.update(query.as_str(), None, None)?;
+        Ok(tup_table.len() as i64)
     })
 }
