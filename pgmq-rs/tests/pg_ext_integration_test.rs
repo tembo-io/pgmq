@@ -174,7 +174,7 @@ async fn test_ext_send_delay() {
     let vt = 1;
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
-    let msg_id = queue.send_delay(&test_queue, &msg, 5).await.unwrap();
+    let _ = queue.send_delay(&test_queue, &msg, 5).await.unwrap();
 
     // No messages are found due to visibility timeout
     let no_messages = queue.read::<MyMessage>(&test_queue, vt).await.unwrap();
