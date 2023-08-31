@@ -161,6 +161,26 @@
     },
     "query": "SELECT * from pgmq_delete($1::text, $2::bigint[])"
   },
+  "98463803e1b4548d758476cce697814fb8411f47f899043ece8a7a6bee71d84d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "pgmq_purge_queue",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq_purge_queue($1::text);"
+  },
   "9919286cee87946b387f69e67df94f94eb0acdd3b5f4848faf092c55d484b61a": {
     "describe": {
       "columns": [
