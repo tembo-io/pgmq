@@ -4,6 +4,7 @@ use pgrx::spi::SpiTupleTable;
 
 use crate::errors::PgmqExtError;
 use crate::partition::PARTMAN_SCHEMA;
+use crate::util;
 use pgmq_core::{
     query::{destroy_queue, enqueue},
     types::{PGMQ_SCHEMA, TABLE_PREFIX},
@@ -74,10 +75,10 @@ pub fn listit() -> Result<Vec<(String, TimestampWithTimeZone)>, spi::Error> {
 fn pgmq_send_batch(
     queue_name: &str,
     messages: Vec<pgrx::JsonB>,
-    delay: default!(i64, 0),
+    delay: default!(i32, 0),
 ) -> Result<TableIterator<'static, (name!(msg_id, i64),)>, PgmqExtError> {
     let js_value: Vec<serde_json::Value> = messages.into_iter().map(|jsonb| jsonb.0).collect();
-    let delay = delay as u64;
+    let delay = util::delay_to_u64(delay)?;
     let query = enqueue(queue_name, &js_value, &delay)?;
     let mut results: Vec<(i64,)> = Vec::new();
     let _: Result<(), spi::Error> = Spi::connect(|mut client| {

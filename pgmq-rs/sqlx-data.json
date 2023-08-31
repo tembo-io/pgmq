@@ -337,6 +337,28 @@
     },
     "query": "SELECT pgmq_send as msg_id from pgmq_send($1::text, $2::jsonb);"
   },
+  "d0f732f460be14cefbdf967f2a64e93eb0cec49121decbcb18b26fa1c1f4e399": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Jsonb",
+          "Int4"
+        ]
+      }
+    },
+    "query": "SELECT pgmq_send as msg_id from pgmq_send($1::text, $2::jsonb, $3::int);"
+  },
   "e4c38347b44aed05aa890d3351a362d3b6f81387e98fc564ec922cefa1e96f71": {
     "describe": {
       "columns": [

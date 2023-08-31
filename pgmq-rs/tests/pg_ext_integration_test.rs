@@ -166,6 +166,27 @@ async fn test_ext_send_read_delete() {
 }
 
 #[tokio::test]
+async fn test_ext_send_delay() {
+    let test_queue = format!(
+        "test_ext_send_delay_{}",
+        rand::thread_rng().gen_range(0..100000)
+    );
+    let vt = 1;
+    let queue = init_queue_ext(&test_queue).await;
+    let msg = MyMessage::default();
+    let msg_id = queue.send_delay(&test_queue, &msg, 5).await.unwrap();
+
+    // No messages are found due to visibility timeout
+    let no_messages = queue.read::<MyMessage>(&test_queue, vt).await.unwrap();
+    assert!(no_messages.is_none());
+
+    // After 5 seconds, message is found
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    let one_messages = queue.read::<MyMessage>(&test_queue, vt).await.unwrap();
+    assert!(one_messages.is_some());
+}
+
+#[tokio::test]
 async fn test_ext_send_pop() {
     let test_queue = format!(
         "test_ext_send_pop_{}",
