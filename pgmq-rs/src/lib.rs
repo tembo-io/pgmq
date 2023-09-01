@@ -743,13 +743,12 @@ impl PGMQueue {
         Ok(num_deleted)
     }
 
-    // TODO: release when pgmq-core 0.3.0 is released
-    //pub async fn purge(&self, queue_name: &str) -> Result<u64, PgmqError> {
-    //    let query = &core_query::purge_queue(queue_name)?;
-    //    let row = sqlx::query(query).execute(&self.connection).await?;
-    //    let num_deleted = row.rows_affected();
-    //    Ok(num_deleted)
-    //}
+    pub async fn purge(&self, queue_name: &str) -> Result<u64, PgmqError> {
+        let query = &core_query::purge_queue(queue_name)?;
+        let row = sqlx::query(query).execute(&self.connection).await?;
+        let num_deleted = row.rows_affected();
+        Ok(num_deleted)
+    }
 
     /// Moves a message, by message id, from the queue table to archive table
     /// View messages on the archive table with sql:
