@@ -635,6 +635,22 @@ async fn test_database_error_modes() {
     }
 }
 
+#[tokio::test]
+async fn test_purge() {
+    let test_queue = format!("test_purge_{}", rand::thread_rng().gen_range(0..100000));
+    let queue = init_queue(&test_queue).await;
+    let msg = MyMessage::default();
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
+
+    let purged_count = queue.purge(&test_queue).await.expect("purge queue error");
+
+    assert_eq!(purged_count, 3);
+    let post_purge_rowcount = rowcount(&test_queue, &queue.connection).await;
+    assert_eq!(post_purge_rowcount, 0);
+}
+
 /// test parsing operations that should produce errors
 #[tokio::test]
 async fn test_parsing_error_modes() {
