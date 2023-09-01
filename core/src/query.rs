@@ -178,6 +178,11 @@ pub fn create_index(name: CheckedName<'_>) -> Result<String, PgmqError> {
     ))
 }
 
+pub fn purge_queue(name: &str) -> Result<String, PgmqError> {
+    check_input(name)?;
+    Ok(format!("DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name};"))
+}
+
 pub fn enqueue(
     name: &str,
     messages: &[serde_json::Value],
