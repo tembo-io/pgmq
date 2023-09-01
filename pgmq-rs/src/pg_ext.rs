@@ -10,7 +10,7 @@ use sqlx::{Executor, Pool, Postgres};
 
 const DEFAULT_POLL_TIMEOUT_S: i32 = 5;
 const DEFAULT_POLL_INTERVAL_MS: i32 = 250;
-const DEFAULT_SEND_DELAY_S: i64 = 0;
+const DEFAULT_SEND_DELAY_S: i32 = 0;
 
 /// Main controller for interacting with a managed by the PGMQ Postgres extension.
 #[derive(Clone, Debug)]
@@ -183,7 +183,7 @@ impl PGMQueueExt {
         delay: Option<std::time::Duration>,
     ) -> Result<Vec<i64>, PgmqError> {
         check_input(queue_name)?;
-        let delay_s = delay.map_or(DEFAULT_SEND_DELAY_S, |t| t.as_secs() as i64);
+        let delay_s: i32 = delay.map_or(DEFAULT_SEND_DELAY_S, |t| t.as_secs() as i32);
         let json_messages = messages
             .iter()
             .map(|msg| serde_json::to_value(msg).unwrap())
@@ -194,7 +194,7 @@ impl PGMQueueExt {
             FROM pgmq_send_batch(
                 queue_name => $1::text,
                 messages => $2::jsonb[],
-                delay => $3::bigint
+                delay => $3::int
             );",
             queue_name,
             &json_messages,

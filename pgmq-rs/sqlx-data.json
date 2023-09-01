@@ -89,28 +89,6 @@
     },
     "query": "SELECT * from pgmq_list_queues();"
   },
-  "17ec61eb89601f40fa50ed13fd842415e0601e2910c3b47e9ac36ea64df4d271": {
-    "describe": {
-      "columns": [
-        {
-          "name": "msg_id",
-          "ordinal": 0,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "JsonbArray",
-          "Int8"
-        ]
-      }
-    },
-    "query": "SELECT pgmq_send_batch as msg_id\n            FROM pgmq_send_batch(\n                queue_name => $1::text,\n                messages => $2::jsonb[],\n                delay => $3::bigint\n            );"
-  },
   "213c722c2cab09b2042dc989130c4131b322b5d0b616dbb91f8e8e8f411406f9": {
     "describe": {
       "columns": [
@@ -151,6 +129,28 @@
       }
     },
     "query": "SELECT * from pgmq_archive($1::text, $2::bigint[])"
+  },
+  "37d92703945a42c1c994431e4c21e05542a1876acc5e90b34b09ee510a51200a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "msg_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "JsonbArray",
+          "Int4"
+        ]
+      }
+    },
+    "query": "SELECT pgmq_send_batch as msg_id\n            FROM pgmq_send_batch(\n                queue_name => $1::text,\n                messages => $2::jsonb[],\n                delay => $3::int\n            );"
   },
   "3a3440841fba7d0f8744f5873cdb93a64b6e2f6481c3b14af701c5189f5e73f0": {
     "describe": {
