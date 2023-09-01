@@ -174,7 +174,7 @@ async fn test_ext_send_delay() {
     let vt = 1;
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
-    let msg_id = queue.send_delay(&test_queue, &msg, 5).await.unwrap();
+    queue.send_delay(&test_queue, &msg, 5).await.unwrap();
 
     // No messages are found due to visibility timeout
     let no_messages = queue.read::<MyMessage>(&test_queue, vt).await.unwrap();
@@ -270,6 +270,29 @@ async fn test_ext_delete_batch() {
     let post_delete_rowcount = rowcount(&test_queue, &queue.connection).await;
     assert_eq!(post_delete_rowcount, 0);
     assert_eq!(delete_result, true);
+}
+
+#[tokio::test]
+async fn test_ext_purge_queue() {
+    let test_queue = format!(
+        "test_ext_purge_queue{}",
+        rand::thread_rng().gen_range(0..100000)
+    );
+
+    let queue = init_queue_ext(&test_queue).await;
+    let msg = MyMessage::default();
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
+
+    let purged_count = queue
+        .purge_queue(&test_queue)
+        .await
+        .expect("purge queue error");
+
+    assert_eq!(purged_count, 3);
+    let post_purge_rowcount = rowcount(&test_queue, &queue.connection).await;
+    assert_eq!(post_purge_rowcount, 0);
 }
 
 #[tokio::test]

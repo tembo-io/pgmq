@@ -6,7 +6,7 @@ use crate::errors::PgmqExtError;
 use crate::partition::PARTMAN_SCHEMA;
 use crate::util;
 use pgmq_core::{
-    query::{destroy_queue, enqueue},
+    query::{destroy_queue, enqueue, purge_queue},
     types::{PGMQ_SCHEMA, TABLE_PREFIX},
 };
 
@@ -90,4 +90,13 @@ fn pgmq_send_batch(
         Ok(())
     });
     Ok(TableIterator::new(results))
+}
+
+#[pg_extern]
+fn pgmq_purge_queue(queue_name: String) -> Result<i64, PgmqExtError> {
+    Spi::connect(|mut client| {
+        let query = purge_queue(&queue_name)?;
+        let tup_table = client.update(query.as_str(), None, None)?;
+        Ok(tup_table.len() as i64)
+    })
 }
