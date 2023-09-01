@@ -7,7 +7,7 @@ use pgmq_core::{
         assign_archive, assign_queue, create_archive, create_index, create_meta, grant_pgmon_meta,
         grant_pgmon_queue, grant_pgmon_queue_seq, insert_meta,
     },
-    types::{PartitionType, PGMQ_SCHEMA, TABLE_PREFIX},
+    types::{PGMQ_SCHEMA, TABLE_PREFIX},
     util::CheckedName,
 };
 
@@ -30,7 +30,7 @@ pub fn init_partitioned_queue(
         create_archive(name)?,
         assign_archive(name)?,
         create_partitioned_table(name, partition_col, partition_interval)?,
-        insert_meta(name, PartitionType::Partitioned)?,
+        insert_meta(name, true)?,
         set_retention_config(name, retention_interval)?,
         grant_pgmon_queue(name)?,
         grant_pgmon_queue_seq(name)?,
@@ -55,7 +55,7 @@ pub fn init_partitioned_queue_client_only(
         create_archive(name)?,
         assign_archive(name)?,
         create_partitioned_table(name, partition_col, partition_interval)?,
-        insert_meta(name, PartitionType::Partitioned)?,
+        insert_meta(name, true)?,
         set_retention_config(name, retention_interval)?,
         grant_pgmon_queue(name)?,
         grant_pgmon_queue_seq(name)?,

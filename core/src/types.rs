@@ -14,16 +14,9 @@ use chrono::serde::ts_seconds::deserialize as from_ts;
 pub const TABLE_PREFIX: &str = r#"pgmq"#;
 pub const PGMQ_SCHEMA: &str = "public";
 
-#[derive(strum::Display, strum::EnumString)]
-#[strum(serialize_all = "snake_case")]
-pub enum PartitionType {
-    Partitioned,
-    NonPartitioned,
-}
-
 pub struct PGMQueueMeta {
     pub queue_name: String,
-    pub partition_type: PartitionType,
+    pub is_partitioned: bool,
     pub created_at: DateTime<Utc>,
 }
 
