@@ -242,40 +242,27 @@ pub fn set_vt(name: &str, msg_id: i64, vt: chrono::DateTime<Utc>) -> Result<Stri
     ))
 }
 
-pub fn delete_batch(name: &str, msg_ids: &[i64]) -> Result<String, PgmqError> {
+pub fn delete_batch(name: &str) -> Result<String, PgmqError> {
     // construct string of comma separated msg_id
     check_input(name)?;
-    let mut msg_id_list: String = "".to_owned();
-    for msg_id in msg_ids.iter() {
-        let id_str = format!("{msg_id},");
-        msg_id_list.push_str(&id_str)
-    }
-    // drop trailing comma from constructed string
-    msg_id_list.pop();
+
     Ok(format!(
         "
         DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
-        WHERE msg_id in ({msg_id_list})
+        WHERE msg_id = ANY($1)
         RETURNING msg_id;
         "
     ))
 }
 
-pub fn archive_batch(name: &str, msg_ids: &[i64]) -> Result<String, PgmqError> {
+pub fn archive_batch(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
-    let mut msg_id_list: String = "".to_owned();
-    for msg_id in msg_ids.iter() {
-        let id_str = format!("{msg_id},");
-        msg_id_list.push_str(&id_str)
-    }
-    // drop trailing comma from constructed string
-    msg_id_list.pop();
 
     Ok(format!(
         "
         WITH archived AS (
             DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
-            WHERE msg_id in ({msg_id_list})
+            WHERE msg_id = ANY($1)
             RETURNING msg_id, vt, read_ct, enqueued_at, message
         )
         INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (msg_id, vt, read_ct, enqueued_at, message)
@@ -424,22 +411,6 @@ $$ LANGUAGE plpgsql;
 
         assert!(query.contains(&qname));
         assert!(query.contains(&vt.to_string()));
-    }
-
-    #[test]
-    fn test_delete_batch() {
-        let mut msg_ids: Vec<i64> = Vec::new();
-        let qname = "myqueue";
-        msg_ids.push(42);
-        msg_ids.push(43);
-        msg_ids.push(44);
-
-        let query = delete_batch(&qname, &msg_ids).unwrap();
-
-        assert!(query.contains(&qname));
-        for id in msg_ids.iter() {
-            assert!(query.contains(&id.to_string()));
-        }
     }
 
     #[test]

@@ -216,11 +216,19 @@ fn pgmq_delete_batch(
     queue_name: &str,
     msg_ids: Vec<i64>,
 ) -> Result<TableIterator<'static, (name!(pgmq_delete, bool),)>, PgmqExtError> {
-    let query = delete_batch(queue_name, &msg_ids)?;
+    let query = delete_batch(queue_name)?;
 
     let mut deleted: Vec<i64> = Vec::new();
     let _: Result<(), spi::Error> = Spi::connect(|mut client| {
-        let tup_table = client.update(&query, None, None)?;
+        let tup_table = client.update(
+            &query,
+            None,
+            Some(vec![(
+                PgBuiltInOids::INT8ARRAYOID.oid(),
+                msg_ids.clone().into_datum(),
+            )]),
+        )?;
+
         for row in tup_table {
             let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
             deleted.push(msg_id);
@@ -253,11 +261,19 @@ fn pgmq_archive_batch(
     queue_name: &str,
     msg_ids: Vec<i64>,
 ) -> Result<TableIterator<'static, (name!(pgmq_archive, bool),)>, PgmqExtError> {
-    let query = archive_batch(queue_name, &msg_ids)?;
+    let query = archive_batch(queue_name)?;
 
     let mut archived: Vec<i64> = Vec::new();
     let _: Result<(), spi::Error> = Spi::connect(|mut client| {
-        let tup_table: SpiTupleTable = client.update(&query, None, None)?;
+        let tup_table: SpiTupleTable = client.update(
+            &query,
+            None,
+            Some(vec![(
+                PgBuiltInOids::INT8ARRAYOID.oid(),
+                msg_ids.clone().into_datum(),
+            )]),
+        )?;
+
         for row in tup_table {
             let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
             archived.push(msg_id);
@@ -268,7 +284,7 @@ fn pgmq_archive_batch(
     let results = msg_ids
         .iter()
         .map(|msg_id| {
-            if archived.contains(msg_id) {
+            if archived.contains(&msg_id) {
                 (true,)
             } else {
                 (false,)
