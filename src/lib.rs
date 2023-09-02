@@ -41,6 +41,63 @@ $$ LANGUAGE plpgsql;
     name = "bootstrap"
 );
 
+#[pg_schema]
+mod pgmq {
+    use pgrx::*;
+    extension_sql!(
+        "
+    CREATE TYPE pgmq.queue_record AS (
+        msg_id bigint,
+        read_ct integer,
+        enqueued_at timestamp with time zone,
+        vt timestamp with time zone,
+        message jsonb
+    );
+    ",
+        name = "queue_record"
+    );
+
+    extension_sql!(
+        "
+    CREATE OR REPLACE FUNCTION pgmq.read(
+        queue_name TEXT,
+        vt INTEGER,
+        qty INTEGER
+    )
+    RETURNS SETOF pgmq.queue_record AS $$
+    DECLARE
+        sql TEXT;
+    BEGIN
+        sql := FORMAT(
+            $QUERY$
+            WITH cte AS
+            (
+                SELECT msg_id
+                FROM pgmq_%s
+                WHERE vt <= clock_timestamp()
+                ORDER BY msg_id ASC
+                LIMIT %s
+                FOR UPDATE SKIP LOCKED
+            )
+            UPDATE pgmq_%s
+            SET
+                vt = clock_timestamp() + interval '%s seconds',
+                read_ct = read_ct + 1
+            WHERE msg_id in (select msg_id from cte)
+            RETURNING *;
+            $QUERY$, 
+            queue_name, qty, queue_name, vt
+        );
+
+        RETURN QUERY EXECUTE sql;
+
+    END;
+    $$ LANGUAGE plpgsql;
+    ",
+        name = "pgmq_read_messages",
+        requires = ["queue_record"]
+    );
+}
 #[pg_extern]
 fn pgmq_create_non_partitioned(queue_name: &str) -> Result<(), PgmqExtError> {
     let setup = init_queue(queue_name)?;
