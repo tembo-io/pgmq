@@ -16,6 +16,7 @@ pub const PGMQ_SCHEMA: &str = "public";
 
 pub struct PGMQueueMeta {
     pub queue_name: String,
+    pub is_partitioned: bool,
     pub created_at: DateTime<Utc>,
 }
 
