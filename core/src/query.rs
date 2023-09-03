@@ -154,7 +154,7 @@ pub fn insert_meta(name: CheckedName<'_>, is_partitioned: bool) -> Result<String
     Ok(format!(
         "
         INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (queue_name, is_partitioned)
-        VALUES ('{name}', '{is_partitioned}')
+        VALUES ('{name}', {is_partitioned})
         ON CONFLICT
         DO NOTHING;
         ",
