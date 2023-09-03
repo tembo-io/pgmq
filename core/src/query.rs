@@ -18,7 +18,7 @@ pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
         create_archive(name)?,
         assign_archive(name)?,
         create_archive_index(name)?,
-        insert_meta(name)?,
+        insert_meta(name, false)?,
         grant_pgmon_queue(name)?,
     ])
 }
@@ -150,14 +150,14 @@ pub fn drop_queue_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn insert_meta(name: CheckedName<'_>) -> Result<String, PgmqError> {
+pub fn insert_meta(name: CheckedName<'_>, is_partitioned: bool) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (queue_name)
-        VALUES ('{name}')
+        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (queue_name, is_partitioned)
+        VALUES ('{name}', '{is_partitioned}')
         ON CONFLICT
         DO NOTHING;
-        "
+        ",
     ))
 }
 
