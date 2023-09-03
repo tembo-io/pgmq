@@ -157,7 +157,7 @@ async fn test_ext_send_read_delete() {
         .expect("failed to delete");
     assert!(deleted);
 
-    // try to delete a message that doesnt exist
+    // try to delete a message that doesn't exist
     let deleted = queue
         .delete(&test_queue, msg_id_del)
         .await

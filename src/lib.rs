@@ -12,7 +12,7 @@ pub mod partition;
 pub mod util;
 
 use pgmq_core::{
-    query::{archive, archive_batch, delete, delete_batch, enqueue, init_queue, pop, read},
+    query::{archive_batch, delete_batch, enqueue, init_queue, pop, read},
     types::TABLE_PREFIX,
     util::check_input,
 };
@@ -209,81 +209,91 @@ fn readit(
 
 #[pg_extern]
 fn pgmq_delete(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtError> {
-    let mut num_deleted = 0;
-    let query = delete(queue_name, msg_id)?;
-    Spi::connect(|mut client| {
-        let tup_table = client.update(&query, None, None);
-        match tup_table {
-            Ok(tup_table) => num_deleted = tup_table.len(),
-            Err(e) => {
-                error!("error deleting message: {}", e);
-            }
-        }
-    });
-    match num_deleted {
-        1 => Ok(Some(true)),
-        0 => {
-            warning!("no message found with msg_id: {}", msg_id);
-            Ok(Some(false))
-        }
-        _ => {
-            error!("multiple messages found with msg_id: {}", msg_id);
-        }
-    }
+    pgmq_delete_batch(queue_name, vec![msg_id]).map(|mut iter| iter.next().map(|b| b.0))
 }
 
 #[pg_extern(name = "pgmq_delete")]
-fn pgmq_delete_batch(queue_name: &str, msg_ids: Vec<i64>) -> Result<Option<bool>, PgmqExtError> {
-    let query = delete_batch(queue_name, &msg_ids)?;
-    Spi::connect(|mut client| {
-        let tup_table = client.update(&query, None, None);
-        match tup_table {
-            Ok(_) => Ok(Some(true)),
-            Err(e) => {
-                error!("error deleting message: {}", e);
-            }
+fn pgmq_delete_batch(
+    queue_name: &str,
+    msg_ids: Vec<i64>,
+) -> Result<TableIterator<'static, (name!(pgmq_delete, bool),)>, PgmqExtError> {
+    let query = delete_batch(queue_name)?;
+
+    let mut deleted: Vec<i64> = Vec::new();
+    let _: Result<(), spi::Error> = Spi::connect(|mut client| {
+        let tup_table = client.update(
+            &query,
+            None,
+            Some(vec![(
+                PgBuiltInOids::INT8ARRAYOID.oid(),
+                msg_ids.clone().into_datum(),
+            )]),
+        )?;
+
+        for row in tup_table {
+            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
+            deleted.push(msg_id);
         }
-    })
+        Ok(())
+    });
+
+    let results = msg_ids
+        .iter()
+        .map(|msg_id| {
+            if deleted.contains(msg_id) {
+                (true,)
+            } else {
+                (false,)
+            }
+        })
+        .collect::<Vec<(bool,)>>();
+
+    Ok(TableIterator::new(results))
 }
 
 /// archive a message forever instead of deleting it
 #[pg_extern]
 fn pgmq_archive(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtError> {
-    let mut num_deleted = 0;
-    let query = archive(queue_name, msg_id)?;
-    Spi::connect(|mut client| {
-        let tup_table = client.update(&query, None, None);
-        match tup_table {
-            Ok(tup_table) => num_deleted = tup_table.len(),
-            Err(e) => {
-                error!("error deleting message: {}", e);
-            }
-        }
-    });
-    match num_deleted {
-        1 => Ok(Some(true)),
-        0 => {
-            warning!("no message found with msg_id: {}", msg_id);
-            Ok(Some(false))
-        }
-        _ => {
-            error!("multiple messages found with msg_id: {}", msg_id);
-        }
-    }
+    pgmq_archive_batch(queue_name, vec![msg_id]).map(|mut iter| iter.next().map(|b| b.0))
 }
 
 #[pg_extern(name = "pgmq_archive")]
-fn pgmq_archive_batch(queue_name: &str, msg_ids: Vec<i64>) -> Result<Option<bool>, PgmqExtError> {
-    let query = archive_batch(queue_name, &msg_ids)?;
-    Spi::connect(|mut client| {
-        let tup_table = client.update(&query, None, None);
-        match tup_table {
-            Ok(_) => Ok(Some(true)),
-            Err(e) => {
-                error!("error deleting message: {}", e);
-            }
+fn pgmq_archive_batch(
+    queue_name: &str,
+    msg_ids: Vec<i64>,
+) -> Result<TableIterator<'static, (name!(pgmq_archive, bool),)>, PgmqExtError> {
+    let query = archive_batch(queue_name)?;
+
+    let mut archived: Vec<i64> = Vec::new();
+    let _: Result<(), spi::Error> = Spi::connect(|mut client| {
+        let tup_table: SpiTupleTable = client.update(
+            &query,
+            None,
+            Some(vec![(
+                PgBuiltInOids::INT8ARRAYOID.oid(),
+                msg_ids.clone().into_datum(),
+            )]),
+        )?;
+
+        for row in tup_table {
+            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
+            archived.push(msg_id);
         }
-    })
+        Ok(())
+    });
+
+    let results = msg_ids
+        .iter()
+        .map(|msg_id| {
+            if archived.contains(&msg_id) {
+                (true,)
+            } else {
+                (false,)
+            }
+        })
+        .collect::<Vec<(bool,)>>();
+
+    Ok(TableIterator::new(results))
 }
 
 // reads and deletes at same time
@@ -408,7 +418,7 @@ mod tests {
     use pgmq_core::types::TABLE_PREFIX;
 
     #[pg_test]
-    fn test_creat_non_partitioned() {
+    fn test_create_non_partitioned() {
         let qname = r#"test_queue"#;
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
@@ -573,7 +583,6 @@ mod tests {
     #[pg_test]
     fn test_archive() {
         let qname = r#"test_archive"#;
-        let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman").expect("SQL select failed");
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
         // no messages in the queue
         let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
@@ -604,6 +613,50 @@ mod tests {
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
+    }
+
+    #[pg_test]
+    fn test_archive_batch() {
+        let qname = r#"test_archive_batch"#;
+        let _ = pgmq_create_non_partitioned(&qname).unwrap();
+        // no messages in the queue
+        let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
+            .expect("SQL select failed");
+        assert_eq!(retval.unwrap(), 0);
+        // no messages in queue archive
+        let retval = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {TABLE_PREFIX}_{qname}_archive"
+        ))
+        .expect("SQL select failed");
+        assert_eq!(retval.unwrap(), 0);
+        // put messages on the queue
+        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})), 0)
+            .unwrap()
+            .unwrap();
+        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})), 0)
+            .unwrap()
+            .unwrap();
+        let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
+            .expect("SQL select failed");
+        assert_eq!(retval.unwrap(), 2);
+
+        // archive the message. The first two exist so should return true, the
+        // last one doesn't so should return false.
+        let mut archived = pgmq_archive_batch(&qname, vec![msg_id1, msg_id2, -1]).unwrap();
+        assert!(archived.next().unwrap().0);
+        assert!(archived.next().unwrap().0);
+        assert!(!archived.next().unwrap().0);
+
+        // should be no messages left on the queue table
+        let retval = Spi::get_one::<i64>(&format!("SELECT count(*) FROM {TABLE_PREFIX}_{qname}"))
+            .expect("SQL select failed");
+        assert_eq!(retval.unwrap(), 0);
+        // but two on the archive table
+        let retval = Spi::get_one::<i64>(&format!(
+            "SELECT count(*) FROM {TABLE_PREFIX}_{qname}_archive"
+        ))
+        .expect("SQL select failed");
+        assert_eq!(retval.unwrap(), 2);
     }
 
     #[pg_test]
