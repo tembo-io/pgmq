@@ -20,4 +20,3 @@ BEGIN
 
     ALTER TABLE pgmq_meta ALTER COLUMN is_partitioned SET NOT NULL;
 END $$;
-
