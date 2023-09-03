@@ -1,6 +1,6 @@
 [package]
 name = "pgmq"
-version = "0.22.0"
+version = "0.23.0"
 edition = "2021"
 authors = ["Tembo.io"]
 description = "Postgres extension for PGMQ"
@@ -25,15 +25,19 @@ pg_test = []
 [dependencies]
 pgrx = "0.9.8"
 serde = "1.0.152"
-pgmq_core = {package = "pgmq-core", path = "./core"}
+pgmq_core = { package = "pgmq-core", path = "./core" }
 serde_json = "1.0.91"
 thiserror = "1.0.38"
 
 [dev-dependencies]
 pgrx-tests = "0.9.8"
-chrono = { version = "0.4.23", features = [ "serde" ] }
+chrono = { version = "0.4.23", features = ["serde"] }
 rand = "0.8.5"
-sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls" , "postgres", "chrono" ] }
+sqlx = { version = "0.6", features = [
+    "runtime-tokio-native-tls",
+    "postgres",
+    "chrono",
+] }
 tokio = { version = "1", features = ["macros"] }
 whoami = "1.4.0"
 
