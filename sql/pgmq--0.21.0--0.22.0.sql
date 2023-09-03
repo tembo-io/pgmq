@@ -1,6 +1,5 @@
 DO $$
 DECLARE
-    partitioned_queues TEXT;
     qname TEXT;
 BEGIN
     ALTER TABLE pgmq_meta ADD COLUMN is_partitioned BOOLEAN;
