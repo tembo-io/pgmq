@@ -10,6 +10,9 @@
 DROP FUNCTION IF EXISTS "pgmq_read"(text, integer, integer);
 DROP FUNCTION IF EXISTS "pgmq_pop"(text);
 
+-- pgmq_send now has 2 required and 1 optional parameter
+DROP FUNCTION IF EXISTS "pgmq_send"(text, jsonb);
+
 -- src/lib.rs:350
 -- pgmq::pgmq_set_vt
 CREATE OR REPLACE FUNCTION "pgmq_set_vt"(
