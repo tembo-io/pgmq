@@ -1,7 +1,8 @@
 POSTGRES_PASSWORD:=postgres
+DATABASE_URL:=postgres://postgres:postgres@0.0.0.0:5432/postgres
 
 format:
-	cargo sqlx prepare
+	cargo sqlx prepare --database-url ${DATABASE_URL}
 	cargo +nightly fmt --all
 	cargo clippy
 
@@ -17,8 +18,8 @@ run.postgres:
 test: run.postgres
 	sleep 4;
 	echo "Running all tests..."
-	sqlx migrate run
-	DATABASE_URL=postgres://postgres:postgres@0.0.0.0:5432 cargo test
+	sqlx migrate run --database-url ${DATABASE_URL}
+	cargo test
 
 test.cleanup:
 	docker stop pgmq-pg

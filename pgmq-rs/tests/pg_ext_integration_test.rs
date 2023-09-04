@@ -1,15 +1,35 @@
-use pgmq_core::{types::TABLE_PREFIX, util::connect};
+use pgmq_core::types::TABLE_PREFIX;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres, Row};
 use std::env;
 
+// always test extension sdk in its own database
+// to avoid conflict with client only sdk
+fn replace_db_string(s: &str, replacement: &str) -> String {
+    match s.rfind('/') {
+        Some(pos) => {
+            let prefix = &s[0..pos];
+            format!("{}{}", prefix, replacement)
+        }
+        None => s.to_string(),
+    }
+}
+
 async fn init_queue_ext(qname: &str) -> pgmq::PGMQueueExt {
     let db_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/pgmq".to_owned());
-    let queue = pgmq::PGMQueueExt::new(db_url, 2)
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_owned());
+    let queue = pgmq::PGMQueueExt::new(db_url.clone(), 2)
         .await
         .expect("failed to connect to postgres");
+    // ignore error if d already exists
+    let _ = sqlx::query("CREATE DATABASE pgmq_ext_test;")
+        .execute(&queue.connection)
+        .await;
+    let test_db_str = replace_db_string(&db_url, "/pgmq_ext_test");
+    let queue = pgmq::PGMQueueExt::new(test_db_str.clone(), 2)
+        .await
+        .expect("failed to connect to test db");
     queue.init().await.expect("failed to init pgmq");
     // make sure queue doesn't exist before the test
     let _ = queue.drop_queue(qname).await;
@@ -297,17 +317,17 @@ async fn test_ext_purge_queue() {
 
 #[tokio::test]
 async fn test_pgmq_init() {
-    let db_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/pgmq".to_owned());
-    let queue = pgmq::PGMQueueExt::new(db_url.clone(), 2)
+    let test_queue = format!(
+        "test_ext_init_queue{}",
+        rand::thread_rng().gen_range(0..100000)
+    );
+    let queue = init_queue_ext(&test_queue).await;
+    let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_partman")
+        .execute(&queue.connection)
         .await
-        .expect("failed to connect to postgres");
-    let init = queue.init().await.expect("failed to create extension");
-    assert!(init, "failed to create extension");
-
+        .expect("failed to create extension");
     // error mode on queue partitioned create but already exists
     let qname = format!("test_dup_{}", rand::thread_rng().gen_range(0..100));
-    println!("db_url: {}, qname: {:?}", db_url, qname);
     let created = queue
         .create_partitioned(&qname)
         .await
@@ -324,12 +344,11 @@ async fn test_pgmq_init() {
 /// test "bring your own pool"
 #[tokio::test]
 async fn test_byop() {
-    let db_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/pgmq".to_owned());
+    let test_queue = format!("test_byop_{}", rand::thread_rng().gen_range(0..100000));
+    let _queue = init_queue_ext(&test_queue).await;
+    let pool = _queue.connection;
 
-    let conn = connect(&db_url, 2).await.expect("failed to connect");
-
-    let queue = pgmq::PGMQueueExt::new_with_pool(conn)
+    let queue = pgmq::PGMQueueExt::new_with_pool(pool)
         .await
         .expect("failed to connect to postgres");
 
