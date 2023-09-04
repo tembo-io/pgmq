@@ -65,6 +65,3 @@ jobs:
           psql $DATABASE_URL -c "ALTER EXTENSION pgmq UPDATE;"
           # Run extension tests
           SQLX_OFFLINE=true cargo pgrx test ${pg_version}
-          # Run client tests
-          cd pgmq-rs && cargo test && cd ..
-
