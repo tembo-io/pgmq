@@ -60,10 +60,10 @@ jobs:
           psql $DATABASE_URL -c "select * from pgmq_create_partitioned('test_partitioned_queue_1');"
           # Checkout branch and attempt to update extension version
           git checkout $CI_BRANCH
-          cargo pgrx run ${pg_version} --pgcli || true
+          SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
           psql $DATABASE_URL -c "ALTER EXTENSION pgmq UPDATE;"
           # Run extension tests
-          cargo pgrx test ${pg_version}
+          SQLX_OFFLINE=true cargo pgrx test ${pg_version}
           # Run client tests
           cd pgmq-rs && cargo test && cd ..
 
