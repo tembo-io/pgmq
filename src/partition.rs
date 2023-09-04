@@ -4,7 +4,7 @@ use pgrx::prelude::*;
 use pgmq_core::{
     errors::PgmqError,
     query::{
-        assign_archive, assign_queue, create_archive, create_index, create_meta, grant_pgmon_meta,
+        assign_archive, assign_queue, create_archive, create_archive_index, create_index, create_meta, grant_pgmon_meta,
         grant_pgmon_queue, grant_pgmon_queue_seq, insert_meta,
     },
     types::{PGMQ_SCHEMA, TABLE_PREFIX},
@@ -28,6 +28,7 @@ pub fn init_partitioned_queue(
         create_partitioned_index(name, partition_col)?,
         create_index(name)?,
         create_archive(name)?,
+        create_archive_index(name)?,
         assign_archive(name)?,
         create_partitioned_table(name, partition_col, partition_interval)?,
         insert_meta(name, true)?,
@@ -53,6 +54,7 @@ pub fn init_partitioned_queue_client_only(
         create_partitioned_index(name, partition_col)?,
         create_index(name)?,
         create_archive(name)?,
+        create_archive_index(name)?,
         assign_archive(name)?,
         create_partitioned_table(name, partition_col, partition_interval)?,
         insert_meta(name, true)?,
