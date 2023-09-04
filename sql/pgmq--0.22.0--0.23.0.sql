@@ -1,5 +1,4 @@
-ALTER EXTENSION pgmq DROP FUNCTION pgmq_delete(TEXT, bigint[]);
-DROP FUNCTION pgmq_delete(TEXT, bigint[]);
+DROP FUNCTION IF EXISTS pgmq_delete(TEXT, bigint[]);
 
 -- src/lib.rs:215
 -- pgmq::pgmq_delete
@@ -9,13 +8,12 @@ CREATE FUNCTION "pgmq_delete"(
 ) RETURNS TABLE (
 	"pgmq_delete" bool  /* bool */
 )
-STRICT 
+STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'pgmq_delete_batch_wrapper';
 
 
-ALTER EXTENSION pgmq DROP FUNCTION pgmq_archive(TEXT, bigint[]);
-DROP FUNCTION pgmq_archive(TEXT, bigint[]);
+DROP FUNCTION IF EXISTS pgmq_archive(TEXT, bigint[]);
 
 -- src/lib.rs:260
 -- pgmq::pgmq_archive
@@ -25,6 +23,6 @@ CREATE  FUNCTION "pgmq_archive"(
 ) RETURNS TABLE (
 	"pgmq_archive" bool  /* bool */
 )
-STRICT 
+STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'pgmq_archive_batch_wrapper';
