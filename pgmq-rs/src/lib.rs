@@ -688,8 +688,11 @@ impl PGMQueue {
     ///     Ok(())
     /// }
     pub async fn delete(&self, queue_name: &str, msg_id: i64) -> Result<u64, PgmqError> {
-        let query = &core_query::delete(queue_name, msg_id)?;
-        let row = sqlx::query(query).execute(&self.connection).await?;
+        let query = &core_query::delete_batch(queue_name)?;
+        let row = sqlx::query(query)
+            .bind(vec![msg_id])
+            .execute(&self.connection)
+            .await?;
         let num_deleted = row.rows_affected();
         Ok(num_deleted)
     }
@@ -737,8 +740,11 @@ impl PGMQueue {
     ///     Ok(())
     /// }
     pub async fn delete_batch(&self, queue_name: &str, msg_ids: &[i64]) -> Result<u64, PgmqError> {
-        let query = &core_query::delete_batch(queue_name, msg_ids)?;
-        let row = sqlx::query(query).execute(&self.connection).await?;
+        let query = &core_query::delete_batch(queue_name)?;
+        let row = sqlx::query(query)
+            .bind(msg_ids)
+            .execute(&self.connection)
+            .await?;
         let num_deleted = row.rows_affected();
         Ok(num_deleted)
     }
@@ -787,8 +793,11 @@ impl PGMQueue {
     ///     Ok(())
     /// }
     pub async fn archive(&self, queue_name: &str, msg_id: i64) -> Result<u64, PgmqError> {
-        let query = core_query::archive(queue_name, msg_id)?;
-        let row = sqlx::query(&query).execute(&self.connection).await?;
+        let query = core_query::archive_batch(queue_name)?;
+        let row = sqlx::query(&query)
+            .bind(vec![msg_id])
+            .execute(&self.connection)
+            .await?;
         let num_deleted = row.rows_affected();
         Ok(num_deleted)
     }
