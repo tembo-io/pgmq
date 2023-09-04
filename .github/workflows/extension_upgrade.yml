@@ -55,6 +55,8 @@ jobs:
           git checkout tags/v0.10.2
           cargo pgrx run ${pg_version} --pgcli || true
           psql postgres://${user}:postgres@localhost:28815/pgmq -c "CREATE EXTENSION pgmq CASCADE;"
+          psql postgres://${user}:postgres@localhost:28815/pgmq -c "select * from pgmq_create('test_queue_1')"
+          psql postgres://${user}:postgres@localhost:28815/pgmq -c "select * from pgmq_create_partitioned('test_partitioned_queue_1');"
           # Checkout branch and attempt to update extension version
           git checkout $CI_BRANCH
           cargo pgrx run ${pg_version} --pgcli || true
