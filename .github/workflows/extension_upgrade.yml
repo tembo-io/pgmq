@@ -49,22 +49,22 @@ jobs:
           # Config
           pg_version=$(stoml Cargo.toml features.default)
           user=$(who)
-          database_url=$(postgres://${user}:postgres@localhost:28815/pgmq)
           # Get current branch
+          export DATABASE_URL=$(postgres://${user}:postgres@localhost:28815/pgmq)
           export CI_BRANCH=$(git name-rev --name-only HEAD)
           # Build and install old pgmq version
           git fetch --tags
           git checkout tags/v0.10.2
           cargo pgrx run ${pg_version} --pgcli || true
-          psql ${database_url} -c "CREATE EXTENSION pgmq CASCADE;"
-          psql ${database_url} -c "select * from pgmq_create('test_queue_1')"
-          psql ${database_url} -c "select * from pgmq_create_partitioned('test_partitioned_queue_1');"
+          psql $DATABASE_URL -c "CREATE EXTENSION pgmq CASCADE;"
+          psql $DATABASE_URL -c "select * from pgmq_create('test_queue_1')"
+          psql $DATABASE_URL -c "select * from pgmq_create_partitioned('test_partitioned_queue_1');"
           # Checkout branch and attempt to update extension version
           git checkout $CI_BRANCH
           cargo pgrx run ${pg_version} --pgcli || true
-          psql ${database_url} -c "ALTER EXTENSION pgmq UPDATE;"
+          psql $DATABASE_URL -c "ALTER EXTENSION pgmq UPDATE;"
           # Run extension tests
           cargo pgrx test ${pg_version}
           # Run client tests
-          cd pgmq-rs && DATABASE_URL=${database_url} cargo test && cd ..
+          cd pgmq-rs && cargo test && cd ..
 
