@@ -54,7 +54,7 @@ jobs:
           # Build and install old pgmq version
           git fetch --tags
           git checkout tags/v0.10.2
-          cargo pgrx run ${pg_version} --pgcli || true
+          SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
           psql $DATABASE_URL -c "CREATE EXTENSION pgmq CASCADE;"
           psql $DATABASE_URL -c "select * from pgmq_create('test_queue_1')"
           psql $DATABASE_URL -c "select * from pgmq_create_partitioned('test_partitioned_queue_1');"
