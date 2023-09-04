@@ -1,0 +1,65 @@
+name: PGMQ Extension Upgrade
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  release:
+    types:
+      - created
+
+jobs:
+  test:
+    name: Upgrade Test
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "pgmq-extension-test"
+          workspaces: |
+            pgmq
+          # Additional directories to cache
+          cache-directories: |
+            /home/runner/.pgrx
+      - uses: ./.github/actions/pgx-init
+        with:
+          working-directory: ./
+      - name: test
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
+          git clone https://github.com/pgpartman/pg_partman.git && \
+          cd pg_partman && \
+          sudo make install && cd ../
+          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.4/pgrx-install/share/postgresql/extension/
+          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.4/pgrx-install/lib/postgresql/
+          rm -rf ./target/pgrx-test-data-* || true
+          pg_version=$(stoml Cargo.toml features.default)
+          # Get current branch
+          current_branch=$(git rev-parse --abrev-ref HEAD)
+          # Build and install old pgmq version
+          git fetch --tags
+          git checkout tags/v0.10.2
+          cargo pgrx run ${pg_version} --pgcli || true
+          psql postgres://postgres:postgres@localhost:28815/pgmq -c "CREATE EXTENSION pgmq CASCADE;"
+          # Checkout branch and attempt to update extension version
+          git checkout ${current_branch}
+          cargo pgrx run ${pg_version} --pgcli || true
+          psql postgres://postgres:postgres@localhost:28815/pgmq -c "ALTER EXTENSION pgmq UPDATE;" # <-- does this return error on failure?
+          # Run extension tests
+          cargo pgrx test ${pg_version}
+          # Run client tests
+          echo "fixme"
+
