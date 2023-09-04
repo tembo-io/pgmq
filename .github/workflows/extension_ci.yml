@@ -13,7 +13,7 @@ on:
     branches:
       - main
   release:
-    types: 
+    types:
       - created
 
 jobs:
@@ -123,7 +123,7 @@ jobs:
           trunk publish pgmq --version ${pgmq_ver} --file .trunk/pgmq-${pgmq_ver}.tar.gz --description "A lightweight distributed message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
     name: Build and push images
-    needs: 
+    needs:
       - publish
     runs-on:
       - self-hosted
