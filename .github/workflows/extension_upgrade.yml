@@ -37,7 +37,7 @@ jobs:
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./
-      - name: test
+      - name: upgrade and test
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
           git clone https://github.com/pgpartman/pg_partman.git && \

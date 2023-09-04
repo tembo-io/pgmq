@@ -1,6 +1,6 @@
 DO $$
 BEGIN
-  IF SELECT NOT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename  = 'pgmq_meta') THEN
+  IF NOT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename  = 'pgmq_meta') THEN
     CREATE TABLE public.pgmq_meta (
         queue_name VARCHAR UNIQUE NOT NULL,
         is_partitioned BOOLEAN NOT NULL,

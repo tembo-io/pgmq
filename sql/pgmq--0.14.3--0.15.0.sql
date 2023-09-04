@@ -4,7 +4,7 @@ DO $$
 DECLARE
     table_name TEXT;
 BEGIN
-    IF SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename  = 'pgmq_meta') THEN
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename  = 'pgmq_meta') THEN
     -- get only non-partitioned queue tables
       FOR table_name IN (SELECT queue_name FROM public.pgmq_meta LEFT JOIN pg_tables pt ON pt.tablename=format('pgmq_%1$I', queue_name) LEFT JOIN pg_class c ON c.relname=pt.tablename WHERE pt.tablename IS NOT NULL AND c.relkind='r')
       LOOP
