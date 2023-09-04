@@ -1,5 +1,6 @@
 POSTGRES_PASSWORD:=postgres
 DATABASE_URL:=postgres://postgres:postgres@0.0.0.0:5432/postgres
+EXTENSION_DB:=postgres://postgres:postgres@0.0.0.0:5432/pgmq_ext_test
 
 format:
 	cargo sqlx prepare --database-url ${DATABASE_URL}
@@ -19,10 +20,12 @@ test: run.postgres
 	sleep 4;
 	echo "Running all tests..."
 	sqlx migrate run --database-url ${DATABASE_URL}
+	psql ${DATABASE_URL} -c "CREATE DATABASE pgmq_ext_test;"
+	sqlx migrate run --database-url ${EXTENSION_DB}
 	cargo test
 
 test.cleanup:
 	docker stop pgmq-pg
 
 setup.env:
-	sqlx migrate run
+	sqlx migrate run --database-url ${DATABASE_URL}

@@ -163,7 +163,7 @@ impl PGMQueueExt {
         check_input(queue_name)?;
         let msg = serde_json::json!(&message);
         let sent = sqlx::query!(
-            "SELECT pgmq_send as msg_id from pgmq_send($1::text, $2::jsonb);",
+            "SELECT pgmq_send as msg_id from pgmq_send($1::text, $2::jsonb, 0::integer);",
             queue_name,
             msg
         )
