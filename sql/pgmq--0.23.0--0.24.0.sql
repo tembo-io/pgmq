@@ -7,8 +7,8 @@
 
 -- This drop is required due to a signature change in
 -- https://github.com/tembo-io/pgmq/commit/5b5aa849db98106f6675596977ba7b5dae01d459
-DROP FUNCTION "pgmq_read"(text, integer, integer);
-DROP FUNCTION "pgmq_pop"(text);
+DROP FUNCTION IF EXISTS "pgmq_read"(text, integer, integer);
+DROP FUNCTION IF EXISTS "pgmq_pop"(text);
 
 -- src/lib.rs:350
 -- pgmq::pgmq_set_vt
