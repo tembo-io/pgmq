@@ -10,7 +10,7 @@ pub fn init_queue_client_only(name: &str) -> Result<Vec<String>, errors::PgmqErr
         query::create_index(name)?,
         query::create_archive(name)?,
         query::create_archive_index(name)?,
-        query::insert_meta(name)?,
+        query::insert_meta(name, false)?,
         query::grant_pgmon_meta(),
         query::grant_pgmon_queue(name)?,
     ])
