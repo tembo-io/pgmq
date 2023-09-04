@@ -47,17 +47,18 @@ jobs:
           cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.4/pgrx-install/lib/postgresql/
           rm -rf ./target/pgrx-test-data-* || true
           pg_version=$(stoml Cargo.toml features.default)
+          user=$(who)
           # Get current branch
           current_branch=$(git rev-parse --abrev-ref HEAD)
           # Build and install old pgmq version
           git fetch --tags
           git checkout tags/v0.10.2
           cargo pgrx run ${pg_version} --pgcli || true
-          psql postgres://postgres:postgres@localhost:28815/pgmq -c "CREATE EXTENSION pgmq CASCADE;"
+          psql postgres://${user}:postgres@localhost:28815/pgmq -c "CREATE EXTENSION pgmq CASCADE;"
           # Checkout branch and attempt to update extension version
           git checkout ${current_branch}
           cargo pgrx run ${pg_version} --pgcli || true
-          psql postgres://postgres:postgres@localhost:28815/pgmq -c "ALTER EXTENSION pgmq UPDATE;" # <-- does this return error on failure?
+          psql postgres://${user}:postgres@localhost:28815/pgmq -c "ALTER EXTENSION pgmq UPDATE;" # <-- does this return error on failure?
           # Run extension tests
           cargo pgrx test ${pg_version}
           # Run client tests
