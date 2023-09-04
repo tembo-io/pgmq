@@ -48,9 +48,8 @@ jobs:
           rm -rf ./target/pgrx-test-data-* || true
           # Config
           pg_version=$(stoml Cargo.toml features.default)
-          user=$(who)
           # Get current branch
-          export DATABASE_URL=$(postgres://${user}:postgres@localhost:28815/pgmq)
+          export DATABASE_URL=postgres://$USER:postgres@localhost:28815/pgmq
           export CI_BRANCH=$(git name-rev --name-only HEAD)
           # Build and install old pgmq version
           git fetch --tags
