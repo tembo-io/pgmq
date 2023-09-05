@@ -11,7 +11,7 @@ BEGIN
 
     FOR seqname IN (SELECT relname FROM pg_class WHERE relkind = 'S' AND relname LIKE 'pgmq_%')
     LOOP
-        EXECUTE format('DROP SEQUENCE %1$I CASCADE;', seqname);
+        EXECUTE format('DROP SEQUENCE %I CASCADE;', seqname);
     END LOOP;
 
     FOR qname IN (SELECT queue_name FROM pgmq_meta)
