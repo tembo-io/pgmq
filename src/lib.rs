@@ -230,6 +230,8 @@ fn pgmq_delete_batch(
             )]),
         )?;
 
+        deleted.reserve_exact(tup_table.len());
+
         for row in tup_table {
             let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
             deleted.push(msg_id);
@@ -265,6 +267,7 @@ fn pgmq_archive_batch(
     let query = archive_batch(queue_name)?;
 
     let mut archived: Vec<i64> = Vec::new();
+
     let _: Result<(), spi::Error> = Spi::connect(|mut client| {
         let tup_table: SpiTupleTable = client.update(
             &query,
@@ -274,6 +277,8 @@ fn pgmq_archive_batch(
                 msg_ids.clone().into_datum(),
             )]),
         )?;
+
+        archived.reserve_exact(tup_table.len());
 
         for row in tup_table {
             let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
@@ -339,6 +344,7 @@ fn popit(
     let _: Result<(), PgmqExtError> = Spi::connect(|mut client| {
         let query = pop(queue_name)?;
         let tup_table: SpiTupleTable = client.update(&query, None, None)?;
+        results.reserve_exact(tup_table.len());
         for row in tup_table {
             let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
             let read_ct = row["read_ct"].value::<i32>()?.expect("no read_ct");
