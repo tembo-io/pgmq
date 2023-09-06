@@ -86,7 +86,7 @@ mod pgmq {
                 read_ct = read_ct + 1
             WHERE msg_id in (select msg_id from cte)
             RETURNING *;
-            $QUERY$, 
+            $QUERY$,
             queue_name, qty, queue_name, vt
         );
 
@@ -183,85 +183,83 @@ fn pgmq_read(
             name!(message, pgrx::JsonB),
         ),
     >,
-    spi::Error,
+    PgmqExtError,
 > {
     let results = readit(queue_name, vt, limit)?;
     Ok(TableIterator::new(results))
 }
 
-#[pg_extern]
-fn pgmq_read_with_poll(
-    queue_name: &str,
-    vt: i32,
-    limit: i32,
-    poll_timeout_s: default!(i32, 5),
-    poll_interval_ms: default!(i32, 250),
-) -> Result<
-    TableIterator<
-        'static,
-        (
-            name!(msg_id, i64),
-            name!(read_ct, i32),
-            name!(enqueued_at, TimestampWithTimeZone),
-            name!(vt, TimestampWithTimeZone),
-            name!(message, pgrx::JsonB),
-        ),
-    >,
-    spi::Error,
-> {
-    let start_time = std::time::Instant::now();
-    let poll_timeout_ms = (poll_timeout_s * 1000) as u128;
-    loop {
-        let results = readit(queue_name, vt, limit)?;
-        if results.is_empty() && start_time.elapsed().as_millis() < poll_timeout_ms {
-            std::thread::sleep(Duration::from_millis(poll_interval_ms.try_into().unwrap()));
-            continue;
-        } else {
-            break Ok(TableIterator::new(results));
-        }
-    }
-}
+//#[pg_extern]
+//fn pgmq_read_with_poll(
+//    queue_name: &str,
+//    vt: i32,
+//    limit: i32,
+//    poll_timeout_s: default!(i32, 5),
+//    poll_interval_ms: default!(i32, 250),
+//) -> Result<
+//    TableIterator<
+//        'static,
+//        (
+//            name!(msg_id, i64),
+//            name!(read_ct, i32),
+//            name!(enqueued_at, TimestampWithTimeZone),
+//            name!(vt, TimestampWithTimeZone),
+//            name!(message, pgrx::JsonB),
+//        ),
+//    >,
+//    spi::Error,
+//> {
+//    let start_time = std::time::Instant::now();
+//    let poll_timeout_ms = (poll_timeout_s * 1000) as u128;
+//    loop {
+//        let results = readit(queue_name, vt, limit)?;
+//        if results.is_empty() && start_time.elapsed().as_millis() < poll_timeout_ms {
+//            std::thread::sleep(Duration::from_millis(poll_interval_ms.try_into().unwrap()));
+//            continue;
+//        } else {
+//            break Ok(TableIterator::new(results));
+//        }
+//    }
+//}
 
 fn readit(
     queue_name: &str,
     vt: i32,
     limit: i32,
 ) -> Result<
-    Vec<(
-        i64,
-        i32,
-        TimestampWithTimeZone,
-        TimestampWithTimeZone,
-        pgrx::JsonB,
-    )>,
-    spi::Error,
+    impl std::iter::Iterator<
+        Item = (
+            i64,
+            i32,
+            TimestampWithTimeZone,
+            TimestampWithTimeZone,
+            pgrx::JsonB,
+        ),
+    >,
+    PgmqExtError,
 > {
-    let mut results: Vec<(
-        i64,
-        i32,
-        TimestampWithTimeZone,
-        TimestampWithTimeZone,
-        pgrx::JsonB,
-    )> = Vec::new();
-
-    let _: Result<(), PgmqExtError> = Spi::connect(|mut client| {
-        let query = read(queue_name, vt, limit)?;
-        let tup_table: SpiTupleTable = client.update(&query, None, None)?;
-        results.reserve_exact(tup_table.len());
-
-        for row in tup_table {
-            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
-            let read_ct = row["read_ct"].value::<i32>()?.expect("no read_ct");
-            let vt = row["vt"].value::<TimestampWithTimeZone>()?.expect("no vt");
+    let query = read(queue_name, vt, limit)?;
+    Spi::connect(|mut client| {
+        let results = client.update(&query, None, None)?.map(|row| {
+            let msg_id = row["msg_id"].value::<i64>().unwrap().expect("no msg_id");
+            let read_ct = row["read_ct"].value::<i32>().unwrap().expect("no read_ct");
+            let vt = row["vt"]
+                .value::<TimestampWithTimeZone>()
+                .unwrap()
+                .expect("no vt");
             let enqueued_at = row["enqueued_at"]
-                .value::<TimestampWithTimeZone>()?
+                .value::<TimestampWithTimeZone>()
+                .unwrap()
                 .expect("no enqueue time");
-            let message = row["message"].value::<pgrx::JsonB>()?.expect("no message");
-            results.push((msg_id, read_ct, enqueued_at, vt, message));
-        }
-        Ok(())
-    });
-    Ok(results)
+            let message = row["message"]
+                .value::<pgrx::JsonB>()
+                .unwrap()
+                .expect("no message");
+            (msg_id, read_ct, enqueued_at, vt, message)
+        });
+
+        Ok(results)
+    })
 }
 
 #[pg_extern]
