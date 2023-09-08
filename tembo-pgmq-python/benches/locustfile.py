@@ -12,7 +12,7 @@ class MyClient(PGMQueue):
         self._request_event = request_event
 
     def __getattribute__(self, item: str):
-        if item not in ("send", "archive", "read"):
+        if item not in ("send", "archive", "read", "send_batch"):
             return PGMQueue.__getattribute__(self, item)
 
         func = PGMQueue.__getattribute__(self, item)
@@ -50,6 +50,7 @@ class BaseActor(User):
     host = ""
     abstract = True  # dont instantiate this as an actual user when running Locust
     client: PGMQueue
+    small_data = {"one": 1, "two": 2}
 
     def __init__(self, environment):
         super().__init__(environment)
@@ -58,20 +59,26 @@ class BaseActor(User):
                                username="guru", request_event=environment)
         # just to make sure
         self.client.create_queue("locust")
+        self.small_batch = [self.small_data for i in range(50)]
 
 
-class HelloWorldUser(BaseActor):
-
+class SingleInsert(BaseActor):
     @task
     def only_insert(self):
-        self.client.send("locust", {"one": 1, "two": 2})
-        # print("sent?")
-        # self.send_message()
+        self.client.send("locust", self.small_data)
 
+
+class BatchInsert(BaseActor):
+    @task
+    def only_insert(self):
+        self.client.send_batch("locust", self.small_batch)
+
+
+class SlowWorker(BaseActor):
     @task
     def get_and_archive(self):
-        for i in range(3):
-            job = self.client.read("locust")
-            if not job:
-                return
-            self.client.archive("locust", job.msg_id)
+        job = self.client.read("locust")
+        if not job:
+            return
+        time.sleep(20)
+        self.client.archive("locust", job.msg_id)
