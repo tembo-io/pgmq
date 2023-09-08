@@ -5,6 +5,7 @@ pub mod errors;
 pub mod metrics;
 pub mod partition;
 pub mod util;
+pub mod removed_functions;
 
 use crate::errors::PgmqExtError;
 

@@ -175,62 +175,7 @@ fn pgmq_send(
     })
 }
 
-#[pg_extern(name = "read")]
-fn pgmq_read(
-    queue_name: &str,
-    vt: i32,
-    limit: i32,
-) -> Result<
-    TableIterator<
-        'static,
-        (
-            name!(msg_id, i64),
-            name!(read_ct, i32),
-            name!(enqueued_at, TimestampWithTimeZone),
-            name!(vt, TimestampWithTimeZone),
-            name!(message, pgrx::JsonB),
-        ),
-    >,
-    spi::Error,
-> {
-    let results = readit(queue_name, vt, limit)?;
-    Ok(TableIterator::new(results))
-}
-
-#[pg_extern(name = "read_with_poll")]
-fn pgmq_read_with_poll(
-    queue_name: &str,
-    vt: i32,
-    limit: i32,
-    poll_timeout_s: default!(i32, 5),
-    poll_interval_ms: default!(i32, 250),
-) -> Result<
-    TableIterator<
-        'static,
-        (
-            name!(msg_id, i64),
-            name!(read_ct, i32),
-            name!(enqueued_at, TimestampWithTimeZone),
-            name!(vt, TimestampWithTimeZone),
-            name!(message, pgrx::JsonB),
-        ),
-    >,
-    spi::Error,
-> {
-    let start_time = std::time::Instant::now();
-    let poll_timeout_ms = (poll_timeout_s * 1000) as u128;
-    loop {
-        let results = readit(queue_name, vt, limit)?;
-        if results.is_empty() && start_time.elapsed().as_millis() < poll_timeout_ms {
-            std::thread::sleep(Duration::from_millis(poll_interval_ms.try_into().unwrap()));
-            continue;
-        } else {
-            break Ok(TableIterator::new(results));
-        }
-    }
-}
-
-fn readit(
+pub fn readit(
     queue_name: &str,
     vt: i32,
     limit: i32,
@@ -504,37 +449,6 @@ mod tests {
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
     }
-
-    // assert an invisible message is not readable
-    #[pg_test]
-    fn test_default() {
-        let qname = r#"test_default"#;
-        let _ = pgmq_create_non_partitioned(&qname);
-        let init_count = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        // should not be any messages initially
-        assert_eq!(init_count.unwrap(), 0);
-
-        // put a message on the queue
-        let _ = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"})), 0);
-
-        // read the message with the pg_extern, sets message invisible
-        let _ = pgmq_read(&qname, 10_i32, 1_i32);
-        // but still one record on the table
-        let init_count = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(init_count.unwrap(), 1);
-
-        // pop the message, must not panic
-        let popped = pgmq_pop(&qname);
-        assert!(popped.is_ok());
-    }
-
-    // validate all internal functions
 
     /// lifecycle test for partitioned queues
     #[pg_test]
