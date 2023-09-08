@@ -1,5 +1,3 @@
-/// Metric definitions
-///
 use pgrx::prelude::*;
 use pgrx::spi::SpiTupleTable;
 use pgrx::warning;
@@ -16,7 +14,7 @@ type MetricResult = Vec<(
     TimestampWithTimeZone,
 )>;
 
-#[pg_extern]
+#[pg_extern(name = "metrics")]
 fn pgmq_metrics(
     queue_name: &str,
 ) -> Result<
@@ -37,7 +35,7 @@ fn pgmq_metrics(
     Ok(TableIterator::new(results))
 }
 
-#[pg_extern]
+#[pg_extern(name = "metrics_all")]
 fn pgmq_metrics_all() -> Result<
     TableIterator<
         'static,

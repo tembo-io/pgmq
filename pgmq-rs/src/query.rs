@@ -5,6 +5,7 @@ use pgmq_core::{errors, query, util};
 pub fn init_queue_client_only(name: &str) -> Result<Vec<String>, errors::PgmqError> {
     let name = util::CheckedName::new(name)?;
     Ok(vec![
+        query::create_schema(),
         query::create_meta(),
         query::create_queue(name)?,
         query::create_index(name)?,
@@ -19,6 +20,7 @@ pub fn init_queue_client_only(name: &str) -> Result<Vec<String>, errors::PgmqErr
 pub fn destroy_queue_client_only(name: &str) -> Result<Vec<String>, errors::PgmqError> {
     let name = util::CheckedName::new(name)?;
     Ok(vec![
+        query::create_schema(),
         query::drop_queue(name)?,
         query::drop_queue_archive(name)?,
         query::delete_queue_metadata(name)?,

@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 use pgmq_core::{
     errors::PgmqError,
-    types::{Message, TABLE_PREFIX},
+    types::{Message, PGMQ_SCHEMA, TABLE_PREFIX},
 };
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -48,7 +48,7 @@ struct YoloMessage {
 }
 
 async fn rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
-    let row_ct_query = format!("SELECT count(*) as ct FROM {TABLE_PREFIX}_{qname}");
+    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}");
     sqlx::query(&row_ct_query)
         .fetch_one(connection)
         .await
@@ -60,7 +60,7 @@ async fn rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
 // simple solution: our existing rowcount() helper will fail
 // wrap it in a Result<> so we can use it
 async fn fallible_rowcount(qname: &str, connection: &Pool<Postgres>) -> Result<i64, PgmqError> {
-    let row_ct_query = format!("SELECT count(*) as ct FROM {TABLE_PREFIX}_{qname}");
+    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}");
     Ok(sqlx::query(&row_ct_query)
         .fetch_one(connection)
         .await?
@@ -710,7 +710,7 @@ async fn test_destroy() {
     // queue must not be present on pgmq_meta
     let pgmq_meta_query = format!(
         "SELECT count(*) as ct
-        FROM {TABLE_PREFIX}_meta
+        FROM {PGMQ_SCHEMA}.meta
         WHERE queue_name = '{test_queue}'",
     );
     let rowcount = sqlx::query(&pgmq_meta_query)

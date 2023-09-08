@@ -63,10 +63,14 @@ pub fn create_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     ))
 }
 
+pub fn create_schema() -> String {
+    format!("CREATE SCHEMA IF NOT EXISTS {PGMQ_SCHEMA}")
+}
+
 pub fn create_meta() -> String {
     format!(
         "
-        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (
+        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.meta (
             queue_name VARCHAR UNIQUE NOT NULL,
             is_partitioned BOOLEAN NOT NULL,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
@@ -76,7 +80,7 @@ pub fn create_meta() -> String {
 }
 
 fn grant_stmt(table: &str) -> String {
-    let grant_seq = match &table.contains("pgmq_meta") {
+    let grant_seq = match &table.contains("meta") {
         true => "".to_string(),
         false => {
             format!("    EXECUTE 'GRANT SELECT ON SEQUENCE {table}_msg_id_seq TO pg_monitor';")
@@ -101,7 +105,7 @@ $$ LANGUAGE plpgsql;
 
 // pg_monitor needs to query queue metadata
 pub fn grant_pgmon_meta() -> String {
-    let table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_meta");
+    let table = format!("{PGMQ_SCHEMA}.meta");
     grant_stmt(&table)
 }
 
@@ -132,10 +136,10 @@ pub fn delete_queue_metadata(name: CheckedName<'_>) -> Result<String, PgmqError>
            IF EXISTS (
                 SELECT 1
                 FROM information_schema.tables
-                WHERE table_name = '{TABLE_PREFIX}_meta')
+                WHERE table_name = 'meta' and table_schema = 'pgmq')
             THEN
               DELETE
-              FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta
+              FROM {PGMQ_SCHEMA}.meta
               WHERE queue_name = '{name}';
            END IF;
         END $$;
@@ -154,7 +158,7 @@ pub fn drop_queue_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
 pub fn insert_meta(name: CheckedName<'_>, is_partitioned: bool) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (queue_name, is_partitioned)
+        INSERT INTO {PGMQ_SCHEMA}.meta (queue_name, is_partitioned)
         VALUES ('{name}', {is_partitioned})
         ON CONFLICT
         DO NOTHING;
@@ -361,15 +365,15 @@ $$ LANGUAGE plpgsql;
 ";
         assert_eq!(q, expected);
 
-        let q = grant_stmt("pgmq_meta");
+        let q = grant_stmt("meta");
         let expected = "
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
-    WHERE has_table_privilege('pg_monitor', 'pgmq_meta', 'SELECT')
+    WHERE has_table_privilege('pg_monitor', 'meta', 'SELECT')
   ) THEN
-    EXECUTE 'GRANT SELECT ON pgmq_meta TO pg_monitor';
+    EXECUTE 'GRANT SELECT ON meta TO pg_monitor';
 
   END IF;
 END;
@@ -381,14 +385,14 @@ $$ LANGUAGE plpgsql;
     #[test]
     fn test_assign() {
         let query = assign("my_queue_archive");
-        assert!(query.contains("WHERE relname = 'pgmq_my_queue_archive'"));
+        assert!(query.contains("WHERE relname = 'queue_my_queue_archive'"));
     }
 
     #[test]
     fn test_create() {
         let queue_name = CheckedName::new("yolo").unwrap();
         let query = create_queue(queue_name);
-        assert!(query.unwrap().contains("pgmq_yolo"));
+        assert!(query.unwrap().contains("queue_yolo"));
     }
 
     #[test]
@@ -399,7 +403,7 @@ $$ LANGUAGE plpgsql;
         });
         msgs.push(msg);
         let query = enqueue("yolo", &msgs, &0).unwrap();
-        assert!(query.contains("pgmq_yolo"));
+        assert!(query.contains("queue_yolo"));
         assert!(query.contains("{\"foo\":\"bar\"}"));
     }
 
@@ -420,9 +424,9 @@ $$ LANGUAGE plpgsql;
         let table_name = "my_valid_table_name";
         assert!(check_input(table_name).is_ok());
 
-        assert!(check_input(&"a".repeat(58)).is_ok());
+        assert!(check_input(&"a".repeat(57)).is_ok());
 
-        assert!(check_input(&"a".repeat(59)).is_err());
+        assert!(check_input(&"a".repeat(58)).is_err());
         assert!(check_input(&"a".repeat(60)).is_err());
         assert!(check_input(&"a".repeat(70)).is_err());
     }
