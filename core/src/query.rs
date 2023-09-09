@@ -219,11 +219,12 @@ pub fn read(name: &str, vt: i32, limit: i32) -> Result<String, PgmqError> {
             LIMIT {limit}
             FOR UPDATE SKIP LOCKED
         )
-    UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
+    UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} t
     SET
         vt = clock_timestamp() + interval '{vt} seconds',
         read_ct = read_ct + 1
-    WHERE msg_id in (select msg_id from cte)
+    FROM cte
+    WHERE t.msg_id=cte.msg_id
     RETURNING *;
     "
     ))
