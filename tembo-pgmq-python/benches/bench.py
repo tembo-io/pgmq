@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt  # type: ignore
 from scipy.ndimage import gaussian_filter1d
 from sqlalchemy import create_engine, text
 
-from tembo_pgmq.python import PGMQueue
+from tembo_pgmq_python import PGMQueue
 
 logging.basicConfig(level=logging.INFO)
 
