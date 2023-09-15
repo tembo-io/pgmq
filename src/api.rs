@@ -10,7 +10,7 @@ use crate::util;
 
 use pgmq_core::{
     query::{destroy_queue, enqueue, init_queue},
-    types::{PGMQ_SCHEMA, TABLE_PREFIX},
+    types::{PGMQ_SCHEMA, QUEUE_PREFIX},
     util::check_input,
 };
 
@@ -31,7 +31,7 @@ pub fn delete_queue(queue_name: String, partitioned: bool) -> Result<(), PgmqExt
     // this should go out before 1.0
     let mut queries = destroy_queue(&queue_name)?;
     if partitioned {
-        let queue_table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}");
+        let queue_table = format!("{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{queue_name}");
         queries.push(format!(
             "DELETE FROM {PARTMAN_SCHEMA}.part_config where parent_table = '{queue_table}';"
         ))
@@ -457,7 +457,7 @@ fn pgmq_set_vt(
 
     let query = format!(
         "
-        UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}
+        UPDATE {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{queue_name}
         SET vt = (now() + interval '{vt_offset} seconds')
         WHERE msg_id = $1
         RETURNING *;
@@ -493,13 +493,13 @@ mod tests {
         let qname = r#"test_queue"#;
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
         let _ = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"})), 0).unwrap();
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
@@ -511,7 +511,7 @@ mod tests {
         let qname = r#"test_default"#;
         let _ = pgmq_create_non_partitioned(&qname);
         let init_count = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         // should not be any messages initially
@@ -524,7 +524,7 @@ mod tests {
         let _ = pgmq_read(&qname, 10_i32, 1_i32);
         // but still one record on the table
         let init_count = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(init_count.unwrap(), 1);
@@ -586,7 +586,7 @@ mod tests {
 
         // but still one record on the table
         let init_count = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(init_count.unwrap(), 1);
@@ -601,7 +601,7 @@ mod tests {
 
         // no records after delete
         let init_count = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(init_count.unwrap(), 0);
@@ -613,7 +613,7 @@ mod tests {
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
         // no messages in the queue
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
@@ -626,7 +626,7 @@ mod tests {
         // put a message on the queue
         let msg_id = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"})), 0).unwrap();
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
@@ -636,7 +636,7 @@ mod tests {
         assert!(archived);
         // should be no messages left on the queue table
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
@@ -654,7 +654,7 @@ mod tests {
         let _ = pgmq_create_non_partitioned(&qname).unwrap();
         // no messages in the queue
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
@@ -672,7 +672,7 @@ mod tests {
             .unwrap()
             .unwrap();
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 2);
@@ -686,7 +686,7 @@ mod tests {
 
         // should be no messages left on the queue table
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);

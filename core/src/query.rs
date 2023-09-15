@@ -2,7 +2,7 @@
 
 use crate::{
     errors::PgmqError,
-    types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, TABLE_PREFIX},
+    types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX},
     util::check_input,
     util::CheckedName,
 };
@@ -37,7 +37,7 @@ pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
 pub fn create_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (
+        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name} (
             msg_id BIGSERIAL PRIMARY KEY,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
@@ -111,19 +111,19 @@ pub fn grant_pgmon_meta() -> String {
 
 // pg_monitor needs to query queue tables
 pub fn grant_pgmon_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    let table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}");
+    let table = format!("{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}");
     Ok(grant_stmt(&table))
 }
 
 pub fn grant_pgmon_queue_seq(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    let table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_msg_id_seq");
+    let table = format!("{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}_msg_id_seq");
     Ok(grant_stmt(&table))
 }
 
 pub fn drop_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        DROP TABLE IF EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name};
+        DROP TABLE IF EXISTS {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name};
         "
     ))
 }
@@ -178,14 +178,14 @@ pub fn create_archive_index(name: CheckedName<'_>) -> Result<String, PgmqError> 
 pub fn create_index(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        CREATE INDEX IF NOT EXISTS {TABLE_PREFIX}_{name}_vt_idx ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt ASC);
+        CREATE INDEX IF NOT EXISTS {QUEUE_PREFIX}_{name}_vt_idx ON {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name} (vt ASC);
         "
     ))
 }
 
 pub fn purge_queue(name: &str) -> Result<String, PgmqError> {
     check_input(name)?;
-    Ok(format!("DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name};"))
+    Ok(format!("DELETE FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name};"))
 }
 
 pub fn enqueue(
@@ -204,7 +204,7 @@ pub fn enqueue(
     values.pop();
     Ok(format!(
         "
-        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} (vt, message)
+        INSERT INTO {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name} (vt, message)
         VALUES {values}
         RETURNING msg_id;
         "
@@ -218,13 +218,13 @@ pub fn read(name: &str, vt: i32, limit: i32) -> Result<String, PgmqError> {
     WITH cte AS
         (
             SELECT msg_id
-            FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
+            FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}
             WHERE vt <= clock_timestamp()
             ORDER BY msg_id ASC
             LIMIT {limit}
             FOR UPDATE SKIP LOCKED
         )
-    UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name} t
+    UPDATE {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name} t
     SET
         vt = clock_timestamp() + interval '{vt} seconds',
         read_ct = read_ct + 1
@@ -239,7 +239,7 @@ pub fn set_vt(name: &str, msg_id: i64, vt: chrono::DateTime<Utc>) -> Result<Stri
     check_input(name)?;
     Ok(format!(
         "
-        UPDATE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
+        UPDATE {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}
         SET vt = '{t}'::timestamp
         WHERE msg_id = {msg_id}
         RETURNING *;
@@ -254,7 +254,7 @@ pub fn delete_batch(name: &str) -> Result<String, PgmqError> {
 
     Ok(format!(
         "
-        DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
+        DELETE FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}
         WHERE msg_id = ANY($1)
         RETURNING msg_id;
         "
@@ -267,7 +267,7 @@ pub fn archive_batch(name: &str) -> Result<String, PgmqError> {
     Ok(format!(
         "
         WITH archived AS (
-            DELETE FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
+            DELETE FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}
             WHERE msg_id = ANY($1)
             RETURNING msg_id, vt, read_ct, enqueued_at, message
         )
@@ -286,13 +286,13 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
         WITH cte AS
             (
                 SELECT msg_id
-                FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
+                FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}
                 WHERE vt <= now()
                 ORDER BY msg_id ASC
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED
             )
-        DELETE from {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}
+        DELETE from {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}
         WHERE msg_id = (select msg_id from cte)
         RETURNING *;
         "
@@ -300,7 +300,7 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
 }
 
 pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(assign(&format!("{TABLE_PREFIX}_{name}")))
+    Ok(assign(&format!("{QUEUE_PREFIX}_{name}")))
 }
 
 pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
@@ -309,7 +309,7 @@ pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
 
 pub fn unassign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
-        "ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}; "
+        "ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}; "
     ))
 }
 

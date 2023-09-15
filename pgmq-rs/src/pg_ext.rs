@@ -1,7 +1,7 @@
 use log::info;
 use pgmq_core::{
     errors::PgmqError,
-    types::{Message, TABLE_PREFIX},
+    types::{Message, QUEUE_PREFIX},
     util::{check_input, connect},
 };
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,7 @@ impl PGMQueueExt {
     /// Errors when there is any database error and Ok(false) when the queue already exists.
     pub async fn create_partitioned(&self, queue_name: &str) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
-        let queue_table = format!("pgmq.{TABLE_PREFIX}_{queue_name}");
+        let queue_table = format!("pgmq.{QUEUE_PREFIX}_{queue_name}");
         // we need to check whether the queue exists first
         // pg_partman create operations are currently unable to be idempotent
         let exists_stmt = format!(

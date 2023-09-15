@@ -11,7 +11,7 @@ pub const POLL_INTERVAL_DEFAULT: Duration = Duration::from_millis(250);
 
 use chrono::serde::ts_seconds::deserialize as from_ts;
 
-pub const TABLE_PREFIX: &str = r#"q"#;
+pub const QUEUE_PREFIX: &str = r#"q"#;
 pub const ARCHIVE_PREFIX: &str = r#"a"#;
 pub const PGMQ_SCHEMA: &str = "pgmq";
 

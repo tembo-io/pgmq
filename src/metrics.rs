@@ -3,7 +3,7 @@ use pgrx::spi::SpiTupleTable;
 use pgrx::warning;
 
 use crate::api::listit;
-use pgmq_core::types::{PGMQ_SCHEMA, TABLE_PREFIX};
+use pgmq_core::types::{PGMQ_SCHEMA, QUEUE_PREFIX};
 
 type MetricResult = Vec<(
     String,
@@ -96,7 +96,7 @@ fn query_summary(queue_name: &str) -> Result<MetricResult, crate::PgmqExtError> 
 }
 
 fn build_summary_query(queue_name: &str) -> String {
-    let fq_table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}");
+    let fq_table = format!("{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{queue_name}");
     format!(
         "SELECT * FROM
             (SELECT

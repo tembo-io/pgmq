@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 use pgmq_core::{
     errors::PgmqError,
-    types::{Message, ARCHIVE_PREFIX, PGMQ_SCHEMA, TABLE_PREFIX},
+    types::{Message, ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX},
 };
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -48,7 +48,7 @@ struct YoloMessage {
 }
 
 async fn rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
-    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}");
+    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}");
     sqlx::query(&row_ct_query)
         .fetch_one(connection)
         .await
@@ -69,7 +69,7 @@ async fn archive_rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
 // simple solution: our existing rowcount() helper will fail
 // wrap it in a Result<> so we can use it
 async fn fallible_rowcount(qname: &str, connection: &Pool<Postgres>) -> Result<i64, PgmqError> {
-    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}");
+    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}");
     Ok(sqlx::query(&row_ct_query)
         .fetch_one(connection)
         .await?

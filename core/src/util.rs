@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::{
     errors::PgmqError,
-    types::{Message, TABLE_PREFIX},
+    types::{Message, QUEUE_PREFIX},
 };
 use log::LevelFilter;
 use serde::Deserialize;
@@ -105,7 +105,7 @@ pub fn check_input(input: &str) -> Result<(), PgmqError> {
     // Longer names can be used in commands, but they'll be truncated
     const MAX_IDENTIFIER_LEN: usize = NAMEDATALEN - 1;
     // The max length of a PGMQ table, considering its prefix and the underline after it (e.g. "pgmq_")
-    const MAX_PGMQ_TABLE_LEN: usize = MAX_IDENTIFIER_LEN - TABLE_PREFIX.len() - 1;
+    const MAX_PGMQ_TABLE_LEN: usize = MAX_IDENTIFIER_LEN - QUEUE_PREFIX.len() - 1;
 
     let is_short_enough = input.len() <= MAX_PGMQ_TABLE_LEN;
     let has_valid_characters = input
