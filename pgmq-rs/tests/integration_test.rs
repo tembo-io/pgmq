@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 use pgmq_core::{
     errors::PgmqError,
-    types::{Message, TABLE_PREFIX},
+    types::{Message, ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX},
 };
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -48,7 +48,16 @@ struct YoloMessage {
 }
 
 async fn rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
-    let row_ct_query = format!("SELECT count(*) as ct FROM {TABLE_PREFIX}_{qname}");
+    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}");
+    sqlx::query(&row_ct_query)
+        .fetch_one(connection)
+        .await
+        .unwrap()
+        .get::<i64, usize>(0)
+}
+
+async fn archive_rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
+    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}");
     sqlx::query(&row_ct_query)
         .fetch_one(connection)
         .await
@@ -60,7 +69,18 @@ async fn rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
 // simple solution: our existing rowcount() helper will fail
 // wrap it in a Result<> so we can use it
 async fn fallible_rowcount(qname: &str, connection: &Pool<Postgres>) -> Result<i64, PgmqError> {
-    let row_ct_query = format!("SELECT count(*) as ct FROM {TABLE_PREFIX}_{qname}");
+    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}");
+    Ok(sqlx::query(&row_ct_query)
+        .fetch_one(connection)
+        .await?
+        .get::<i64, usize>(0))
+}
+
+async fn fallible_archive_rowcount(
+    qname: &str,
+    connection: &Pool<Postgres>,
+) -> Result<i64, PgmqError> {
+    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}");
     Ok(sqlx::query(&row_ct_query)
         .fetch_one(connection)
         .await?
@@ -581,7 +601,7 @@ async fn test_archive() {
     let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
     // archived record is no longer on the queue
     assert_eq!(num_rows_queue, 0);
-    let num_rows_archive = rowcount(&format!("{test_queue}_archive"), &queue.connection).await;
+    let num_rows_archive = archive_rowcount(&test_queue, &queue.connection).await;
     // archived record is now on the archive table
     assert_eq!(num_rows_archive, 1);
 }
@@ -703,14 +723,13 @@ async fn test_destroy() {
     // the queue and the queue archive should no longer exist
     let queue_table = fallible_rowcount(&test_queue, &queue.connection).await;
     assert!(queue_table.is_err());
-    let archive_table =
-        fallible_rowcount(&format!("{test_queue}_archive"), &queue.connection).await;
+    let archive_table = fallible_archive_rowcount(&test_queue, &queue.connection).await;
     assert!(archive_table.is_err());
 
     // queue must not be present on pgmq_meta
     let pgmq_meta_query = format!(
         "SELECT count(*) as ct
-        FROM {TABLE_PREFIX}_meta
+        FROM {PGMQ_SCHEMA}.meta
         WHERE queue_name = '{test_queue}'",
     );
     let rowcount = sqlx::query(&pgmq_meta_query)

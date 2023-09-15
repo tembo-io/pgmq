@@ -1,11 +1,9 @@
-/// Metric definitions
-///
 use pgrx::prelude::*;
 use pgrx::spi::SpiTupleTable;
 use pgrx::warning;
 
 use crate::api::listit;
-use pgmq_core::types::{PGMQ_SCHEMA, TABLE_PREFIX};
+use pgmq_core::types::{PGMQ_SCHEMA, QUEUE_PREFIX};
 
 type MetricResult = Vec<(
     String,
@@ -16,7 +14,7 @@ type MetricResult = Vec<(
     TimestampWithTimeZone,
 )>;
 
-#[pg_extern]
+#[pg_extern(name = "metrics")]
 fn pgmq_metrics(
     queue_name: &str,
 ) -> Result<
@@ -37,7 +35,7 @@ fn pgmq_metrics(
     Ok(TableIterator::new(results))
 }
 
-#[pg_extern]
+#[pg_extern(name = "metrics_all")]
 fn pgmq_metrics_all() -> Result<
     TableIterator<
         'static,
@@ -98,7 +96,7 @@ fn query_summary(queue_name: &str) -> Result<MetricResult, crate::PgmqExtError> 
 }
 
 fn build_summary_query(queue_name: &str) -> String {
-    let fq_table = format!("{PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue_name}");
+    let fq_table = format!("{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{queue_name}");
     format!(
         "SELECT * FROM
             (SELECT

@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt  # type: ignore
 from scipy.ndimage import gaussian_filter1d
 from sqlalchemy import create_engine, text
 
-from tembo_pgmq_python import PGMQueue
+from tembo_pgmq.python import PGMQueue
 
 logging.basicConfig(level=logging.INFO)
 
@@ -49,7 +49,7 @@ def produce(
 
     while running_duration < duration_seconds:
         send_start = time.perf_counter()
-        cur.execute(f"""select * from pgmq_send('{queue_name}', '{{"hello": "world"}}')""")
+        cur.execute(f"""select * from pgmq.send('{queue_name}', '{{"hello": "world"}}')""")
         msg_id = cur.fetchall()[0][0]
         send_duration = time.perf_counter() - send_start
         all_results.append({"operation": "write", "duration": send_duration, "msg_id": msg_id, "epoch": time.time()})
@@ -94,10 +94,10 @@ def consume(queue_name: str, connection_info: dict):
     results = []
     no_message_timeout = 0
     while no_message_timeout < 5:
-        stmt = f"select * from pgmq_read('{queue_name}', 1, 1)"
+        stmt = f"select * from pgmq.read('{queue_name}', 1, 1)"
         read_start = time.perf_counter()
         cur.execute(stmt)
-        # cur.execute("select * from pgmq_read(%s, %s, %s);", [queue_name, 1, 1])
+        # cur.execute("select * from pgmq.read(%s, %s, %s);", [queue_name, 1, 1])
         read_duration = time.perf_counter() - read_start
         message = cur.fetchall()
 
@@ -114,7 +114,7 @@ def consume(queue_name: str, connection_info: dict):
         results.append({"operation": "read", "duration": read_duration, "msg_id": msg_id, "epoch": time.time()})
 
         archive_start = time.perf_counter()
-        cur.execute("select * from pgmq_archive(%s, %s);", [queue_name, msg_id])
+        cur.execute("select * from pgmq.archive(%s, %s);", [queue_name, msg_id])
         cur.fetchall()
 
         archive_duration = time.perf_counter() - archive_start
@@ -161,7 +161,7 @@ def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessi
 
     start = time.time()
     while not kill_flag.value:
-        cur.execute(f"select * from pgmq_metrics('{queue_name}')")
+        cur.execute(f"select * from pgmq.metrics('{queue_name}')")
         metrics = cur.fetchall()[0]
         depth = metrics[1]
         total_messages = metrics[-2]
