@@ -486,6 +486,7 @@ fn pgmq_set_vt(
 #[pg_schema]
 mod tests {
     use super::*;
+    use pgmq_core::types::ARCHIVE_PREFIX;
 
     #[pg_test]
     fn test_create_non_partitioned() {
@@ -618,7 +619,7 @@ mod tests {
         assert_eq!(retval.unwrap(), 0);
         // no messages in queue archive
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}_archive"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
@@ -641,7 +642,7 @@ mod tests {
         assert_eq!(retval.unwrap(), 0);
         // but one on the archive table
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}_archive"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
@@ -659,7 +660,7 @@ mod tests {
         assert_eq!(retval.unwrap(), 0);
         // no messages in queue archive
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}_archive"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 0);
@@ -691,7 +692,7 @@ mod tests {
         assert_eq!(retval.unwrap(), 0);
         // but two on the archive table
         let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{TABLE_PREFIX}_{qname}_archive"
+            "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 2);

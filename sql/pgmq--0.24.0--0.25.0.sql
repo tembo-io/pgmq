@@ -25,7 +25,7 @@ CREATE SCHEMA pgmq;
 ALTER TABLE pgmq_meta SET SCHEMA pgmq;
 ALTER TABLE pgmq.pgmq_meta RENAME TO meta;
 
--- Moving other tables to pgmq schema, and adopting new prefix
+-- Moving other tables to pgmq schema, and adopting new prefixes
 DO $$
 DECLARE q_row RECORD;
 DECLARE part TEXT;
@@ -34,19 +34,19 @@ BEGIN
     LOOP
 	  EXECUTE FORMAT('ALTER TABLE public.pgmq_%s SET SCHEMA pgmq', q_row.queue_name);
 	  EXECUTE FORMAT('ALTER TABLE public.pgmq_%s_archive SET SCHEMA pgmq', q_row.queue_name);
-	  EXECUTE FORMAT('ALTER SEQUENCE pgmq.pgmq_%s_msg_id_seq RENAME TO queue_%s_msg_id_seq', q_row.queue_name, q_row.queue_name);
-	  EXECUTE FORMAT('ALTER TABLE pgmq.pgmq_%s RENAME TO queue_%s', q_row.queue_name, q_row.queue_name);
-	  EXECUTE FORMAT('ALTER TABLE pgmq.pgmq_%s_archive RENAME TO queue_%s_archive', q_row.queue_name, q_row.queue_name);
-	  EXECUTE FORMAT('ALTER SEQUENCE pgmq.pgmq_%s_archive_msg_id_seq RENAME TO queue_%s_archive_msg_id_seq', q_row.queue_name, q_row.queue_name);
+	  EXECUTE FORMAT('ALTER SEQUENCE pgmq.pgmq_%s_msg_id_seq RENAME TO q_%s_msg_id_seq', q_row.queue_name, q_row.queue_name);
+	  EXECUTE FORMAT('ALTER TABLE pgmq.pgmq_%s RENAME TO q_%s', q_row.queue_name, q_row.queue_name);
+	  EXECUTE FORMAT('ALTER TABLE pgmq.pgmq_%s_archive RENAME TO a_%s', q_row.queue_name, q_row.queue_name);
+	  EXECUTE FORMAT('ALTER SEQUENCE pgmq.pgmq_%s_archive_msg_id_seq RENAME TO a_%s_msg_id_seq', q_row.queue_name, q_row.queue_name);
 	  IF q_row.is_partitioned THEN
 		UPDATE part_config
 		SET
-			parent_table = FORMAT('pgmq.queue_%s', q_row.queue_name),
-			template_table = FORMAT('pgmq.template_pgmq_queue_%s', q_row.queue_name)
+			parent_table = FORMAT('pgmq.q_%s', q_row.queue_name),
+			template_table = FORMAT('pgmq.template_pgmq_q_%s', q_row.queue_name)
 		WHERE parent_table = FORMAT('public.pgmq_%s', q_row.queue_name);
 		EXECUTE FORMAT('ALTER TABLE public.template_public_pgmq_%s SET SCHEMA pgmq', q_row.queue_name);
-		EXECUTE FORMAT('ALTER TABLE pgmq.template_public_pgmq_%s RENAME TO template_queue_%s', q_row.queue_name, q_row.queue_name);
-		FOR part in (SELECT partition_tablename from show_partitions(FORMAT('pgmq.queue_%s', q_row.queue_name)))
+		EXECUTE FORMAT('ALTER TABLE pgmq.template_public_pgmq_%s RENAME TO template_q_%s', q_row.queue_name, q_row.queue_name);
+		FOR part in (SELECT partition_tablename from show_partitions(FORMAT('pgmq.q_%s', q_row.queue_name)))
 		LOOP
 			EXECUTE FORMAT('ALTER TABLE public.%s SET SCHEMA pgmq', part);
 		END LOOP;

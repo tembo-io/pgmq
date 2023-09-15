@@ -2,7 +2,7 @@
 
 use crate::{
     errors::PgmqError,
-    types::{PGMQ_SCHEMA, TABLE_PREFIX},
+    types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, TABLE_PREFIX},
     util::check_input,
     util::CheckedName,
 };
@@ -51,7 +51,7 @@ pub fn create_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
 pub fn create_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (
+        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{name} (
             msg_id BIGSERIAL PRIMARY KEY,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
@@ -150,7 +150,7 @@ pub fn delete_queue_metadata(name: CheckedName<'_>) -> Result<String, PgmqError>
 pub fn drop_queue_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        DROP TABLE IF EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive;
+        DROP TABLE IF EXISTS {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{name};
         "
     ))
 }
@@ -169,7 +169,7 @@ pub fn insert_meta(name: CheckedName<'_>, is_partitioned: bool) -> Result<String
 pub fn create_archive_index(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        CREATE INDEX IF NOT EXISTS archived_at_idx_{name} ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (archived_at);
+        CREATE INDEX IF NOT EXISTS archived_at_idx_{name} ON {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{name} (archived_at);
         "
     ))
 }
@@ -271,7 +271,7 @@ pub fn archive_batch(name: &str) -> Result<String, PgmqError> {
             WHERE msg_id = ANY($1)
             RETURNING msg_id, vt, read_ct, enqueued_at, message
         )
-        INSERT INTO {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive (msg_id, vt, read_ct, enqueued_at, message)
+        INSERT INTO {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{name} (msg_id, vt, read_ct, enqueued_at, message)
         SELECT msg_id, vt, read_ct, enqueued_at, message
         FROM archived
         RETURNING msg_id;
@@ -300,11 +300,11 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
 }
 
 pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(assign(name.as_ref()))
+    Ok(assign(&format!("{TABLE_PREFIX}_{name}")))
 }
 
 pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(assign(&format!("{name}_archive")))
+    Ok(assign(&format!("{ARCHIVE_PREFIX}_{name}")))
 }
 
 pub fn unassign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
@@ -315,7 +315,7 @@ pub fn unassign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
 
 pub fn unassign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
-        "ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{name}_archive; "
+        "ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{name}; "
     ))
 }
 
@@ -333,10 +333,10 @@ pub fn assign(table_name: &str) -> String {
             AND objid = (
                 SELECT oid
                 FROM pg_class
-                WHERE relname = '{TABLE_PREFIX}_{table_name}'
+                WHERE relname = '{table_name}'
             )
         ) THEN
-            EXECUTE 'ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{TABLE_PREFIX}_{table_name}';
+            EXECUTE 'ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{table_name}';
         END IF;
     END $$;
     "
@@ -384,15 +384,15 @@ $$ LANGUAGE plpgsql;
 
     #[test]
     fn test_assign() {
-        let query = assign("my_queue_archive");
-        assert!(query.contains("WHERE relname = 'queue_my_queue_archive'"));
+        let query = assign("a_my_queue_archive");
+        assert!(query.contains("WHERE relname = 'a_my_queue_archive'"));
     }
 
     #[test]
     fn test_create() {
         let queue_name = CheckedName::new("yolo").unwrap();
         let query = create_queue(queue_name);
-        assert!(query.unwrap().contains("queue_yolo"));
+        assert!(query.unwrap().contains("q_yolo"));
     }
 
     #[test]
@@ -403,7 +403,7 @@ $$ LANGUAGE plpgsql;
         });
         msgs.push(msg);
         let query = enqueue("yolo", &msgs, &0).unwrap();
-        assert!(query.contains("queue_yolo"));
+        assert!(query.contains("q_yolo"));
         assert!(query.contains("{\"foo\":\"bar\"}"));
     }
 
@@ -423,11 +423,9 @@ $$ LANGUAGE plpgsql;
     fn check_input_rejects_names_too_large() {
         let table_name = "my_valid_table_name";
         assert!(check_input(table_name).is_ok());
-
-        assert!(check_input(&"a".repeat(57)).is_ok());
-
-        assert!(check_input(&"a".repeat(58)).is_err());
-        assert!(check_input(&"a".repeat(60)).is_err());
+        assert!(check_input(&"a".repeat(61)).is_ok());
+        assert!(check_input(&"a".repeat(62)).is_err());
+        assert!(check_input(&"a".repeat(64)).is_err());
         assert!(check_input(&"a".repeat(70)).is_err());
     }
 

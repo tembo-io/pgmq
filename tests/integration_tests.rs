@@ -136,11 +136,10 @@ async fn test_lifecycle() {
     assert_eq!(msg_ids.len(), 2);
     assert_eq!(msg_ids[0].get::<i64, usize>(0), 1);
     assert_eq!(msg_ids[1].get::<i64, usize>(0), 2);
-    let rowcount: i64 =
-        sqlx::query_scalar(&format!("SELECT count(*) from pgmq.queue_{batch_queue}"))
-            .fetch_one(&conn)
-            .await
-            .expect("failed to get rowcount");
+    let rowcount: i64 = sqlx::query_scalar(&format!("SELECT count(*) from pgmq.q_{batch_queue}"))
+        .fetch_one(&conn)
+        .await
+        .expect("failed to get rowcount");
     assert_eq!(rowcount, 2);
 
     let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_partman")
