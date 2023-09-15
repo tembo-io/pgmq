@@ -68,6 +68,7 @@ pub fn create_meta() -> String {
         "
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_meta (
             queue_name VARCHAR UNIQUE NOT NULL,
+            is_partitioned BOOLEAN NOT NULL,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
         );
         "
