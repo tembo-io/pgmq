@@ -35,6 +35,7 @@ sqlalchemy = "^2.0.13"
 psycopg2 = "^2.9.6"
 scipy = "^1.11.2"
 types-psycopg2 = "^2.9.21.11"
+locust = "^2.16.1"
 
 [tool.black]
 line-length = 120
