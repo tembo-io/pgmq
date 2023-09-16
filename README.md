@@ -66,8 +66,8 @@ CREATE EXTENSION pgmq;
 
 ### Creating a queue
 
-Every queue is its own table in Postgres. The table name is the queue name prefixed with `queue_`.
-For example, `queue_my_mq` is the table for the queue `my_mq`.
+Every queue is its own table in Postgres. The table name is the queue name prefixed with `q_`.
+For example, `q_my_queue` is the table for the queue `my_queue`.
 
 ```sql
 -- creates the queue
@@ -161,8 +161,9 @@ SELECT pgmq.archive('my_queue', 2);
 (1 row)
 ```
 
+Archive tables have the prefix `a_`:
 ```sql
-SELECT pgmq.my_queue_archive;
+SELECT pgmq.a_my_queue;
 ```
 
 ```text
@@ -225,13 +226,13 @@ handles all maintenance of queue tables. This includes creating new partitions a
 
 Partitions behavior is configured at the time queues are created, via `pgmq.create_partitioned()`. This function has three parameters:
 
-`queue_name: text`: The name of the queue. Queues are Postgres tables prepended with `queue_`. For example, `queue_my_mq`.
+`queue_name: text`: The name of the queue. Queues are Postgres tables prepended with `q_`. For example, `q_my_queue`. The archive is instead prefixed by `a_`, for example `a_my_queue`.
 
 
 `partition_interval: text` - The interval at which partitions are created. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, queues are partitioned by the time at which messages are sent to the table (`enqueued_at`). A value of `'daily'` would create a new partition each day. When it is an integer value, queues are partitioned by the `msg_id`. A value of `'100'` will create a new partition every 100 messages. The value must agree with `retention_interval` (time based or numeric). The default value is `daily`.
 
 
-`retention_interval: text` - The interval for retaining partitions. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, partitions containing data greater than the duration will be dropped. When it is an integer value, any messages that have a `msg_id` less than `max(msg_id) - retention_interval` will be dropped. For example, if the max `msg_id` is 100 and the `retention_interval` is 60, any partitions with `msg_id` values less than 40 will be dropped. The value must agree with `partition_interval` (time based or numeric). The default is `'5 days'`. Note: `retention_interval` does not apply to messages that have been deleted via `pgmq.delete()` or archived with `pgmq.archive()`. `pgmq.delete()` removes messages forever and `pgmq.archive()` moves messages to the corresponding archive table forever (for example, `queue_my_mq_archive`).
+`retention_interval: text` - The interval for retaining partitions. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, partitions containing data greater than the duration will be dropped. When it is an integer value, any messages that have a `msg_id` less than `max(msg_id) - retention_interval` will be dropped. For example, if the max `msg_id` is 100 and the `retention_interval` is 60, any partitions with `msg_id` values less than 40 will be dropped. The value must agree with `partition_interval` (time based or numeric). The default is `'5 days'`. Note: `retention_interval` does not apply to messages that have been deleted via `pgmq.delete()` or archived with `pgmq.archive()`. `pgmq.delete()` removes messages forever and `pgmq.archive()` moves messages to the corresponding archive table forever (for example, `a_my_queue`).
 
 
 In order for automatic partition maintenance to take place, several settings must be added to the `postgresql.conf` file, which is typically located in the postgres `DATADIR`.
