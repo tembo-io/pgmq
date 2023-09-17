@@ -27,17 +27,18 @@ BEGIN
         WITH cte AS
         (
             SELECT msg_id
-            FROM pgmq.queue_%s
+            FROM pgmq.q_%s
             WHERE vt <= clock_timestamp()
             ORDER BY msg_id ASC
             LIMIT $1
             FOR UPDATE SKIP LOCKED
         )
-        UPDATE pgmq.queue_%s
+        UPDATE pgmq.q_%s m
         SET
             vt = clock_timestamp() + interval '$2 seconds',
             read_ct = read_ct + 1
-        WHERE msg_id in (select msg_id from cte)
+        FROM cte
+        WHERE m.msg_id = cte.msg_id
         RETURNING *;
         $QUERY$,
         queue_name, queue_name
@@ -72,17 +73,18 @@ BEGIN
           WITH cte AS
           (
               SELECT msg_id
-              FROM pgmq.queue_%s
+              FROM pgmq.q_%s
               WHERE vt <= clock_timestamp()
               ORDER BY msg_id ASC
               LIMIT $1
               FOR UPDATE SKIP LOCKED
           )
-          UPDATE pgmq.queue_%s
+          UPDATE pgmq.q_%s t
           SET
               vt = clock_timestamp() + interval '$2 seconds',
               read_ct = read_ct + 1
-          WHERE msg_id in (select msg_id from cte)
+          FROM cte
+          WHERE t.msg_id=cte.msg_id
           RETURNING *;
           $QUERY$,
           queue_name, queue_name
