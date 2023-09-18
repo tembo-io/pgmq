@@ -47,8 +47,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- read_with_poll
----- reads a number of messages from a queue, setting a visibility timeout on them
 CREATE FUNCTION pgmq.read_with_poll(
     queue_name TEXT,
     vt INTEGER,
@@ -104,3 +102,56 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE FUNCTION pgmq.archive(
+    queue_name TEXT,
+    msg_id BIGINT
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    sql TEXT;
+    result BIGINT;
+BEGIN
+    sql := FORMAT(
+        $QUERY$
+        WITH archived AS (
+            DELETE FROM pgmq.q_%s
+            WHERE msg_id = $1
+            RETURNING msg_id, vt, read_ct, enqueued_at, message
+        )
+        INSERT INTO pgmq.a_%s (msg_id, vt, read_ct, enqueued_at, message)
+        SELECT msg_id, vt, read_ct, enqueued_at, message
+        FROM archived
+        RETURNING msg_id;
+        $QUERY$,
+        queue_name, queue_name
+    );
+    EXECUTE sql USING msg_id INTO result;
+    RETURN NOT (result IS NULL);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE FUNCTION pgmq.archive(
+    queue_name TEXT,
+    msg_id BIGINT[]
+)
+RETURNS SETOF BIGINT AS $$
+DECLARE
+    sql TEXT;
+BEGIN
+    sql := FORMAT(
+        $QUERY$
+        WITH archived AS (
+            DELETE FROM pgmq.q_%s
+            WHERE msg_id = ANY($1)
+            RETURNING msg_id, vt, read_ct, enqueued_at, message
+        )
+        INSERT INTO pgmq.a_%s (msg_id, vt, read_ct, enqueued_at, message)
+        SELECT msg_id, vt, read_ct, enqueued_at, message
+        FROM archived
+        RETURNING msg_id;
+        $QUERY$,
+        queue_name, queue_name
+    );
+    RETURN QUERY EXECUTE sql USING msg_id;
+END;
+$$ LANGUAGE plpgsql;
