@@ -263,54 +263,6 @@ fn pgmq_delete_batch(
     Ok(TableIterator::new(results))
 }
 
-/// archive a message forever instead of deleting it
-#[pg_extern(name = "archive")]
-fn pgmq_archive(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtError> {
-    pgmq_archive_batch(queue_name, vec![msg_id]).map(|mut iter| iter.next().map(|b| b.0))
-}
-
-#[pg_extern(name = "archive")]
-fn pgmq_archive_batch(
-    queue_name: &str,
-    msg_ids: Vec<i64>,
-) -> Result<TableIterator<'static, (name!(archive, bool),)>, PgmqExtError> {
-    let query = pgmq_core::query::archive_batch(queue_name)?;
-
-    let mut archived: Vec<i64> = Vec::new();
-
-    let _: Result<(), spi::Error> = Spi::connect(|mut client| {
-        let tup_table: SpiTupleTable = client.update(
-            &query,
-            None,
-            Some(vec![(
-                PgBuiltInOids::INT8ARRAYOID.oid(),
-                msg_ids.clone().into_datum(),
-            )]),
-        )?;
-
-        archived.reserve_exact(tup_table.len());
-
-        for row in tup_table {
-            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
-            archived.push(msg_id);
-        }
-        Ok(())
-    });
-
-    let results = msg_ids
-        .iter()
-        .map(|msg_id| {
-            if archived.contains(&msg_id) {
-                (true,)
-            } else {
-                (false,)
-            }
-        })
-        .collect::<Vec<(bool,)>>();
-
-    Ok(TableIterator::new(results))
-}
-
 // reads and deletes at same time
 #[pg_extern(name = "pop")]
 fn pgmq_pop(
@@ -521,96 +473,96 @@ mod tests {
         assert_eq!(init_count.unwrap(), 0);
     }
 
-    #[pg_test]
-    fn test_archive() {
-        let qname = r#"test_archive"#;
-        let _ = pgmq_create_non_partitioned(&qname).unwrap();
-        // no messages in the queue
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 0);
-        // no messages in queue archive
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 0);
-        // put a message on the queue
-        let msg_id = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"})), 0).unwrap();
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 1);
+    //#[pg_test]
+    //fn test_archive() {
+    //    let qname = r#"test_archive"#;
+    //    let _ = pgmq_create_non_partitioned(&qname).unwrap();
+    //    // no messages in the queue
+    //    let retval = Spi::get_one::<i64>(&format!(
+    //        "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
+    //    ))
+    //    .expect("SQL select failed");
+    //    assert_eq!(retval.unwrap(), 0);
+    //    // no messages in queue archive
+    //    let retval = Spi::get_one::<i64>(&format!(
+    //        "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
+    //    ))
+    //    .expect("SQL select failed");
+    //    assert_eq!(retval.unwrap(), 0);
+    //    // put a message on the queue
+    //    let msg_id = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"})), 0).unwrap();
+    //    let retval = Spi::get_one::<i64>(&format!(
+    //        "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
+    //    ))
+    //    .expect("SQL select failed");
+    //    assert_eq!(retval.unwrap(), 1);
 
-        // archive the message
-        let archived = pgmq_archive(&qname, msg_id.unwrap()).unwrap().unwrap();
-        assert!(archived);
-        // should be no messages left on the queue table
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 0);
-        // but one on the archive table
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 1);
-    }
+    //    // archive the message
+    //    let archived = pgmq_archive(&qname, msg_id.unwrap()).unwrap().unwrap();
+    //    assert!(archived);
+    //    // should be no messages left on the queue table
+    //    let retval = Spi::get_one::<i64>(&format!(
+    //        "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
+    //    ))
+    //    .expect("SQL select failed");
+    //    assert_eq!(retval.unwrap(), 0);
+    //    // but one on the archive table
+    //    let retval = Spi::get_one::<i64>(&format!(
+    //        "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
+    //    ))
+    //    .expect("SQL select failed");
+    //    assert_eq!(retval.unwrap(), 1);
+    //}
 
-    #[pg_test]
-    fn test_archive_batch() {
-        let qname = r#"test_archive_batch"#;
-        let _ = pgmq_create_non_partitioned(&qname).unwrap();
-        // no messages in the queue
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 0);
-        // no messages in queue archive
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 0);
-        // put messages on the queue
-        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})), 0)
-            .unwrap()
-            .unwrap();
-        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})), 0)
-            .unwrap()
-            .unwrap();
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 2);
+    //#[pg_test]
+    //fn test_archive_batch() {
+    //    let qname = r#"test_archive_batch"#;
+    //    let _ = pgmq_create_non_partitioned(&qname).unwrap();
+    //    // no messages in the queue
+    //    let retval = Spi::get_one::<i64>(&format!(
+    //        "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
+    //    ))
+    //    .expect("SQL select failed");
+    //    assert_eq!(retval.unwrap(), 0);
+    //    // no messages in queue archive
+    //    let retval = Spi::get_one::<i64>(&format!(
+    //        "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
+    //    ))
+    //    .expect("SQL select failed");
+    //    assert_eq!(retval.unwrap(), 0);
+    //    // put messages on the queue
+    //    let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})), 0)
+    //        .unwrap()
+    //        .unwrap();
+    //    let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})), 0)
+    //        .unwrap()
+    //        .unwrap();
+    //    let retval = Spi::get_one::<i64>(&format!(
+    //        "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
+    //    ))
+    //    .expect("SQL select failed");
+    //    assert_eq!(retval.unwrap(), 2);
 
-        // archive the message. The first two exist so should return true, the
-        // last one doesn't so should return false.
-        let mut archived = pgmq_archive_batch(&qname, vec![msg_id1, msg_id2, -1]).unwrap();
-        assert!(archived.next().unwrap().0);
-        assert!(archived.next().unwrap().0);
-        assert!(!archived.next().unwrap().0);
+    //    // archive the message. The first two exist so should return true, the
+    //    // last one doesn't so should return false.
+    //    let mut archived = pgmq_archive_batch(&qname, vec![msg_id1, msg_id2, -1]).unwrap();
+    //    assert!(archived.next().unwrap().0);
+    //    assert!(archived.next().unwrap().0);
+    //    assert!(!archived.next().unwrap().0);
 
-        // should be no messages left on the queue table
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 0);
-        // but two on the archive table
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 2);
-    }
+    //    // should be no messages left on the queue table
+    //    let retval = Spi::get_one::<i64>(&format!(
+    //        "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
+    //    ))
+    //    .expect("SQL select failed");
+    //    assert_eq!(retval.unwrap(), 0);
+    //    // but two on the archive table
+    //    let retval = Spi::get_one::<i64>(&format!(
+    //        "SELECT count(*) FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}"
+    //    ))
+    //    .expect("SQL select failed");
+    //    assert_eq!(retval.unwrap(), 2);
+    //}
 
     #[pg_test]
     fn test_validate_same_type() {

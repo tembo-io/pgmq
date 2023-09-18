@@ -127,3 +127,63 @@ BEGIN
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
+
+---- archive
+---- removes a message from the queue, and sends it to the archive, where its
+---- saved permanently.
+CREATE FUNCTION pgmq.archive(
+    queue_name TEXT,
+    msg_id BIGINT
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    sql TEXT;
+    result BIGINT;
+BEGIN
+    sql := FORMAT(
+        $QUERY$
+        WITH archived AS (
+            DELETE FROM pgmq.q_%s
+            WHERE msg_id = $1
+            RETURNING msg_id, vt, read_ct, enqueued_at, message
+        )
+        INSERT INTO pgmq.a_%s (msg_id, vt, read_ct, enqueued_at, message)
+        SELECT msg_id, vt, read_ct, enqueued_at, message
+        FROM archived
+        RETURNING msg_id;
+        $QUERY$,
+        queue_name, queue_name
+    );
+    EXECUTE sql USING msg_id INTO result;
+    RETURN NOT (result IS NULL);
+END;
+$$ LANGUAGE plpgsql;
+
+---- archive
+---- removes an array of message ids from the queue, and sends it to the archive,
+---- where these messages will be saved permanently.
+CREATE FUNCTION pgmq.archive(
+    queue_name TEXT,
+    msg_id BIGINT[]
+)
+RETURNS SETOF BIGINT AS $$
+DECLARE
+    sql TEXT;
+BEGIN
+    sql := FORMAT(
+        $QUERY$
+        WITH archived AS (
+            DELETE FROM pgmq.q_%s
+            WHERE msg_id = ANY($1)
+            RETURNING msg_id, vt, read_ct, enqueued_at, message
+        )
+        INSERT INTO pgmq.a_%s (msg_id, vt, read_ct, enqueued_at, message)
+        SELECT msg_id, vt, read_ct, enqueued_at, message
+        FROM archived
+        RETURNING msg_id;
+        $QUERY$,
+        queue_name, queue_name
+    );
+    RETURN QUERY EXECUTE sql USING msg_id;
+END;
+$$ LANGUAGE plpgsql;
