@@ -58,11 +58,12 @@ BEGIN
             LIMIT $1
             FOR UPDATE SKIP LOCKED
         )
-        UPDATE pgmq.q_%s
+        UPDATE pgmq.q_%s m
         SET
             vt = clock_timestamp() + interval '$2 seconds',
             read_ct = read_ct + 1
-        WHERE msg_id in (select msg_id from cte)
+        FROM cte
+        WHERE m.msg_id = cte.msg_id
         RETURNING *;
         $QUERY$,
         queue_name, queue_name
