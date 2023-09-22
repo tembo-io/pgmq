@@ -79,7 +79,7 @@ jobs:
           rm -rf ./target/pgrx-test-data-* || true
           pg_version=$(stoml Cargo.toml features.default)
           cargo pgrx run ${pg_version} --pgcli || true
-          cargo pgrx test ${pg_version}
+          cargo test ${pg_version} -- --test-threads=1
 
   publish:
     # only publish release events
