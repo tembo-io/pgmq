@@ -76,29 +76,23 @@ class PGMQueue:
         with self.pool.connection() as conn:
             conn.execute("select pgmq.create(%s);", [queue])
 
-    def send(self, queue: str, message: dict, delay: Optional[int] = None) -> int:
+    def send(self, queue: str, message: dict, delay: int = 0) -> int:
         """Send a message to a queue"""
 
         with self.pool.connection() as conn:
-            if delay is not None:
-                # TODO(chuckend): implement send_delay in pgmq
-                raise NotImplementedError("send_delay is not implemented in pgmq")
             message = conn.execute(
-                "select * from pgmq.send(%s, %s);",
-                [queue, Jsonb(message)],  # type: ignore
+                "select * from pgmq.send(%s, %s,%s);",
+                [queue, Jsonb(message), delay],  # type: ignore
             ).fetchall()
         return message[0][0]
 
-    def send_batch(self, queue: str, messages: list[dict], delay: Optional[int] = None) -> list[int]:
+    def send_batch(self, queue: str, messages: list[dict], delay: int = 0) -> list[int]:
         """Send a batch of messages to a queue"""
 
         with self.pool.connection() as conn:
-            if delay is not None:
-                # TODO(chuckend): implement send_delay in pgmq
-                raise NotImplementedError("send_delay is not implemented in pgmq")
             result = conn.execute(
-                "select * from pgmq_send_batch(%s, %s);",
-                [queue, [Jsonb(message) for message in messages]],  # type: ignore
+                "select * from pgmq.send_batch(%s, %s, %s);",
+                [queue, [Jsonb(message) for message in messages], delay],  # type: ignore
             ).fetchall()
         return [message[0] for message in result]
 
