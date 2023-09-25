@@ -1,18 +1,12 @@
-------------------------------------------------------------
--- Schema, tables, records, privileges, indexes, etc
-------------------------------------------------------------
--- We don't need to create the `pgmq` schema because it is automatically
--- created by postgres due to being declared in extension control file
+-- Dropping rust impls
+DROP FUNCTION pgmq.read(text, integer, integer);
+DROP FUNCTION pgmq.read_with_poll(text, integer, integer, integer, integer);
+DROP FUNCTION pgmq.archive(text, bigint);
+DROP FUNCTION pgmq.archive(text, bigint[]);
+DROP FUNCTION pgmq.delete(text, bigint);
+DROP FUNCTION pgmq.delete(text, bigint[]);
 
--- Table where queues and metadata about them is stored
-CREATE TABLE pgmq.meta (
-    queue_name VARCHAR UNIQUE NOT NULL,
-    is_partitioned BOOLEAN NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
-);
-
--- This type has the shape of a message in a queue, and is often returned by
--- pgmq functions that return messages
+-- Adding message record type, required for the functions
 CREATE TYPE pgmq.message_record AS (
     msg_id BIGINT,
     read_ct INTEGER,
@@ -21,23 +15,8 @@ CREATE TYPE pgmq.message_record AS (
     message JSONB
 );
 
--- pg_monitor should have select access to everything in pgmq schema
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    WHERE has_table_privilege('pg_monitor', 'pgmq.meta', 'SELECT')
-  ) THEN
-    EXECUTE 'GRANT SELECT ON pgmq.meta TO pg_monitor';
-  END IF;
-END;
-$$ LANGUAGE plpgsql;
-
-------------------------------------------------------------
--- Functions
-------------------------------------------------------------
--- read
--- reads a number of messages from a queue, setting a visibility timeout on them
+-- Adding PL/pgSQL impls
+-- Copy-pasted from pgrx schema
 CREATE FUNCTION pgmq.read(
     queue_name TEXT,
     vt INTEGER,
@@ -72,8 +51,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- read_with_poll
----- reads a number of messages from a queue, setting a visibility timeout on them
 CREATE FUNCTION pgmq.read_with_poll(
     queue_name TEXT,
     vt INTEGER,
@@ -104,12 +81,12 @@ BEGIN
               LIMIT $1
               FOR UPDATE SKIP LOCKED
           )
-          UPDATE pgmq.q_%s m
+          UPDATE pgmq.q_%s t
           SET
               vt = clock_timestamp() + interval '%s seconds',
               read_ct = read_ct + 1
           FROM cte
-          WHERE m.msg_id = cte.msg_id
+          WHERE t.msg_id=cte.msg_id
           RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
           $QUERY$,
           queue_name, queue_name, vt
@@ -129,9 +106,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- archive
----- removes a message from the queue, and sends it to the archive, where its
----- saved permanently.
 CREATE FUNCTION pgmq.archive(
     queue_name TEXT,
     msg_id BIGINT
@@ -160,9 +134,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- archive
----- removes an array of message ids from the queue, and sends it to the archive,
----- where these messages will be saved permanently.
 CREATE FUNCTION pgmq.archive(
     queue_name TEXT,
     msg_id BIGINT[]
