@@ -78,6 +78,8 @@ async fn init_database() -> Pool<Postgres> {
     conn
 }
 
+// Integration tests are ignored by default
+#[ignore]
 #[tokio::test]
 async fn test_lifecycle() {
     let conn = init_database().await;
@@ -257,6 +259,8 @@ async fn test_lifecycle() {
     assert!(queues.is_empty());
 }
 
+// Integration tests are ignored by default
+#[ignore]
 #[tokio::test]
 async fn test_archive() {
     let conn = init_database().await;
@@ -320,6 +324,8 @@ async fn test_archive() {
     assert_eq!(get_archive_size(&queue_name, &conn).await, 3);
 }
 
+// Integration tests are ignored by default
+#[ignore]
 #[tokio::test]
 async fn test_read_read_with_poll() {
     let conn = init_database().await;
@@ -380,6 +386,8 @@ async fn test_read_read_with_poll() {
     assert_eq!(read_batch3[0].get::<i64, usize>(0), msg_id1);
 }
 
+// Integration tests are ignored by default
+#[ignore]
 #[tokio::test]
 async fn test_partitioned_delete() {
     let conn = init_database().await;

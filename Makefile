@@ -1,3 +1,7 @@
+test:
+	cargo pgrx test
+	cargo test -- --test-threads=1 --ignored
+
 format:
 	cargo +nightly fmt --all
 	cargo +nightly clippy
