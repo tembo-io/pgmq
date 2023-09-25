@@ -55,6 +55,8 @@ jobs:
           git fetch --tags
           git checkout tags/v0.14.2
           SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
+          psql $DATABASE_URL -c "DROP EXTENSION IF EXISTS pgmq;"
+          psql $DATABASE_URL -c "DROP EXTENSION IF EXISTS pg_partman;"
           psql $DATABASE_URL -c "CREATE EXTENSION pg_partman;"
           psql $DATABASE_URL -c "CREATE EXTENSION pgmq;"
           psql $DATABASE_URL -c "select * from pgmq_create('test_queue_1')"
