@@ -16,7 +16,7 @@ struct MetricsRow {
 }
 
 #[allow(dead_code)]
-#[derive(FromRow,Debug)]
+#[derive(FromRow, Debug)]
 struct QueueMeta {
     queue_name: String,
 }
@@ -329,9 +329,9 @@ async fn test_read_read_with_poll() {
     let queue_name = format!("test_read_{test_num}");
 
     // Creating queue
-    sqlx::query(
-        &format!("select * from {PGMQ_SCHEMA}.create('{queue_name}')")
-    )
+    sqlx::query(&format!(
+        "select * from {PGMQ_SCHEMA}.create('{queue_name}')"
+    ))
     .execute(&conn)
     .await
     .unwrap();
@@ -380,7 +380,6 @@ async fn test_read_read_with_poll() {
     assert_eq!(read_batch3[0].get::<i64, usize>(0), msg_id1);
 }
 
-
 #[tokio::test]
 async fn test_partitioned_delete() {
     let conn = init_database().await;
@@ -398,16 +397,16 @@ async fn test_partitioned_delete() {
         .await
         .unwrap();
 
-    let create_result = sqlx::query(
-            &format!("select *
+    let create_result = sqlx::query(&format!(
+        "select *
                      from {PGMQ_SCHEMA}.create_partitioned(
                          '{queue_name}',
                          '{partition_interval}',
                          '{retention_interval}'
-                     )")
-        )
-        .execute(&conn)
-        .await;
+                     )"
+    ))
+    .execute(&conn)
+    .await;
 
     assert!(create_result.is_err());
 
@@ -417,16 +416,16 @@ async fn test_partitioned_delete() {
         .await
         .unwrap();
 
-    let create_result = sqlx::query(
-            &format!("select *
+    let create_result = sqlx::query(&format!(
+        "select *
                      from {PGMQ_SCHEMA}.create_partitioned(
                          '{queue_name}',
                          '{partition_interval}',
                          '{retention_interval}'
-                     )")
-        )
-        .execute(&conn)
-        .await;
+                     )"
+    ))
+    .execute(&conn)
+    .await;
 
     assert!(create_result.is_ok());
 
