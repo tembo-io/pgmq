@@ -13,7 +13,7 @@ packages = [{include = "tembo_pgmq_python"}]
 "Documentation" = "https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.8"
 psycopg = {extras = ["binary", "pool"], version = "^3"}
 pydantic = "^1"
 orjson = "^3"
