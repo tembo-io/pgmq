@@ -19,3 +19,7 @@ pub fn pgmq_read_with_poll() {}
 pub fn pgmq_archive() {}
 #[pg_extern(sql = "")]
 pub fn pgmq_archive_batch() {}
+#[pg_extern(sql = "")]
+pub fn pgmq_delete() {}
+#[pg_extern(sql = "")]
+pub fn pgmq_delete_batch() {}
