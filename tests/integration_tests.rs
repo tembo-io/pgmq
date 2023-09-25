@@ -438,16 +438,19 @@ async fn test_partitioned_delete() {
     assert!(create_result.is_ok());
 
     // queue shows up in list queues
-    // TODO: fix
-    //let queue_meta = sqlx::query_as::<_, QueueMeta>(&format!(
-    //    "select queue_name from {PGMQ_SCHEMA}.list_queues();"
-    //))
-    //.fetch_all(&conn)
-    //.await
-    //.expect("failed to list queues")
-    //.iter()
-    //.find(|m| m.queue_name == queue_name);
-    //assert!(queue_meta.is_some());
+    let list_queues_result = sqlx::query_as::<_, QueueMeta>(&format!(
+        "select queue_name from {PGMQ_SCHEMA}.list_queues();"
+    ))
+    .fetch_all(&conn)
+    .await;
+
+    match list_queues_result {
+        Ok(qm) => {
+            let q = qm.iter().find(|m| m.queue_name == queue_name);
+            assert!(q.is_some());
+        }
+        Err(err) => panic!("{}", err),
+    }
 
     // Sending 3 messages to the queue
     let msg_id1 = send_sample_message(&queue_name, &conn).await;
