@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tembo-pgmq-python"
-version = "0.3.1"
+version = "0.4.0"
 description = "Python client for the PGMQ Postgres extension."
 authors = ["Adam Hendel <adam@tembo.io>"]
 license = "Apache 2.0"
@@ -8,15 +8,15 @@ readme = "README.md"
 packages = [{include = "tembo_pgmq_python"}]
 
 [tool.poetry.urls]
-"Homepage" = "https://github.com/tembo-io/tembo/tree/main/pgmq"
-"Repository" = "https://github.com/tembo-io/tembo/tree/main/pgmq/tembo-pgmq-python"
-"Documentation" = "https://github.com/tembo-io/tembo/tree/main/pgmq/tembo-pgmq-python"
+"Homepage" = "https://github.com/tembo-io/pgmq"
+"Repository" = "https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python"
+"Documentation" = "https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python"
 
 [tool.poetry.dependencies]
-python = "^3.9,<3.13"
-psycopg = {extras = ["binary", "pool"], version = "^3.1.8"}
-pydantic = "^1.10.7"
-orjson = "^3.8.10"
+python = ">=3.8"
+psycopg = {extras = ["binary", "pool"], version = "^3"}
+pydantic = "^1"
+orjson = "^3"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "1.1.1"
@@ -25,7 +25,7 @@ pytest = "^7.3.0"
 debugpy = "^1.6.7"
 black = "^23.3.0"
 isort = "^5.12.0"
-flake8 = "^6.0.0"
+flake8 = "*"
 numpy = "^1.24.3"
 matplotlib = "^3.7.1"
 jupyter = "^1.0.0"
@@ -33,7 +33,7 @@ notebook = "^6.5.4"
 pandas-stubs = "^2.0.1.230501"
 sqlalchemy = "^2.0.13"
 psycopg2 = "^2.9.6"
-scipy = "^1.11.2"
+scipy = "^1"
 types-psycopg2 = "^2.9.21.11"
 
 [tool.black]
