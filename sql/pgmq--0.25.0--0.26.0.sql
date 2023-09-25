@@ -3,6 +3,8 @@ DROP FUNCTION pgmq.read(text, integer, integer);
 DROP FUNCTION pgmq.read_with_poll(text, integer, integer, integer, integer);
 DROP FUNCTION pgmq.archive(text, bigint);
 DROP FUNCTION pgmq.archive(text, bigint[]);
+DROP FUNCTION pgmq.delete(text, bigint);
+DROP FUNCTION pgmq.delete(text, bigint[]);
 
 -- Adding message record type, required for the functions
 CREATE TYPE pgmq.message_record AS (
