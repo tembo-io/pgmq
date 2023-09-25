@@ -215,52 +215,6 @@ pub fn readit(
     Ok(results)
 }
 
-#[pg_extern(name = "delete")]
-fn pgmq_delete(queue_name: &str, msg_id: i64) -> Result<Option<bool>, PgmqExtError> {
-    pgmq_delete_batch(queue_name, vec![msg_id]).map(|mut iter| iter.next().map(|b| b.0))
-}
-
-#[pg_extern(name = "delete")]
-fn pgmq_delete_batch(
-    queue_name: &str,
-    msg_ids: Vec<i64>,
-) -> Result<TableIterator<'static, (name!(delete, bool),)>, PgmqExtError> {
-    let query = pgmq_core::query::delete_batch(queue_name)?;
-
-    let mut deleted: Vec<i64> = Vec::new();
-    let _: Result<(), spi::Error> = Spi::connect(|mut client| {
-        let tup_table = client.update(
-            &query,
-            None,
-            Some(vec![(
-                PgBuiltInOids::INT8ARRAYOID.oid(),
-                msg_ids.clone().into_datum(),
-            )]),
-        )?;
-
-        deleted.reserve_exact(tup_table.len());
-
-        for row in tup_table {
-            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
-            deleted.push(msg_id);
-        }
-        Ok(())
-    });
-
-    let results = msg_ids
-        .iter()
-        .map(|msg_id| {
-            if deleted.contains(msg_id) {
-                (true,)
-            } else {
-                (false,)
-            }
-        })
-        .collect::<Vec<(bool,)>>();
-
-    Ok(TableIterator::new(results))
-}
-
 // reads and deletes at same time
 #[pg_extern(name = "pop")]
 fn pgmq_pop(
@@ -397,77 +351,6 @@ mod tests {
         ))
         .expect("SQL select failed");
         assert_eq!(retval.unwrap(), 1);
-    }
-
-    /// lifecycle test for partitioned queues
-    #[pg_test]
-    fn test_partitioned() {
-        let qname = r#"test_internal"#;
-
-        let partition_interval = "2".to_owned();
-        let retention_interval = "2".to_owned();
-
-        let _ =
-            Spi::run("DROP EXTENSION IF EXISTS pg_partman").expect("Failed dropping pg_partman");
-
-        let failed = pgmq_create_partitioned(
-            &qname,
-            partition_interval.clone(),
-            retention_interval.clone(),
-        );
-        assert!(failed.is_err());
-
-        let _ = Spi::run("CREATE EXTENSION IF NOT EXISTS pg_partman")
-            .expect("Failed creating pg_partman");
-        let _ = pgmq_create_partitioned(&qname, partition_interval, retention_interval).unwrap();
-
-        let queues = listit().unwrap();
-        assert_eq!(queues.len(), 1);
-
-        // put two message on the queue
-        let msg_id1 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":1})), 0)
-            .unwrap()
-            .unwrap();
-        let msg_id2 = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":2})), 0)
-            .unwrap()
-            .unwrap();
-        assert_eq!(msg_id1, 1);
-        assert_eq!(msg_id2, 2);
-
-        // read first message
-        let msg1 = readit(&qname, 1_i32, 1_i32).unwrap();
-        // pop the second message
-        let msg2 = popit(&qname).unwrap();
-        assert_eq!(msg1.len(), 1);
-        assert_eq!(msg2.len(), 1);
-        assert_eq!(msg1[0].0, msg_id1);
-        assert_eq!(msg2[0].0, msg_id2);
-
-        // read again, should be no messages
-        let nothing = readit(&qname, 2_i32, 1_i32).unwrap();
-        assert_eq!(nothing.len(), 0);
-
-        // but still one record on the table
-        let init_count = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(init_count.unwrap(), 1);
-
-        //  delete the messages
-        let delete1 = pgmq_delete(&qname, msg_id1).unwrap().unwrap();
-        assert!(delete1);
-
-        //  delete when message is gone returns False
-        let delete1 = pgmq_delete(&qname, msg_id1).unwrap().unwrap();
-        assert!(!delete1);
-
-        // no records after delete
-        let init_count = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(init_count.unwrap(), 0);
     }
 
     #[pg_test]

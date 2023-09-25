@@ -64,4 +64,4 @@ jobs:
           SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
           psql $DATABASE_URL -c "ALTER EXTENSION pgmq UPDATE;"
           # Run extension tests
-          SQLX_OFFLINE=true cargo pgrx test ${pg_version}
+          SQLX_OFFLINE=true cargo test -- --test-threads=1

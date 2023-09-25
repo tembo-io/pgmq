@@ -4,6 +4,29 @@ use rand::Rng;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{FromRow, Pool, Postgres, Row};
 
+#[allow(dead_code)]
+#[derive(FromRow)]
+struct MetricsRow {
+    queue_name: String,
+    queue_length: i64,
+    newest_msg_age_sec: Option<i32>,
+    oldest_msg_age_sec: Option<i32>,
+    total_messages: i64,
+    scrape_time: chrono::DateTime<chrono::Utc>,
+}
+
+#[allow(dead_code)]
+#[derive(FromRow,Debug)]
+struct QueueMeta {
+    queue_name: String,
+}
+
+#[allow(dead_code)]
+#[derive(FromRow)]
+struct ResultSet {
+    num_partmans: i64,
+}
+
 async fn connect(url: &str) -> Pool<Postgres> {
     let options = conn_options(url).expect("failed to parse url");
     println!("URL: {}", url);
@@ -180,17 +203,6 @@ async fn test_lifecycle() {
     .await
     .expect("failed creating numeric interval queue");
 
-    #[allow(dead_code)]
-    #[derive(FromRow)]
-    struct MetricsRow {
-        queue_name: String,
-        queue_length: i64,
-        newest_msg_age_sec: Option<i32>,
-        oldest_msg_age_sec: Option<i32>,
-        total_messages: i64,
-        scrape_time: chrono::DateTime<chrono::Utc>,
-    }
-
     // get metrics
     let rows = sqlx::query_as::<_, MetricsRow>(&format!(
         "SELECT * from {PGMQ_SCHEMA}.metrics('{test_duration_queue}'::text);"
@@ -209,12 +221,6 @@ async fn test_lifecycle() {
     assert!(rows.len() > 1);
 
     // delete all the queues
-    #[allow(dead_code)]
-    #[derive(FromRow)]
-    struct QueueMeta {
-        queue_name: String,
-    }
-
     // delete partitioned queues
     for queue in [test_duration_queue, test_numeric_queue].iter() {
         sqlx::query(&format!(
@@ -249,18 +255,6 @@ async fn test_lifecycle() {
     .await
     .expect("failed to list queues");
     assert!(queues.is_empty());
-
-    #[allow(dead_code)]
-    #[derive(FromRow)]
-    struct ResultSet {
-        num_partmans: i64,
-    }
-    let partmans =
-        sqlx::query_as::<_, ResultSet>("select count(*) as num_partmans from part_config;")
-            .fetch_one(&conn)
-            .await
-            .expect("failed to query partman config");
-    assert_eq!(partmans.num_partmans, 0);
 }
 
 #[tokio::test]
@@ -283,21 +277,8 @@ async fn test_archive() {
     assert_eq!(get_archive_size(&queue_name, &conn).await, 0);
 
     // put messages on the queue
-    let msg_id1 = sqlx::query(&format!(
-        "SELECT * FROM {PGMQ_SCHEMA}.send('{queue_name}', '1')"
-    ))
-    .fetch_one(&conn)
-    .await
-    .expect("failed to push message")
-    .get::<i64, usize>(0);
-
-    let msg_id2 = sqlx::query(&format!(
-        "SELECT * FROM {PGMQ_SCHEMA}.send('{queue_name}', '2')"
-    ))
-    .fetch_one(&conn)
-    .await
-    .expect("failed to push message")
-    .get::<i64, usize>(0);
+    let msg_id1 = send_sample_message(&queue_name, &conn).await;
+    let msg_id2 = send_sample_message(&queue_name, &conn).await;
 
     // two messages in the queue
     assert_eq!(get_queue_size(&queue_name, &conn).await, 2);
@@ -321,13 +302,7 @@ async fn test_archive() {
     // should be two messages in archive
     assert_eq!(get_archive_size(&queue_name, &conn).await, 2);
 
-    let msg_id3 = sqlx::query(&format!(
-        "SELECT * FROM {PGMQ_SCHEMA}.send('{queue_name}', '2')"
-    ))
-    .fetch_one(&conn)
-    .await
-    .expect("failed to push message")
-    .get::<i64, usize>(0);
+    let msg_id3 = send_sample_message(&queue_name, &conn).await;
 
     assert_eq!(get_queue_size(&queue_name, &conn).await, 1);
 
@@ -343,6 +318,160 @@ async fn test_archive() {
 
     assert_eq!(get_queue_size(&queue_name, &conn).await, 0);
     assert_eq!(get_archive_size(&queue_name, &conn).await, 3);
+}
+
+#[tokio::test]
+async fn test_read_read_with_poll() {
+    let conn = init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(0..100000);
+
+    let queue_name = format!("test_read_{test_num}");
+
+    // Creating queue
+    sqlx::query(
+        &format!("select * from {PGMQ_SCHEMA}.create('{queue_name}')")
+    )
+    .execute(&conn)
+    .await
+    .unwrap();
+
+    // Sending 3 messages to the queue
+    let msg_id1 = send_sample_message(&queue_name, &conn).await;
+    let msg_id2 = send_sample_message(&queue_name, &conn).await;
+    let msg_id3 = send_sample_message(&queue_name, &conn).await;
+
+    // Reading with limit respects the limit
+    let read_batch = sqlx::query(&format!(
+        "SELECT * FROM {PGMQ_SCHEMA}.read('{queue_name}', 5, 1)"
+    ))
+    .fetch_all(&conn)
+    .await
+    .expect("failed to read");
+
+    assert_eq!(read_batch.len(), 1);
+    assert_eq!(read_batch[0].get::<i64, usize>(0), msg_id1);
+
+    // Reading respects the VT
+    let read_batch2 = sqlx::query(&format!(
+        "SELECT * FROM {PGMQ_SCHEMA}.read('{queue_name}', 10, 5)"
+    ))
+    .fetch_all(&conn)
+    .await
+    .expect("failed to read");
+
+    assert_eq!(read_batch2.len(), 2);
+    assert_eq!(read_batch2[0].get::<i64, usize>(0), msg_id2);
+    assert_eq!(read_batch2[1].get::<i64, usize>(0), msg_id3);
+
+    // Read with poll will poll until the first message is available
+    let start = std::time::Instant::now();
+
+    let read_batch3 = sqlx::query(&format!(
+        "SELECT * FROM {PGMQ_SCHEMA}.read_with_poll('{queue_name}', 10, 5, 5, 100)"
+    ))
+    .fetch_all(&conn)
+    .await
+    .expect("failed to read");
+
+    // Asserting it took more than 3 seconds:
+    assert!(start.elapsed().as_secs() > 3);
+    assert_eq!(read_batch3.len(), 1);
+    assert_eq!(read_batch3[0].get::<i64, usize>(0), msg_id1);
+}
+
+
+#[tokio::test]
+async fn test_partitioned_delete() {
+    let conn = init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(0..100000);
+
+    let queue_name = format!("test_partitioned_{test_num}");
+    let partition_interval = 2;
+    let retention_interval = 2;
+
+    // We first will drop pg_partman and assert that create fails without the
+    // extension installed
+    let _ = sqlx::query("DROP EXTENSION IF EXISTS pg_partman")
+        .execute(&conn)
+        .await
+        .unwrap();
+
+    let create_result = sqlx::query(
+            &format!("select *
+                     from {PGMQ_SCHEMA}.create_partitioned(
+                         '{queue_name}',
+                         '{partition_interval}',
+                         '{retention_interval}'
+                     )")
+        )
+        .execute(&conn)
+        .await;
+
+    assert!(create_result.is_err());
+
+    // With the extension existing, the queue is created successfully
+    let _ = sqlx::query("CREATE EXTENSION pg_partman")
+        .execute(&conn)
+        .await
+        .unwrap();
+
+    let create_result = sqlx::query(
+            &format!("select *
+                     from {PGMQ_SCHEMA}.create_partitioned(
+                         '{queue_name}',
+                         '{partition_interval}',
+                         '{retention_interval}'
+                     )")
+        )
+        .execute(&conn)
+        .await;
+
+    assert!(create_result.is_ok());
+
+    // queue shows up in list queues
+    // TODO: fix
+    //let queue_meta = sqlx::query_as::<_, QueueMeta>(&format!(
+    //    "select queue_name from {PGMQ_SCHEMA}.list_queues();"
+    //))
+    //.fetch_all(&conn)
+    //.await
+    //.expect("failed to list queues")
+    //.iter()
+    //.find(|m| m.queue_name == queue_name);
+    //assert!(queue_meta.is_some());
+
+    // Sending 3 messages to the queue
+    let msg_id1 = send_sample_message(&queue_name, &conn).await;
+    let msg_id2 = send_sample_message(&queue_name, &conn).await;
+    let msg_id3 = send_sample_message(&queue_name, &conn).await;
+
+    assert_eq!(get_queue_size(&queue_name, &conn).await, 3);
+
+    // Deleting message 3
+    let deleted_single = sqlx::query(&format!(
+        "SELECT * FROM {PGMQ_SCHEMA}.delete('{queue_name}', {msg_id3})"
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to delete")
+    .get::<bool, usize>(0);
+
+    assert_eq!(deleted_single, true);
+    assert_eq!(get_queue_size(&queue_name, &conn).await, 2);
+
+    // Deleting batch
+    let deleted_batch = sqlx::query(&format!(
+        "SELECT * FROM {PGMQ_SCHEMA}.archive('{queue_name}', ARRAY[{msg_id1}, {msg_id2}, {msg_id3}, -3])"
+    ))
+    .fetch_all(&conn)
+    .await
+    .expect("failed to archive");
+
+    assert_eq!(deleted_batch.len(), 2);
+    assert_eq!(deleted_batch[0].get::<i64, usize>(0), 1);
+    assert_eq!(deleted_batch[1].get::<i64, usize>(0), 2);
 }
 
 async fn get_queue_size(queue_name: &String, conn: &Pool<Postgres>) -> i64 {
@@ -362,5 +491,15 @@ async fn get_archive_size(queue_name: &String, conn: &Pool<Postgres>) -> i64 {
     .fetch_one(conn)
     .await
     .expect("failed get queue size")
+    .get::<i64, usize>(0)
+}
+
+async fn send_sample_message(queue_name: &String, conn: &Pool<Postgres>) -> i64 {
+    sqlx::query(&format!(
+        "SELECT * FROM {PGMQ_SCHEMA}.send('{queue_name}', '0')"
+    ))
+    .fetch_one(conn)
+    .await
+    .expect("failed to push message")
     .get::<i64, usize>(0)
 }

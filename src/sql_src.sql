@@ -60,15 +60,15 @@ BEGIN
         )
         UPDATE pgmq.q_%s m
         SET
-            vt = clock_timestamp() + interval '$2 seconds',
+            vt = clock_timestamp() + interval '%s seconds',
             read_ct = read_ct + 1
         FROM cte
         WHERE m.msg_id = cte.msg_id
         RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
         $QUERY$,
-        queue_name, queue_name
+        queue_name, queue_name, vt
     );
-    RETURN QUERY EXECUTE sql USING qty, vt;
+    RETURN QUERY EXECUTE sql USING qty;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -106,17 +106,17 @@ BEGIN
           )
           UPDATE pgmq.q_%s m
           SET
-              vt = clock_timestamp() + interval '$2 seconds',
+              vt = clock_timestamp() + interval '%s seconds',
               read_ct = read_ct + 1
           FROM cte
           WHERE m.msg_id = cte.msg_id
           RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
           $QUERY$,
-          queue_name, queue_name
+          queue_name, queue_name, vt
       );
 
       FOR r IN
-        EXECUTE sql USING qty, vt
+        EXECUTE sql USING qty
       LOOP
         RETURN NEXT r;
       END LOOP;
@@ -184,6 +184,52 @@ BEGIN
         RETURNING msg_id;
         $QUERY$,
         queue_name, queue_name
+    );
+    RETURN QUERY EXECUTE sql USING msg_id;
+END;
+$$ LANGUAGE plpgsql;
+
+---- delete
+---- deletes a message id from the queue permanently
+CREATE FUNCTION pgmq.delete(
+    queue_name TEXT,
+    msg_id BIGINT
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    sql TEXT;
+    result BIGINT;
+BEGIN
+    sql := FORMAT(
+        $QUERY$
+        DELETE FROM pgmq.q_%s
+        WHERE msg_id = $1
+        RETURNING msg_id
+        $QUERY$,
+        queue_name
+    );
+    EXECUTE sql USING msg_id INTO result;
+    RETURN NOT (result IS NULL);
+END;
+$$ LANGUAGE plpgsql;
+
+---- delete
+---- deletes an array of message ids from the queue permanently
+CREATE FUNCTION pgmq.delete(
+    queue_name TEXT,
+    msg_id BIGINT[]
+)
+RETURNS SETOF BIGINT AS $$
+DECLARE
+    sql TEXT;
+BEGIN
+    sql := FORMAT(
+        $QUERY$
+        DELETE FROM pgmq.q_%s
+        WHERE msg_id = ANY($1)
+        RETURNING msg_id
+        $QUERY$,
+        queue_name
     );
     RETURN QUERY EXECUTE sql USING msg_id;
 END;
