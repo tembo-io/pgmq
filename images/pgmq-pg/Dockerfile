@@ -4,7 +4,7 @@ ARG TRUNK_VER=0.8.7
 
 RUN cargo install --version $TRUNK_VER pg-trunk
 
-FROM postgres:bookworm
+FROM postgres:15.4-bookworm
 
 COPY --from=builder /usr/local/cargo/bin/trunk /usr/bin/trunk
 
