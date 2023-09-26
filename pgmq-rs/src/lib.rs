@@ -219,6 +219,17 @@ impl PGMQueue {
         Ok(())
     }
 
+    /// Create an unlogged queue
+    pub async fn create_unlogged(&self, queue_name: &str) -> Result<bool, PgmqError> {
+        let mut tx = self.connection.begin().await?;
+        let setup = query::init_queue_client_only(queue_name, true)?;
+        for q in setup {
+            sqlx::query(&q).execute(&mut tx).await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Destroy a queue. This deletes the queue's tables, indexes, and metadata.
     /// Does not delete any data related to adjacent queues.
     ///
