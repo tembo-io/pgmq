@@ -2,7 +2,10 @@
 
 use pgmq_core::{errors, query, util};
 
-pub fn init_queue_client_only(name: &str) -> Result<Vec<String>, errors::PgmqError> {
+pub fn init_queue_client_only(
+    name: &str,
+    is_unlogged: bool,
+) -> Result<Vec<String>, errors::PgmqError> {
     let name = util::CheckedName::new(name)?;
     Ok(vec![
         query::create_schema(),

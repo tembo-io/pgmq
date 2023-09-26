@@ -305,18 +305,18 @@ impl PGMQueueExt {
         &self,
         queue_name: &str,
         msg_ids: &[i64],
-    ) -> Result<bool, PgmqError> {
+    ) -> Result<usize, PgmqError> {
         check_input(queue_name)?;
-        let _ = sqlx::query!(
+        let qty = sqlx::query!(
             "SELECT * from pgmq.archive($1::text, $2::bigint[])",
             queue_name,
             msg_ids
         )
         .fetch_all(&self.connection)
-        .await?;
+        .await?
+        .len();
 
-        // FIXME: change function signature to Vec<i64> and return rows
-        Ok(true)
+        Ok(qty)
     }
 
     // Read and message and immediately delete it.
@@ -363,16 +363,17 @@ impl PGMQueueExt {
     }
 
     // Delete with a slice of message ids
-    pub async fn delete_batch(&self, queue_name: &str, msg_id: &[i64]) -> Result<bool, PgmqError> {
-        let _ = sqlx::query!(
+    pub async fn delete_batch(&self, queue_name: &str, msg_id: &[i64]) -> Result<usize, PgmqError> {
+        let qty = sqlx::query!(
             "SELECT * from pgmq.delete($1::text, $2::bigint[])",
             queue_name,
             msg_id
         )
         .fetch_all(&self.connection)
-        .await?;
+        .await?
+        .len();
 
         // FIXME: change function signature to Vec<i64> and return rows
-        Ok(true)
+        Ok(qty)
     }
 }

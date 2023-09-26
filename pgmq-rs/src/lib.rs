@@ -220,7 +220,7 @@ impl PGMQueue {
     }
 
     /// Create an unlogged queue
-    pub async fn create_unlogged(&self, queue_name: &str) -> Result<bool, PgmqError> {
+    pub async fn create_unlogged(&self, queue_name: &str) -> Result<(), PgmqError> {
         let mut tx = self.connection.begin().await?;
         let setup = query::init_queue_client_only(queue_name, true)?;
         for q in setup {
