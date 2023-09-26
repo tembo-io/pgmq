@@ -85,7 +85,19 @@ fn pgmq_purge_queue(queue_name: String) -> Result<i64, PgmqExtError> {
 
 #[pg_extern(name = "create_non_partitioned")]
 fn pgmq_create_non_partitioned(queue_name: &str) -> Result<(), PgmqExtError> {
-    let setup = init_queue(queue_name)?;
+    let setup = init_queue(queue_name, false)?;
+    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+        for q in setup {
+            let _ = c.update(&q, None, None)?;
+        }
+        Ok(())
+    });
+    Ok(ran?)
+}
+
+#[pg_extern(name = "create_unlogged")]
+fn pgmq_create_unlogged(queue_name: &str) -> Result<(), PgmqExtError> {
+    let setup = init_queue(queue_name, true)?;
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
         for q in setup {
             let _ = c.update(&q, None, None)?;

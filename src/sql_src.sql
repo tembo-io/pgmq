@@ -8,6 +8,7 @@
 CREATE TABLE pgmq.meta (
     queue_name VARCHAR UNIQUE NOT NULL,
     is_partitioned BOOLEAN NOT NULL,
+    is_unlogged BOOLEAN NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
 );
 
