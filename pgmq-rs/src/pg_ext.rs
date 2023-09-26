@@ -57,6 +57,15 @@ impl PGMQueueExt {
         Ok(true)
     }
 
+    /// Errors when there is any database error and Ok(false) when the queue already exists.
+    pub async fn create_unlogged(&self, queue_name: &str) -> Result<bool, PgmqError> {
+        check_input(queue_name)?;
+        sqlx::query!("SELECT * from pgmq.create_unlogged($1::text);", queue_name)
+            .execute(&self.connection)
+            .await?;
+        Ok(true)
+    }
+
     /// Create a new partitioned queue.
     /// Errors when there is any database error and Ok(false) when the queue already exists.
     pub async fn create_partitioned(&self, queue_name: &str) -> Result<bool, PgmqError> {
@@ -291,21 +300,23 @@ impl PGMQueueExt {
         Ok(arch.archive.expect("no archive result"))
     }
 
-    /// Move a message to the archive table.
+    /// Move a slice of messages to the archive table.
     pub async fn archive_batch(
         &self,
         queue_name: &str,
         msg_ids: &[i64],
     ) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
-        let arch = sqlx::query!(
+        let _ = sqlx::query!(
             "SELECT * from pgmq.archive($1::text, $2::bigint[])",
             queue_name,
             msg_ids
         )
-        .fetch_one(&self.connection)
+        .fetch_all(&self.connection)
         .await?;
-        Ok(arch.archive.expect("no archive result"))
+
+        // FIXME: change function signature to Vec<i64> and return rows
+        Ok(true)
     }
 
     // Read and message and immediately delete it.
@@ -353,13 +364,15 @@ impl PGMQueueExt {
 
     // Delete with a slice of message ids
     pub async fn delete_batch(&self, queue_name: &str, msg_id: &[i64]) -> Result<bool, PgmqError> {
-        let row = sqlx::query!(
+        let _ = sqlx::query!(
             "SELECT * from pgmq.delete($1::text, $2::bigint[])",
             queue_name,
             msg_id
         )
-        .fetch_one(&self.connection)
+        .fetch_all(&self.connection)
         .await?;
-        Ok(row.delete.expect("no delete result"))
+
+        // FIXME: change function signature to Vec<i64> and return rows
+        Ok(true)
     }
 }

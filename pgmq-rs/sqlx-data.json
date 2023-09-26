@@ -68,6 +68,26 @@
     },
     "query": "SELECT * from pgmq.read_with_poll($1::text, $2, $3, $4, $5)"
   },
+  "056c21572eb57d3fbc1bdbc94380e391b07bb7674b731305c7f197faedd3feb0": {
+    "describe": {
+      "columns": [
+        {
+          "name": "create_unlogged",
+          "ordinal": 0,
+          "type_info": "Void"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * from pgmq.create_unlogged($1::text);"
+  },
   "07917815df25f1ac06675a645a812d9791b3c1d32098248cf0f34aead4dcebc8": {
     "describe": {
       "columns": [
@@ -95,7 +115,7 @@
         {
           "name": "archive",
           "ordinal": 0,
-          "type_info": "Bool"
+          "type_info": "Int8"
         }
       ],
       "nullable": [
@@ -193,7 +213,7 @@
         {
           "name": "delete",
           "ordinal": 0,
-          "type_info": "Bool"
+          "type_info": "Int8"
         }
       ],
       "nullable": [

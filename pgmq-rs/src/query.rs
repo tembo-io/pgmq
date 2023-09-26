@@ -7,7 +7,7 @@ pub fn init_queue_client_only(name: &str) -> Result<Vec<String>, errors::PgmqErr
     Ok(vec![
         query::create_schema(),
         query::create_meta(),
-        query::create_queue(name)?,
+        query::create_queue(name, is_unlogged)?,
         query::create_index(name)?,
         query::create_archive(name)?,
         query::create_archive_index(name)?,
