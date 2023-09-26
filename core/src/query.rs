@@ -9,16 +9,16 @@ use crate::{
 
 use sqlx::types::chrono::Utc;
 
-pub fn init_queue(name: &str) -> Result<Vec<String>, PgmqError> {
+pub fn init_queue(name: &str, is_unlogged: bool) -> Result<Vec<String>, PgmqError> {
     let name = CheckedName::new(name)?;
     Ok(vec![
-        create_queue(name)?,
+        create_queue(name, is_unlogged)?,
         assign_queue(name)?,
         create_index(name)?,
         create_archive(name)?,
         assign_archive(name)?,
         create_archive_index(name)?,
-        insert_meta(name, false)?,
+        insert_meta(name, false, is_unlogged)?,
         grant_pgmon_queue(name)?,
     ])
 }
@@ -34,10 +34,12 @@ pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
     ])
 }
 
-pub fn create_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
+pub fn create_queue(name: CheckedName<'_>, is_unlogged: bool) -> Result<String, PgmqError> {
+    let maybe_unlogged = if is_unlogged { "UNLOGGED" } else { "" };
+
     Ok(format!(
         "
-        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name} (
+        CREATE {maybe_unlogged} TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name} (
             msg_id BIGSERIAL PRIMARY KEY,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
@@ -155,11 +157,15 @@ pub fn drop_queue_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn insert_meta(name: CheckedName<'_>, is_partitioned: bool) -> Result<String, PgmqError> {
+pub fn insert_meta(
+    name: CheckedName<'_>,
+    is_partitioned: bool,
+    is_unlogged: bool,
+) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        INSERT INTO {PGMQ_SCHEMA}.meta (queue_name, is_partitioned)
-        VALUES ('{name}', {is_partitioned})
+        INSERT INTO {PGMQ_SCHEMA}.meta (queue_name, is_partitioned, is_unlogged)
+        VALUES ('{name}', {is_partitioned}, {is_unlogged})
         ON CONFLICT
         DO NOTHING;
         ",
@@ -391,8 +397,15 @@ $$ LANGUAGE plpgsql;
     #[test]
     fn test_create() {
         let queue_name = CheckedName::new("yolo").unwrap();
-        let query = create_queue(queue_name);
+        let query = create_queue(queue_name, false);
         assert!(query.unwrap().contains("q_yolo"));
+    }
+
+    #[test]
+    fn create_unlogged() {
+        let queue_name = CheckedName::new("yolo").unwrap();
+        let query = create_queue(queue_name, true);
+        assert!(query.unwrap().contains("CREATE UNLOGGED TABLE"));
     }
 
     #[test]

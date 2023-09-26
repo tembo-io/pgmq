@@ -81,6 +81,41 @@ async fn init_database() -> Pool<Postgres> {
 // Integration tests are ignored by default
 #[ignore]
 #[tokio::test]
+async fn test_unlogged() {
+    let conn = init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(0..100000);
+
+    // CREATE with default retention and partition strategy
+    let test_queue = format!("test_unlogged_{test_num}");
+    let _ = sqlx::query(&format!(
+        "SELECT {PGMQ_SCHEMA}.create_unlogged('{test_queue}');"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to create queue");
+
+    let msg_id = sqlx::query(&format!(
+        "SELECT * from {PGMQ_SCHEMA}.send('{test_queue}', '{{\"hello\": \"world\"}}');"
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed send")
+    .get::<i64, usize>(0);
+    assert_eq!(msg_id, 1);
+
+    let query = &format!("SELECT * from {PGMQ_SCHEMA}.read('{test_queue}', 2, 1);");
+
+    let message = fetch_one_message::<serde_json::Value>(query, &conn)
+        .await
+        .expect("failed reading message")
+        .expect("expected message");
+    assert_eq!(message.msg_id, msg_id);
+}
+
+// Integration tests are ignored by default
+#[ignore]
+#[tokio::test]
 async fn test_lifecycle() {
     let conn = init_database().await;
     let mut rng = rand::thread_rng();
