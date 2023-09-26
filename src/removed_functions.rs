@@ -23,3 +23,7 @@ pub fn pgmq_archive_batch() {}
 pub fn pgmq_delete() {}
 #[pg_extern(sql = "")]
 pub fn pgmq_delete_batch() {}
+#[pg_extern(sql = "")]
+pub fn pgmq_send() {}
+#[pg_extern(sql = "")]
+pub fn pgmq_send_batch() {}

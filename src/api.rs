@@ -6,10 +6,9 @@ use pgrx::warning;
 use crate::errors::PgmqExtError;
 use crate::partition;
 use crate::partition::PARTMAN_SCHEMA;
-use crate::util;
 
 use pgmq_core::{
-    query::{destroy_queue, enqueue, init_queue},
+    query::{destroy_queue, init_queue},
     types::{PGMQ_SCHEMA, QUEUE_PREFIX},
     util::check_input,
 };
@@ -75,27 +74,6 @@ pub fn listit() -> Result<Vec<(String, TimestampWithTimeZone)>, spi::Error> {
     Ok(results)
 }
 
-#[pg_extern(name = "send_batch")]
-fn pgmq_send_batch(
-    queue_name: &str,
-    messages: Vec<pgrx::JsonB>,
-    delay: default!(i32, 0),
-) -> Result<TableIterator<'static, (name!(msg_id, i64),)>, PgmqExtError> {
-    let js_value: Vec<serde_json::Value> = messages.into_iter().map(|jsonb| jsonb.0).collect();
-    let delay = util::delay_to_u64(delay)?;
-    let query = enqueue(queue_name, &js_value, &delay)?;
-    let mut results: Vec<(i64,)> = Vec::new();
-    let _: Result<(), spi::Error> = Spi::connect(|mut client| {
-        let tup_table: SpiTupleTable = client.update(&query, None, None)?;
-        for row in tup_table {
-            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
-            results.push((msg_id,));
-        }
-        Ok(())
-    });
-    Ok(TableIterator::new(results))
-}
-
 #[pg_extern(name = "purge_queue")]
 fn pgmq_purge_queue(queue_name: String) -> Result<i64, PgmqExtError> {
     Spi::connect(|mut client| {
@@ -157,20 +135,6 @@ pub fn validate_same_type(a: &str, b: &str) -> Result<(), PgmqExtError> {
         (Err(_), Err(_)) => Ok(()),
         _ => Err(PgmqExtError::TypeErrorError("".to_owned())),
     }
-}
-
-#[pg_extern(name = "send")]
-fn pgmq_send(
-    queue_name: &str,
-    message: pgrx::JsonB,
-    delay: default!(i32, 0),
-) -> Result<Option<i64>, PgmqExtError> {
-    let delay = util::delay_to_u64(delay)?;
-    let query = enqueue(queue_name, &[message.0], &delay)?;
-    Spi::connect(|mut client| {
-        let tup_table: SpiTupleTable = client.update(&query, None, None)?;
-        Ok(tup_table.first().get_one::<i64>()?)
-    })
 }
 
 pub fn readit(
@@ -335,23 +299,6 @@ fn pgmq_set_vt(
 #[pg_schema]
 mod tests {
     use super::*;
-
-    #[pg_test]
-    fn test_create_non_partitioned() {
-        let qname = r#"test_queue"#;
-        let _ = pgmq_create_non_partitioned(&qname).unwrap();
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 0);
-        let _ = pgmq_send(&qname, pgrx::JsonB(serde_json::json!({"x":"y"})), 0).unwrap();
-        let retval = Spi::get_one::<i64>(&format!(
-            "SELECT count(*) FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}"
-        ))
-        .expect("SQL select failed");
-        assert_eq!(retval.unwrap(), 1);
-    }
 
     #[pg_test]
     fn test_validate_same_type() {
