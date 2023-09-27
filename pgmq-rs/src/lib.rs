@@ -211,7 +211,18 @@ impl PGMQueue {
     /// }
     pub async fn create(&self, queue_name: &str) -> Result<(), PgmqError> {
         let mut tx = self.connection.begin().await?;
-        let setup = query::init_queue_client_only(queue_name)?;
+        let setup = query::init_queue_client_only(queue_name, false)?;
+        for q in setup {
+            sqlx::query(&q).execute(&mut tx).await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Create an unlogged queue
+    pub async fn create_unlogged(&self, queue_name: &str) -> Result<(), PgmqError> {
+        let mut tx = self.connection.begin().await?;
+        let setup = query::init_queue_client_only(queue_name, true)?;
         for q in setup {
             sqlx::query(&q).execute(&mut tx).await?;
         }

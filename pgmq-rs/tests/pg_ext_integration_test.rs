@@ -273,7 +273,7 @@ async fn test_ext_archive_batch() {
     let post_archive_rowcount = rowcount(&test_queue, &queue.connection).await;
 
     assert_eq!(post_archive_rowcount, 0);
-    assert_eq!(archive_result, true);
+    assert_eq!(archive_result, 3);
 
     let post_archive_archive_rowcount = archive_rowcount(&test_queue, &queue.connection).await;
     assert_eq!(post_archive_archive_rowcount, 3);
@@ -297,7 +297,7 @@ async fn test_ext_delete_batch() {
         .expect("delete batch error");
     let post_delete_rowcount = rowcount(&test_queue, &queue.connection).await;
     assert_eq!(post_delete_rowcount, 0);
-    assert_eq!(delete_result, true);
+    assert_eq!(delete_result, 3);
 }
 
 #[tokio::test]
