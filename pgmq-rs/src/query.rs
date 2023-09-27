@@ -14,7 +14,7 @@ pub fn init_queue_client_only(
         query::create_index(name)?,
         query::create_archive(name)?,
         query::create_archive_index(name)?,
-        query::insert_meta(name, false)?,
+        query::insert_meta(name, false, is_unlogged)?,
         query::grant_pgmon_meta(),
         query::grant_pgmon_queue(name)?,
     ])
