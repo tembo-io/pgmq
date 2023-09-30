@@ -72,9 +72,7 @@ pub fn listit() -> Result<Vec<(String, TimestampWithTimeZone, bool, bool)>, spi:
             let is_partitioned = row["is_partitioned"]
                 .value::<bool>()?
                 .expect("no is_partitioned");
-            let is_unlogged = row["is_unlogged"]
-                .value::<bool>()?
-                .expect("no is_unlogged");
+            let is_unlogged = row["is_unlogged"].value::<bool>()?.expect("no is_unlogged");
             results.push((queue_name, created_at, is_partitioned, is_unlogged));
         }
         Ok(())
