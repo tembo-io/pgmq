@@ -49,6 +49,8 @@ fn pgmq_list_queues() -> Result<
         (
             name!(queue_name, String),
             name!(created_at, TimestampWithTimeZone),
+            name!(is_partitioned, bool),
+            name!(is_unlogged, bool),
         ),
     >,
     spi::Error,
@@ -57,8 +59,8 @@ fn pgmq_list_queues() -> Result<
     Ok(TableIterator::new(results))
 }
 
-pub fn listit() -> Result<Vec<(String, TimestampWithTimeZone)>, spi::Error> {
-    let mut results: Vec<(String, TimestampWithTimeZone)> = Vec::new();
+pub fn listit() -> Result<Vec<(String, TimestampWithTimeZone, bool, bool)>, spi::Error> {
+    let mut results: Vec<(String, TimestampWithTimeZone, bool, bool)> = Vec::new();
     let query = format!("SELECT * FROM {PGMQ_SCHEMA}.meta");
     let _: Result<(), spi::Error> = Spi::connect(|client| {
         let tup_table: SpiTupleTable = client.select(&query, None, None)?;
@@ -67,7 +69,11 @@ pub fn listit() -> Result<Vec<(String, TimestampWithTimeZone)>, spi::Error> {
             let created_at = row["created_at"]
                 .value::<TimestampWithTimeZone>()?
                 .expect("no created_at");
-            results.push((queue_name, created_at));
+            let is_partitioned = row["is_partitioned"]
+                .value::<bool>()?
+                .expect("no is_partitioned");
+            let is_unlogged = row["is_unlogged"].value::<bool>()?.expect("no is_unlogged");
+            results.push((queue_name, created_at, is_partitioned, is_unlogged));
         }
         Ok(())
     });
