@@ -51,10 +51,7 @@ async fn init_database() -> Pool<Postgres> {
         .await;
     conn00.close().await;
 
-    let conn = connect(&format!(
-        "postgres://{username}:postgres@localhost:28815/pgmq_test"
-    ))
-    .await;
+    let conn = connect(&database_name()).await;
 
     // DROP EXTENSION
     // requires pg_partman to already be installed in the instance
@@ -515,11 +512,7 @@ async fn test_transaction_create() {
     // Queue creation is reverted if transaction is rolled back
     let _ = init_database().await;
     let queue_name = "transaction_test_queue";
-    let username = whoami::username();
-    let conn1 = connect(&format!(
-        "postgres://{username}:postgres@localhost:28815/pgmq_test"
-    ))
-    .await;
+    let conn1 = connect(&database_name()).await;
     let mut tx1 = conn1.begin().await.unwrap();
 
     sqlx::query(&format!("select from {PGMQ_SCHEMA}.create('{queue_name}')"))
