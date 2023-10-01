@@ -516,7 +516,7 @@ async fn test_transaction_create() {
     let mut tx1 = conn1.begin().await.unwrap();
 
     sqlx::query(&format!("select from {PGMQ_SCHEMA}.create('{queue_name}')"))
-        .fetch_one(&mut tx1)
+        .fetch_one(&mut *tx1)
         .await
         .unwrap();
 
@@ -551,7 +551,7 @@ async fn test_transaction_send() {
     sqlx::query(&format!(
         "select from {PGMQ_SCHEMA}.send('{queue_name}', '1')"
     ))
-    .fetch_one(&mut tx)
+    .fetch_one(&mut *tx)
     .await
     .unwrap();
 
@@ -603,7 +603,7 @@ async fn test_transaction_read() {
     let read_msg1 = sqlx::query(&format!(
         "select from {PGMQ_SCHEMA}.read('{queue_name}', 1, 1)"
     ))
-    .fetch_optional(&mut tx1)
+    .fetch_optional(&mut *tx1)
     .await
     .unwrap();
 
@@ -614,7 +614,7 @@ async fn test_transaction_read() {
     let read_msg2 = sqlx::query(&format!(
         "select from {PGMQ_SCHEMA}.read('{queue_name}', 1, 1)"
     ))
-    .fetch_optional(&mut tx2)
+    .fetch_optional(&mut *tx2)
     .await
     .unwrap();
 
@@ -625,7 +625,7 @@ async fn test_transaction_read() {
     let read_msg3 = sqlx::query(&format!(
         "select from {PGMQ_SCHEMA}.read('{queue_name}', 1, 1)"
     ))
-    .fetch_optional(&mut tx2)
+    .fetch_optional(&mut *tx2)
     .await
     .unwrap();
 

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * from pgmq.archive($1::text, $2::bigint[])",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "archive",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "23e056e8442ba9a1b2f4922d8b0f0b90a7b9d63a40be3345047450d0405b83b6"
+}

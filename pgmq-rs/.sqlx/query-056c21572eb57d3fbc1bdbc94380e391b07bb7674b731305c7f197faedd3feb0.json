@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * from pgmq.create_unlogged($1::text);",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "create_unlogged",
+        "type_info": "Void"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "056c21572eb57d3fbc1bdbc94380e391b07bb7674b731305c7f197faedd3feb0"
+}

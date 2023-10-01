@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * from pgmq.purge_queue($1::text);",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "purge_queue",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "f3f011e1a531861630c09d79a2f8f1b11a9543e30bfcbb7654ce9e30f0cf51e3"
+}

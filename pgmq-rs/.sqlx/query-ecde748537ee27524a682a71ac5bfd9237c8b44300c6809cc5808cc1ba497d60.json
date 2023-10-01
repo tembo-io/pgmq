@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * from pgmq.list_queues();",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "queue_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_partitioned",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_unlogged",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "ecde748537ee27524a682a71ac5bfd9237c8b44300c6809cc5808cc1ba497d60"
+}
