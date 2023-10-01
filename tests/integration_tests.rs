@@ -51,10 +51,7 @@ async fn init_database() -> Pool<Postgres> {
         .await;
     conn00.close().await;
 
-    let conn = connect(&format!(
-        "postgres://{username}:postgres@localhost:28815/pgmq_test"
-    ))
-    .await;
+    let conn = connect(&database_name()).await;
 
     // DROP EXTENSION
     // requires pg_partman to already be installed in the instance
@@ -205,10 +202,8 @@ async fn test_lifecycle() {
 
     // send a batch of 2 messages
     let batch_queue = format!("test_batch_{test_num}");
-    let _ = sqlx::query(&format!("SELECT {PGMQ_SCHEMA}.create('{batch_queue}');"))
-        .execute(&conn)
-        .await
-        .expect("failed to create queue");
+    create_queue(&batch_queue.to_string(), &conn).await;
+
     let msg_ids = sqlx::query(
         &format!("select {PGMQ_SCHEMA}.send_batch('{batch_queue}', ARRAY['{{\"hello\": \"world_0\"}}'::jsonb, '{{\"hello\": \"world_1\"}}'::jsonb])")
     )
@@ -304,10 +299,7 @@ async fn test_archive() {
 
     let queue_name = format!("test_archive_{test_num}");
 
-    let _ = sqlx::query(&format!("SELECT {PGMQ_SCHEMA}.create('{queue_name}');"))
-        .execute(&conn)
-        .await
-        .expect("failed to create queue");
+    create_queue(&queue_name.to_string(), &conn).await;
 
     // no messages in the queue
     assert_eq!(get_queue_size(&queue_name, &conn).await, 0);
@@ -370,12 +362,7 @@ async fn test_read_read_with_poll() {
     let queue_name = format!("test_read_{test_num}");
 
     // Creating queue
-    sqlx::query(&format!(
-        "select * from {PGMQ_SCHEMA}.create('{queue_name}')"
-    ))
-    .execute(&conn)
-    .await
-    .unwrap();
+    create_queue(&queue_name.to_string(), &conn).await;
 
     // Sending 3 messages to the queue
     let msg_id1 = send_sample_message(&queue_name, &conn).await;
@@ -518,6 +505,139 @@ async fn test_partitioned_delete() {
     assert_eq!(deleted_batch[0].get::<i64, usize>(0), 1);
     assert_eq!(deleted_batch[1].get::<i64, usize>(0), 2);
 }
+// Integration tests are ignored by default
+#[ignore]
+#[tokio::test]
+async fn test_transaction_create() {
+    // Queue creation is reverted if transaction is rolled back
+    let _ = init_database().await;
+    let queue_name = "transaction_test_queue";
+    let conn1 = connect(&database_name()).await;
+    let mut tx1 = conn1.begin().await.unwrap();
+
+    sqlx::query(&format!("select from {PGMQ_SCHEMA}.create('{queue_name}')"))
+        .fetch_one(&mut tx1)
+        .await
+        .unwrap();
+
+    tx1.rollback().await.unwrap();
+
+    let table_exists = sqlx::query(&format!(
+        "select from pg_tables where schemaname = 'pgmq' and tablename = 'q_{queue_name}'"
+    ))
+    .fetch_optional(&conn1)
+    .await
+    .unwrap();
+
+    assert!(table_exists.is_none());
+}
+
+// Integration tests are ignored by default
+#[ignore]
+#[tokio::test]
+async fn test_transaction_send() {
+    // This aims to test that a message won't be visible for other transactions
+    // until the transaction that published it commits
+    let _ = init_database().await;
+    let queue_name = "transaction_send_test_queue";
+    let conn1 = connect(&database_name()).await;
+    let conn2 = connect(&database_name()).await;
+
+    create_queue(&queue_name.to_string(), &conn1).await;
+
+    // Message can't be read for pending transaction
+    let mut tx = conn1.begin().await.unwrap();
+
+    sqlx::query(&format!(
+        "select from {PGMQ_SCHEMA}.send('{queue_name}', '1')"
+    ))
+    .fetch_one(&mut tx)
+    .await
+    .unwrap();
+
+    let read_msg = sqlx::query(&format!(
+        "select from {PGMQ_SCHEMA}.read('{queue_name}', 0, 1)"
+    ))
+    .fetch_optional(&conn2)
+    .await
+    .unwrap();
+
+    assert!(read_msg.is_none());
+
+    // After commiting the transaction, the message can be read
+    tx.commit().await.unwrap();
+
+    let read_msg2 = sqlx::query(&format!(
+        "select from {PGMQ_SCHEMA}.read('{queue_name}', 0, 1)"
+    ))
+    .fetch_optional(&conn2)
+    .await
+    .unwrap();
+
+    assert!(read_msg2.is_some());
+}
+
+// Integration tests are ignored by default
+#[ignore]
+#[tokio::test]
+async fn test_transaction_read() {
+    // A message read by one transaction can't be read by other concurrent transaction,
+    // even if VT expired, until the other transaction is committed or rolled back.
+    let _ = init_database().await;
+    let queue_name = "transaction_read_test_queue";
+    let conn1 = connect(&database_name()).await;
+    let conn2 = connect(&database_name()).await;
+
+    create_queue(&queue_name.to_string(), &conn1).await;
+
+    sqlx::query(&format!(
+        "select from {PGMQ_SCHEMA}.send('{queue_name}', '1')"
+    ))
+    .fetch_one(&conn1)
+    .await
+    .unwrap();
+
+    let mut tx1 = conn1.begin().await.unwrap();
+    let mut tx2 = conn2.begin().await.unwrap();
+
+    let read_msg1 = sqlx::query(&format!(
+        "select from {PGMQ_SCHEMA}.read('{queue_name}', 1, 1)"
+    ))
+    .fetch_optional(&mut tx1)
+    .await
+    .unwrap();
+
+    assert!(read_msg1.is_some());
+
+    tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
+
+    let read_msg2 = sqlx::query(&format!(
+        "select from {PGMQ_SCHEMA}.read('{queue_name}', 1, 1)"
+    ))
+    .fetch_optional(&mut tx2)
+    .await
+    .unwrap();
+
+    assert!(read_msg2.is_none());
+
+    tx1.rollback().await.unwrap();
+
+    let read_msg3 = sqlx::query(&format!(
+        "select from {PGMQ_SCHEMA}.read('{queue_name}', 1, 1)"
+    ))
+    .fetch_optional(&mut tx2)
+    .await
+    .unwrap();
+
+    assert!(read_msg3.is_some());
+}
+
+async fn create_queue(queue_name: &String, conn: &Pool<Postgres>) {
+    sqlx::query(&format!("select from {PGMQ_SCHEMA}.create('{queue_name}')"))
+        .fetch_one(conn)
+        .await
+        .unwrap();
+}
 
 async fn get_queue_size(queue_name: &String, conn: &Pool<Postgres>) -> i64 {
     sqlx::query(&format!(
@@ -547,4 +667,9 @@ async fn send_sample_message(queue_name: &String, conn: &Pool<Postgres>) -> i64 
     .await
     .expect("failed to push message")
     .get::<i64, usize>(0)
+}
+
+pub fn database_name() -> String {
+    let username = whoami::username();
+    format!("postgres://{username}:postgres@localhost:28815/pgmq_test")
 }
