@@ -33,7 +33,7 @@ thiserror = "1.0.38"
 pgrx-tests = "0.9.8"
 chrono = { version = "0.4.23", features = ["serde"] }
 rand = "0.8.5"
-sqlx = { version = "0.6", features = [
+sqlx = { version = "0.7.2", features = [
     "runtime-tokio-native-tls",
     "postgres",
     "chrono",

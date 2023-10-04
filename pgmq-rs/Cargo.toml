@@ -12,17 +12,18 @@ readme = "README.md"
 repository = "https://github.com/tembo-io/pgmq"
 
 [dependencies]
-pgmq_core = { package = "pgmq-core", version = "0.6.1" }
+pgmq_core = { package = "pgmq-core", path = "../core" }
 chrono = { version = "0.4.23", features = [ "serde" ] }
 serde = { version = "1.0.152" }
 serde_json = { version = "1.0.91", features = [ "raw_value" ] }
-sqlx = { version = "0.6.3", features = [ "offline", "runtime-tokio-native-tls" , "postgres", "chrono", "json" ] }
+sqlx = { version = "0.7.2", features = [ "runtime-tokio-native-tls" , "postgres", "chrono", "json" ] }
 thiserror = "1.0.38"
 tokio = { version = "1", features = ["macros"] }
 log = "0.4.17"
 url = "2.3.1"
 
 [dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 cargo-readme = "3.2.0"
 criterion = "0.4"
 env_logger = "0.10.0"

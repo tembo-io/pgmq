@@ -18,13 +18,13 @@ use url::{ParseError, Url};
 pub fn conn_options(url: &str) -> Result<PgConnectOptions, ParseError> {
     // Parse url
     let parsed = Url::parse(url)?;
-    let mut options = PgConnectOptions::new()
+    let options = PgConnectOptions::new()
         .host(parsed.host_str().ok_or(ParseError::EmptyHost)?)
         .port(parsed.port().ok_or(ParseError::InvalidPort)?)
         .username(parsed.username())
         .password(parsed.password().ok_or(ParseError::IdnaError)?)
-        .database(parsed.path().trim_start_matches('/'));
-    options.log_statements(LevelFilter::Debug);
+        .database(parsed.path().trim_start_matches('/'))
+        .log_statements(LevelFilter::Debug);
     Ok(options)
 }
 

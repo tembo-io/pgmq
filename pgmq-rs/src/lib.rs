@@ -213,7 +213,7 @@ impl PGMQueue {
         let mut tx = self.connection.begin().await?;
         let setup = query::init_queue_client_only(queue_name, false)?;
         for q in setup {
-            sqlx::query(&q).execute(&mut tx).await?;
+            sqlx::query(&q).execute(&mut *tx).await?;
         }
         tx.commit().await?;
         Ok(())
@@ -224,7 +224,7 @@ impl PGMQueue {
         let mut tx = self.connection.begin().await?;
         let setup = query::init_queue_client_only(queue_name, true)?;
         for q in setup {
-            sqlx::query(&q).execute(&mut tx).await?;
+            sqlx::query(&q).execute(&mut *tx).await?;
         }
         tx.commit().await?;
         Ok(())
@@ -258,7 +258,7 @@ impl PGMQueue {
         let mut tx = self.connection.begin().await?;
         let setup = query::destroy_queue_client_only(queue_name)?;
         for q in setup {
-            sqlx::query(&q).execute(&mut tx).await?;
+            sqlx::query(&q).execute(&mut *tx).await?;
         }
         tx.commit().await?;
         Ok(())
