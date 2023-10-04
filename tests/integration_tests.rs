@@ -631,6 +631,55 @@ async fn test_transaction_read() {
 
     assert!(read_msg3.is_some());
 }
+// Integration tests are ignored by default
+#[ignore]
+#[tokio::test]
+async fn test_detach_archive() {
+    let conn = init_database().await;
+    let queue_name = "detach_archive_queue";
+    create_queue(&queue_name.to_string(), &conn).await;
+
+    // Without detach, archive is dropped with the extension
+    let _ = sqlx::query(&format!("DROP EXTENSION pgmq CASCADE"))
+        .fetch_one(&conn)
+        .await;
+
+    let table_exists = sqlx::query(&format!(
+        "select from pg_tables where schemaname = 'pgmq' and tablename = 'a_{queue_name}'"
+    ))
+    .fetch_optional(&conn)
+    .await
+    .unwrap();
+
+    assert!(table_exists.is_none());
+
+    // With detach, archive remains
+    let _ = sqlx::query(&format!("CREATE EXTENSION pgmq"))
+        .fetch_one(&conn)
+        .await;
+
+    create_queue(&queue_name.to_string(), &conn).await;
+
+    sqlx::query(&format!(
+        "select from {PGMQ_SCHEMA}.detach_archive('{queue_name}')"
+    ))
+    .fetch_one(&conn)
+    .await
+    .unwrap();
+
+    let _ = sqlx::query(&format!("DROP EXTENSION pgmq CASCADE"))
+        .fetch_one(&conn)
+        .await;
+
+    let table_exists = sqlx::query(&format!(
+        "select from pg_tables where schemaname = 'pgmq' and tablename = 'a_{queue_name}'"
+    ))
+    .fetch_optional(&conn)
+    .await
+    .unwrap();
+
+    assert!(table_exists.is_some());
+}
 
 async fn create_queue(queue_name: &String, conn: &Pool<Postgres>) {
     sqlx::query(&format!("select from {PGMQ_SCHEMA}.create('{queue_name}')"))

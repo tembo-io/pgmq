@@ -8,9 +8,9 @@ use crate::partition;
 use crate::partition::PARTMAN_SCHEMA;
 
 use pgmq_core::{
-    query::{destroy_queue, init_queue},
+    query::{destroy_queue, init_queue, unassign_archive},
     types::{PGMQ_SCHEMA, QUEUE_PREFIX},
-    util::check_input,
+    util::{check_input, CheckedName},
 };
 
 #[pg_extern(name = "drop_queue")]
@@ -20,6 +20,15 @@ fn pgmq_drop_queue(
 ) -> Result<bool, PgmqExtError> {
     delete_queue(queue_name, partitioned)?;
     Ok(true)
+}
+
+#[pg_extern(name = "detach_archive")]
+fn pgmq_detach_archive(queue_name: String) -> Result<(), PgmqExtError> {
+    let query = unassign_archive(CheckedName::new(&queue_name)?)?;
+    Spi::connect(|mut client| {
+        client.update(query.as_str(), None, None)?;
+        Ok(())
+    })
 }
 
 pub fn delete_queue(queue_name: String, partitioned: bool) -> Result<(), PgmqExtError> {
