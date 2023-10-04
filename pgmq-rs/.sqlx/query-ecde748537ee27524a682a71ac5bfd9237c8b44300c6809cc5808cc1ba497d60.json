@@ -12,24 +12,12 @@
         "ordinal": 1,
         "name": "created_at",
         "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 2,
-        "name": "is_partitioned",
-        "type_info": "Bool"
-      },
-      {
-        "ordinal": 3,
-        "name": "is_unlogged",
-        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": []
     },
     "nullable": [
-      null,
-      null,
       null,
       null
     ]
