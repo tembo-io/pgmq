@@ -51,6 +51,13 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: [
+          {version: "14.9", pgrx_version: "pg14", server_dev: "postgresql-server-dev-14"},
+          {version: "15.4", pgrx_version: "pg15", server_dev: "postgresql-server-dev-15"},
+        ]
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust stable toolchain
@@ -70,16 +77,15 @@ jobs:
           working-directory: ./
       - name: test
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
+          sudo apt-get update && sudo apt-get install -y ${{ matrix.pg.server_dev }}
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
           git checkout v4.7.4 && \
           sudo make install && cd ../
-          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.4/pgrx-install/share/postgresql/extension/
-          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.4/pgrx-install/lib/postgresql/
+          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/share/postgresql/extension/
+          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/lib/postgresql/
           rm -rf ./target/pgrx-test-data-* || true
-          pg_version=$(stoml Cargo.toml features.default)
-          cargo pgrx run ${pg_version} --pgcli || true
+          cargo pgrx run ${{ matrix.pg.pgrx_version }} --pgcli || true
           make test
 
   publish:
