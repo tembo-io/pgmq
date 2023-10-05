@@ -1,5 +1,7 @@
+PGRX_POSTGRES ?= pg15
+
 test:
-	cargo pgrx test
+	cargo pgrx test $(PGRX_POSTGRES)
 	cargo test -- --test-threads=1 --ignored
 
 format:

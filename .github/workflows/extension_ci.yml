@@ -95,7 +95,7 @@ jobs:
           cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/lib/postgresql/
           rm -rf ./target/pgrx-test-data-* || true
           cargo pgrx run ${{ matrix.pg.pgrx_version }} --pgcli || true
-          make test
+          PGRX_POSTGRES=${{ matrix.pg.pgrx_version }} make test
 
   publish:
     # only publish release events
