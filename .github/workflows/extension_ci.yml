@@ -55,9 +55,12 @@ jobs:
       fail-fast: false
       matrix:
         pg: [
+          {version: "12.16", pgrx_version: "pg12", server_dev: "postgresql-server-dev-all"},
+          {version: "13.12", pgrx_version: "pg13", server_dev: "postgresql-server-dev-all"},
           {version: "14.9", pgrx_version: "pg14", server_dev: "postgresql-server-dev-all"},
           {version: "15.4", pgrx_version: "pg15", server_dev: "postgresql-server-dev-all"},
-          #{version: "16.0", pgrx_version: "pg16", server_dev: "postgresql-server-dev-all"},
+          #TODO: must update pgrx to support pg16
+          # {version: "16.0", pgrx_version: "pg16", server_dev: "postgresql-server-dev-all"},
         ]
     steps:
       - uses: actions/checkout@v2
