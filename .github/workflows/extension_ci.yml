@@ -84,8 +84,8 @@ jobs:
       - name: test
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-common=238 postgresql-server-dev-14
-          sudo apt-get install -y postgresql-server-dev-all
+          sudo apt-get install -y --allow-downgrades postgresql-common=238 postgresql-server-dev-14
+          sudo apt-get install -y --allow-downgrades postgresql-server-dev-all
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
           git checkout v4.7.4 && \
