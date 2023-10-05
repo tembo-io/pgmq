@@ -2,7 +2,7 @@ PGRX_POSTGRES ?= pg15
 
 test:
 	cargo pgrx test $(PGRX_POSTGRES)
-	cargo test -- --test-threads=1 --ignored
+	cargo test --no-default-features --features ${PGRX_POSTGRES} -- --test-threads=1 --ignored
 
 format:
 	cargo +nightly fmt --all
