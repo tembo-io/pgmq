@@ -55,8 +55,9 @@ jobs:
       fail-fast: false
       matrix:
         pg: [
-          {version: "14.9", pgrx_version: "pg14", server_dev: "postgresql-server-dev-14"},
-          {version: "15.4", pgrx_version: "pg15", server_dev: "postgresql-server-dev-15"},
+          {version: "14.9", pgrx_version: "pg14", server_dev: "postgresql-server-dev-all"},
+          {version: "15.4", pgrx_version: "pg15", server_dev: "postgresql-server-dev-all"},
+          {version: "16.0", pgrx_version: "pg16", server_dev: "postgresql-server-dev-all"},
         ]
     steps:
       - uses: actions/checkout@v2
@@ -66,7 +67,7 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "pgmq-extension-test"
+          prefix-key: "pgmq-extension-test-${{ matrix.pg.pgrx_version }}"
           workspaces: |
             pgmq
           # Additional directories to cache
@@ -75,6 +76,8 @@ jobs:
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./
+          pgrx_pg_version: ${{ matrix.pg.pgrx_version }}
+          pg_version: ${{ matrix.pg.version }}
       - name: test
         run: |
           sudo apt-get update && sudo apt-get install -y ${{ matrix.pg.server_dev }}
