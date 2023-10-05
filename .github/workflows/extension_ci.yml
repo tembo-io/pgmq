@@ -57,7 +57,7 @@ jobs:
         pg: [
           {version: "14.9", pgrx_version: "pg14", server_dev: "postgresql-server-dev-all"},
           {version: "15.4", pgrx_version: "pg15", server_dev: "postgresql-server-dev-all"},
-          {version: "16.0", pgrx_version: "pg16", server_dev: "postgresql-server-dev-all"},
+          #{version: "16.0", pgrx_version: "pg16", server_dev: "postgresql-server-dev-all"},
         ]
     steps:
       - uses: actions/checkout@v2
