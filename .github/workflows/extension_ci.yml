@@ -51,6 +51,17 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: [
+          {version: "12.16", pgrx_version: "pg12"},
+          {version: "13.12", pgrx_version: "pg13"},
+          {version: "14.9", pgrx_version: "pg14"},
+          {version: "15.4", pgrx_version: "pg15"},
+          #TODO: must update pgrx to support pg16
+          # {version: "16.0", pgrx_version: "pg16", server_dev: "postgresql-server-dev-all"},
+        ]
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust stable toolchain
@@ -59,7 +70,7 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "pgmq-extension-test"
+          prefix-key: "pgmq-extension-test-${{ matrix.pg.pgrx_version }}"
           workspaces: |
             pgmq
           # Additional directories to cache
@@ -68,19 +79,23 @@ jobs:
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./
+          pgrx_pg_version: ${{ matrix.pg.pgrx_version }}
+          pg_version: ${{ matrix.pg.version }}
       - name: test
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
+          sudo apt-get update
+          sudo apt-get install -y --allow-downgrades postgresql-client-common=238
+          sudo apt-get install -y --allow-downgrades postgresql-common=238 postgresql-server-dev-14
+          sudo apt-get install -y --allow-downgrades postgresql-server-dev-all
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
           git checkout v4.7.4 && \
           sudo make install && cd ../
-          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.4/pgrx-install/share/postgresql/extension/
-          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.4/pgrx-install/lib/postgresql/
+          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/share/postgresql/extension/
+          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/lib/postgresql/
           rm -rf ./target/pgrx-test-data-* || true
-          pg_version=$(stoml Cargo.toml features.default)
-          cargo pgrx run ${pg_version} --pgcli || true
-          make test
+          cargo pgrx run ${{ matrix.pg.pgrx_version }} --pgcli || true
+          PGRX_POSTGRES=${{ matrix.pg.pgrx_version }} make test
 
   publish:
     # only publish release events
