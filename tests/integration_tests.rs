@@ -40,9 +40,10 @@ async fn connect(url: &str) -> Pool<Postgres> {
 
 async fn init_database() -> Pool<Postgres> {
     let username = whoami::username();
+    let database_port = database_port();
 
     let conn00 = connect(&format!(
-        "postgres://{username}:postgres@localhost:28815/pgmq"
+        "postgres://{username}:postgres@localhost:{database_port}/pgmq"
     ))
     .await;
     // ignore the error if the db already exists!
@@ -669,7 +670,22 @@ async fn send_sample_message(queue_name: &String, conn: &Pool<Postgres>) -> i64 
     .get::<i64, usize>(0)
 }
 
-pub fn database_name() -> String {
+fn database_name() -> String {
     let username = whoami::username();
-    format!("postgres://{username}:postgres@localhost:28815/pgmq_test")
+    let database_port = database_port();
+    format!("postgres://{username}:postgres@localhost:{database_port}/pgmq_test")
+}
+
+fn database_port() -> usize {
+    if cfg!(feature = "pg15") {
+        28815
+    } else if cfg!(feature = "pg14") {
+        28814
+    } else if cfg!(feature = "pg13") {
+        28813
+    } else if cfg!(feature = "pg12") {
+        28812
+    } else {
+        5432
+    }
 }
