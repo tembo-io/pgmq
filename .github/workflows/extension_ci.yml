@@ -59,8 +59,7 @@ jobs:
           {version: "13.12", pgrx_version: "pg13"},
           {version: "14.9", pgrx_version: "pg14"},
           {version: "15.4", pgrx_version: "pg15"},
-          #TODO: must update pgrx to support pg16
-          # {version: "16.0", pgrx_version: "pg16", server_dev: "postgresql-server-dev-all"},
+          {version: "16.0", pgrx_version: "pg16"}
         ]
     steps:
       - uses: actions/checkout@v2
