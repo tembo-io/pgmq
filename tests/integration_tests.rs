@@ -748,7 +748,9 @@ fn database_name() -> String {
 }
 
 fn database_port() -> usize {
-    if cfg!(feature = "pg15") {
+    if cfg!(feature = "pg16") {
+        28816
+    } else if cfg!(feature = "pg15") {
         28815
     } else if cfg!(feature = "pg14") {
         28814
