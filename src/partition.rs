@@ -5,7 +5,8 @@ use pgmq_core::{
     errors::PgmqError,
     query::{
         assign_archive, assign_queue, create_archive, create_archive_index, create_index,
-        create_meta, grant_pgmon_meta, grant_pgmon_queue, grant_pgmon_queue_seq, insert_meta,
+        create_meta, insert_meta, pg_mon_grant_schema_seqs_permission,
+        pg_mon_grant_schema_tables_permission,
     },
     types::{PGMQ_SCHEMA, QUEUE_PREFIX},
     util::CheckedName,
@@ -33,8 +34,6 @@ pub fn init_partitioned_queue(
         create_partitioned_table(name, partition_col, partition_interval)?,
         insert_meta(name, true, false)?,
         set_retention_config(name, retention_interval)?,
-        grant_pgmon_queue(name)?,
-        grant_pgmon_queue_seq(name)?,
     ])
 }
 
@@ -48,7 +47,6 @@ pub fn init_partitioned_queue_client_only(
     let partition_col = map_partition_col(partition_interval);
     Ok(vec![
         create_meta(),
-        grant_pgmon_meta(),
         create_partitioned_queue(name, partition_col)?,
         assign_queue(name)?,
         create_partitioned_index(name, partition_col)?,
@@ -59,8 +57,8 @@ pub fn init_partitioned_queue_client_only(
         create_partitioned_table(name, partition_col, partition_interval)?,
         insert_meta(name, true, false)?,
         set_retention_config(name, retention_interval)?,
-        grant_pgmon_queue(name)?,
-        grant_pgmon_queue_seq(name)?,
+        pg_mon_grant_schema_tables_permission(),
+        pg_mon_grant_schema_seqs_permission(),
     ])
 }
 
