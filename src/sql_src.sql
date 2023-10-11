@@ -12,6 +12,12 @@ CREATE TABLE pgmq.meta (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
 );
 
+-- Grant permission to pg_monitor to all tables and sequences
+GRANT SELECT ON ALL TABLES IN SCHEMA pgmq TO pg_monitor;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA pgmq TO pg_monitor;
+ALTER DEFAULT PRIVILEGES IN SCHEMA pgmq GRANT SELECT ON TABLES TO pg_monitor;
+ALTER DEFAULT PRIVILEGES IN SCHEMA pgmq GRANT SELECT ON SEQUENCES TO pg_monitor;
+
 -- This type has the shape of a message in a queue, and is often returned by
 -- pgmq functions that return messages
 CREATE TYPE pgmq.message_record AS (
@@ -21,18 +27,6 @@ CREATE TYPE pgmq.message_record AS (
     vt TIMESTAMP WITH TIME ZONE,
     message JSONB
 );
-
--- pg_monitor should have select access to everything in pgmq schema
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    WHERE has_table_privilege('pg_monitor', 'pgmq.meta', 'SELECT')
-  ) THEN
-    EXECUTE 'GRANT SELECT ON pgmq.meta TO pg_monitor';
-  END IF;
-END;
-$$ LANGUAGE plpgsql;
 
 ------------------------------------------------------------
 -- Functions
