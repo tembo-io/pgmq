@@ -308,17 +308,83 @@ pub fn assign(table_name: &str) -> String {
     )
 }
 
-pub fn pg_mon_grant_schema_tables_permission() -> String {
-    format!("GRANT SELECT ON ALL TABLES IN SCHEMA {PGMQ_SCHEMA} TO pg_monitor;")
+fn grant_stmt(table: &str) -> String {
+    let grant_seq = match &table.contains("meta") {
+        true => "".to_string(),
+        false => {
+            format!("\n    EXECUTE 'GRANT SELECT ON SEQUENCE {table}_msg_id_seq TO pg_monitor';")
+        }
+    };
+    format!(
+        "
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    WHERE has_table_privilege('pg_monitor', '{table}', 'SELECT')
+  ) THEN
+    EXECUTE 'GRANT SELECT ON {table} TO pg_monitor';{grant_seq}
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+"
+    )
 }
 
-pub fn pg_mon_grant_schema_seqs_permission() -> String {
-    format!("GRANT SELECT ON ALL SEQUENCES IN SCHEMA {PGMQ_SCHEMA} TO pg_monitor;")
+// pg_monitor needs to query queue metadata
+pub fn grant_pgmon_meta() -> String {
+    let table = format!("{PGMQ_SCHEMA}.meta");
+    grant_stmt(&table)
+}
+
+// pg_monitor needs to query queue tables
+pub fn grant_pgmon_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
+    let table = format!("{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}");
+    Ok(grant_stmt(&table))
+}
+
+pub fn grant_pgmon_queue_seq(name: CheckedName<'_>) -> Result<String, PgmqError> {
+    let table = format!("{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}_msg_id_seq");
+    Ok(grant_stmt(&table))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_grant() {
+        let q = grant_stmt("my_table");
+        let expected = "
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    WHERE has_table_privilege('pg_monitor', 'my_table', 'SELECT')
+  ) THEN
+    EXECUTE 'GRANT SELECT ON my_table TO pg_monitor';
+    EXECUTE 'GRANT SELECT ON SEQUENCE my_table_msg_id_seq TO pg_monitor';
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+";
+        assert_eq!(q, expected);
+
+        let q = grant_stmt("meta");
+        let expected = "
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    WHERE has_table_privilege('pg_monitor', 'meta', 'SELECT')
+  ) THEN
+    EXECUTE 'GRANT SELECT ON meta TO pg_monitor';
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+";
+        assert_eq!(q, expected)
+    }
 
     #[test]
     fn test_assign() {
