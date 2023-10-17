@@ -1,6 +1,6 @@
 [package]
 name = "pgmq"
-version = "0.31.0"
+version = "0.31.1"
 edition = "2021"
 authors = ["Tembo.io"]
 description = "Postgres extension for PGMQ"
