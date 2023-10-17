@@ -114,6 +114,28 @@ async fn test_unlogged() {
 // Integration tests are ignored by default
 #[ignore]
 #[tokio::test]
+async fn test_max_queue_name_size() {
+    let conn = init_database().await;
+
+    // CREATE with default retention and partition strategy
+    let too_big = &"a".repeat(48);
+    let result1 = sqlx::query(&format!("SELECT {PGMQ_SCHEMA}.create('{too_big}');"))
+        .execute(&conn)
+        .await;
+
+    assert!(result1.is_err());
+
+    let okay = &"a".repeat(47);
+    let result2 = sqlx::query(&format!("SELECT {PGMQ_SCHEMA}.create('{okay}');"))
+        .execute(&conn)
+        .await;
+
+    assert!(result2.is_ok());
+}
+
+// Integration tests are ignored by default
+#[ignore]
+#[tokio::test]
 async fn test_lifecycle() {
     let conn = init_database().await;
     let mut rng = rand::thread_rng();

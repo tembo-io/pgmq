@@ -434,9 +434,8 @@ $$ LANGUAGE plpgsql;
     fn check_input_rejects_names_too_large() {
         let table_name = "my_valid_table_name";
         assert!(check_input(table_name).is_ok());
-        assert!(check_input(&"a".repeat(61)).is_ok());
-        assert!(check_input(&"a".repeat(62)).is_err());
-        assert!(check_input(&"a".repeat(64)).is_err());
+        assert!(check_input(&"a".repeat(47)).is_ok());
+        assert!(check_input(&"a".repeat(48)).is_err());
         assert!(check_input(&"a".repeat(70)).is_err());
     }
 
