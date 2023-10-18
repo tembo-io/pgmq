@@ -162,7 +162,7 @@ SELECT pgmq.archive('my_queue', 2);
 
 Archive tables have the prefix `a_`:
 ```sql
-SELECT pgmq.a_my_queue;
+SELECT * FROM pgmq.a_my_queue;
 ```
 
 ```text
