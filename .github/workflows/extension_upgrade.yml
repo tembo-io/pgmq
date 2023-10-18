@@ -37,7 +37,7 @@ jobs:
       - name: Get current version
         id: current-version
         run: echo "CI_BRANCH=$(git name-rev --name-only HEAD)" >> $GITHUB_OUTPUT
-      - name: Checkout old version
+      - name: Checkout old version (0.14.2)
         run: |
           git fetch --tags
           git checkout tags/v0.14.2
@@ -45,15 +45,18 @@ jobs:
         with:
           working-directory: ./
           force: true
-      - name: Setup and run old version
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
+      - name: Install pg_partman
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
           git checkout v4.7.4 && \
           sudo make install && cd ../
           cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.4/pgrx-install/share/postgresql/extension/
           cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.4/pgrx-install/lib/postgresql/
+      - name: Run old version (0.14.2)
+        run: |
           rm -rf ./target/pgrx-test-data-* || true
           pg_version=$(stoml Cargo.toml features.default)
           SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
@@ -64,21 +67,18 @@ jobs:
           psql $DATABASE_URL -c "CREATE EXTENSION pgmq;"
           psql $DATABASE_URL -c "select * from pgmq_create('test_queue_1')"
           psql $DATABASE_URL -c "select * from pgmq_create_partitioned('test_partitioned_queue_1');"
-      - name: Checkout current version
+      - name: Checkout branch's version
         env:
           CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
         run: |
-          echo $CI_BRANCH
           git checkout $CI_BRANCH
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./
           force: true
-      - name: Upgrade test
+      - name: Upgrade and run tests
         run: |
           export DATABASE_URL=postgres://$USER:postgres@localhost:28815/pgmq
           SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
           psql $DATABASE_URL -c "ALTER EXTENSION pgmq UPDATE;"
-          # Run extension tests
-          cargo pgrx test
           SQLX_OFFLINE=true make test

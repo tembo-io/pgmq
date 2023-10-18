@@ -80,19 +80,26 @@ jobs:
           working-directory: ./
           pgrx_pg_version: ${{ matrix.pg.pgrx_version }}
           pg_version: ${{ matrix.pg.version }}
-      - name: test
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --allow-downgrades postgresql-client-common=238
           sudo apt-get install -y --allow-downgrades postgresql-common=238 postgresql-server-dev-14
           sudo apt-get install -y --allow-downgrades postgresql-server-dev-all
-          sudo apt-get autoremove -y clang-13 lldb-13 lld-13 clangd-13 clang-15 lldb-15 lld-15 clangd-15
+          # We need to make sure that only clang 14 is installed in the host before
+          # it tries to compile pgrx, as having multiple versions cause issues
+          # per https://github.com/pgcentralfoundation/pgrx/issues/1298
+          sudo apt-get autoremove -y clang-13 lldb-13 lld-13 clang-15 lldb-15 lld-15
+      - name: Install pg_partman
+        run: |
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
           git checkout v4.7.4 && \
           sudo make install && cd ../
           cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/share/postgresql/extension/
           cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/lib/postgresql/
+      - name: Run tests
+        run: |
           rm -rf ./target/pgrx-test-data-* || true
           cargo pgrx run ${{ matrix.pg.pgrx_version }} --pgcli || true
           PGRX_POSTGRES=${{ matrix.pg.pgrx_version }} make test
