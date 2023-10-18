@@ -10,6 +10,9 @@ inputs:
   pgrx_pg_version:
     description: 'Pgrx pg version alias'
     default: "pg15"
+  force:
+    description: 'Force install'
+    default: false
 outputs: {}
 runs:
   using: "composite"
@@ -32,7 +35,11 @@ runs:
             echo "pgrx is not a dependency: skipping"
             echo "skip=true" >> $GITHUB_OUTPUT
           else
-            cargo install --version ${pgrx_version} cargo-pgrx
+            if [ ${{ inputs.force }} ]; then
+              cargo install --version ${pgrx_version} --force cargo-pgrx
+            else
+              cargo install --version ${pgrx_version} cargo-pgrx
+            fi
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
       - name: pgrx init
