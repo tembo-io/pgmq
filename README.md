@@ -12,6 +12,9 @@ A lightweight message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RS
 - Messages stay in the queue until explicitly removed
 - Messages can be archived, instead of deleted, for long-term retention and replayability
 
+## Support
+Postgres 12-16.
+
 ## Table of Contents
 - [Postgres Message Queue (PGMQ)](#postgres-message-queue-pgmq)
   - [Features](#features)
