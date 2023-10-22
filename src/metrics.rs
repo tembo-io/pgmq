@@ -107,7 +107,7 @@ fn build_summary_query(queue_name: &str) -> String {
             FROM {fq_table}) as q_summary
         CROSS JOIN
             (SELECT
-                last_value as total_messages
+                (last_value - 1) as total_messages
             from {fq_table}_msg_id_seq) as q_sent_summary
         "
     )
