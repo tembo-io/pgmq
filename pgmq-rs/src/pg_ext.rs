@@ -21,6 +21,8 @@ pub struct PGMQueueExt {
 pub struct PGMQueueMeta {
     pub queue_name: String,
     pub created_at: chrono::DateTime<Utc>,
+    pub is_unlogged: bool,
+    pub is_partitioned: bool,
 }
 impl PGMQueueExt {
     /// Initialize a connection to PGMQ/Postgres
@@ -130,6 +132,8 @@ impl PGMQueueExt {
                 .map(|q| PGMQueueMeta {
                     queue_name: q.queue_name.expect("queue_name missing"),
                     created_at: q.created_at.expect("created_at missing"),
+                    is_unlogged: q.is_unlogged.expect("is_unlogged missing"),
+                    is_partitioned: q.is_partitioned.expect("is_partitioned missing"),
                 })
                 .collect();
             Ok(Some(queues))
