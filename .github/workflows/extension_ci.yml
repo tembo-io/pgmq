@@ -9,13 +9,9 @@ on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - 'pgmq-rs/**'
   push:
     branches:
       - main
-    paths-ignore:
-      - 'pgmq-rs/**'
   release:
     types:
       - created
