@@ -101,8 +101,12 @@ fn build_summary_query(queue_name: &str) -> String {
         "SELECT * FROM
             (SELECT
                 count(*) as queue_length,
-                (EXTRACT(epoch FROM (SELECT (NOW() at time zone 'utc' -  max(enqueued_at)))))::int as newest_msg_age_sec,
-                (EXTRACT(epoch FROM (SELECT (NOW() at time zone 'utc' -  min(enqueued_at)))))::int as oldest_msg_age_sec,
+                (EXTRACT(epoch FROM (
+                    SELECT (NOW() at time zone 'utc' -  (max(enqueued_at) at time zone 'utc'))
+                )))::int as newest_msg_age_sec,
+                (EXTRACT(epoch FROM (
+                    SELECT (NOW() at time zone 'utc' -  (min(enqueued_at) at time zone 'utc'))
+                )))::int as oldest_msg_age_sec,
                 (NOW() at time zone 'utc')::timestamp at time zone 'utc' as scrape_time
             FROM {fq_table}) as q_summary
         CROSS JOIN
