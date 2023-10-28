@@ -7,3 +7,4 @@ Dockerfile
 .dockerignore
 docker/**
 *.deb
+poetry.lock

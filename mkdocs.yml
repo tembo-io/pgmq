@@ -1,0 +1,30 @@
+site_name: PGMQ
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: teal
+      toggle:
+        icon: material/weather-night
+        name: dark mode
+    - scheme: slate
+      primary: teal
+      toggle:
+        icon: material/weather-sunny
+        name: light mode
+nav:
+  - PGMQ: 'index.md'
+  - SQL API: 'api.md'
+markdown_extensions:
+- toc:
+    permalink: true
+- markdown.extensions.codehilite:
+    guess_lang: false
+- admonition
+- codehilite
+- extra
+- pymdownx.snippets:
+    check_paths: true
+plugins:
+  - search
+  - mkdocstrings
