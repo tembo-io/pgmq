@@ -14,14 +14,17 @@ theme:
         name: light mode
 nav:
   - PGMQ: 'index.md'
-  - SQL API: 'api.md'
+  - API:
+    - SQL:
+      - 'api/sql/types.md'
+      - 'api/sql/functions.md'
 markdown_extensions:
 - toc:
     permalink: true
 - markdown.extensions.codehilite:
     guess_lang: false
+- codehilite:
 - admonition
-- codehilite
 - extra
 - pymdownx.snippets:
     check_paths: true
