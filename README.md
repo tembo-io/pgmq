@@ -4,6 +4,11 @@ A lightweight message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RS
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-20dtnhcmo-pLNV7_Aobi50TdTLpfQ~EQ)
 
+**Documentation**: https://tembo-io.github.io/pgmq/
+
+**Source**: https://github.com/tembo-io/pgmq
+
+
 ## Features
 
 - Lightweight - No background worker or external dependencies, just Postgres functions packaged in an extension
@@ -18,6 +23,7 @@ Postgres 12-16.
 ## Table of Contents
 - [Postgres Message Queue (PGMQ)](#postgres-message-queue-pgmq)
   - [Features](#features)
+  - [Support](#support)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
   - [Client Libraries](#client-libraries)
