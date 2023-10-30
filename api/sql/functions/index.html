@@ -1518,12 +1518,12 @@ RETURNS TABLE(
 </tr>
 <tr>
 <td style="text-align: left;">newest_msg_age_sec</td>
-<td style="text-align: left;">integer</td>
+<td style="text-align: left;">integer | null</td>
 <td style="text-align: left;">Age of the newest message in the queue, in seconds</td>
 </tr>
 <tr>
 <td style="text-align: left;">oldest_msg_age_sec</td>
-<td style="text-align: left;">integer</td>
+<td style="text-align: left;">integer | null</td>
 <td style="text-align: left;">Age of the oldest message in the queue, in seconds</td>
 </tr>
 <tr>
@@ -1581,12 +1581,12 @@ RETURNS TABLE(
 </tr>
 <tr>
 <td style="text-align: left;">newest_msg_age_sec</td>
-<td style="text-align: left;">integer</td>
+<td style="text-align: left;">integer | null</td>
 <td style="text-align: left;">Age of the newest message in the queue, in seconds</td>
 </tr>
 <tr>
 <td style="text-align: left;">oldest_msg_age_sec</td>
-<td style="text-align: left;">integer</td>
+<td style="text-align: left;">integer | null</td>
 <td style="text-align: left;">Age of the oldest message in the queue, in seconds</td>
 </tr>
 <tr>
@@ -1608,8 +1608,6 @@ RETURNS TABLE(
 <span class="w"> </span><span class="n">my_partitioned_queue</span><span class="w"> </span><span class="o">|</span><span class="w">            </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w">                 </span><span class="mi">11</span><span class="w"> </span><span class="o">|</span><span class="w">                 </span><span class="mi">11</span><span class="w"> </span><span class="o">|</span><span class="w">              </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">20</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span><span class="mi">07</span><span class="p">.</span><span class="mi">016413</span><span class="o">-</span><span class="mi">05</span>
 <span class="w"> </span><span class="n">my_unlogged</span><span class="w">          </span><span class="o">|</span><span class="w">            </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w">                  </span><span class="mi">3</span><span class="w"> </span><span class="o">|</span><span class="w">                  </span><span class="mi">3</span><span class="w"> </span><span class="o">|</span><span class="w">              </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">20</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span><span class="mi">07</span><span class="p">.</span><span class="mi">016413</span><span class="o">-</span><span class="mi">05</span>
 </code></pre></div>
-
-<hr />
                 
               
               
