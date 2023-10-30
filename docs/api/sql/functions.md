@@ -572,8 +572,8 @@ RETURNS TABLE(
 | :---        |    :----   |          :--- |
 | queue_name  | text         | The name of the queue   |
 | queue_length      | bigint       | Number of messages currently in the queue  |
-| newest_msg_age_sec   | integer      | Age of the newest message in the queue, in seconds   |
-| oldest_msg_age_sec   | integer      | Age of the oldest message in the queue, in seconds   |
+| newest_msg_age_sec   | integer \| null     | Age of the newest message in the queue, in seconds   |
+| oldest_msg_age_sec   | integer \| null    | Age of the oldest message in the queue, in seconds   |
 | total_messages   | bigint      | Total number of messages that have passed through the queue over all time   |
 | scrape_time   | timestamp with time zone      | The current timestamp   |
 
@@ -610,8 +610,8 @@ RETURNS TABLE(
 | :---        |    :----   |          :--- |
 | queue_name  | text         | The name of the queue   |
 | queue_length      | bigint       | Number of messages currently in the queue  |
-| newest_msg_age_sec   | integer      | Age of the newest message in the queue, in seconds   |
-| oldest_msg_age_sec   | integer      | Age of the oldest message in the queue, in seconds   |
+| newest_msg_age_sec   | integer \| null     | Age of the newest message in the queue, in seconds   |
+| oldest_msg_age_sec   | integer \| null    | Age of the oldest message in the queue, in seconds   |
 | total_messages   | bigint      | Total number of messages that have passed through the queue over all time   |
 | scrape_time   | timestamp with time zone      | The current timestamp   |
 
@@ -623,5 +623,3 @@ select * from pgmq.metrics_all();
  my_partitioned_queue |            1 |                 11 |                 11 |              1 | 2023-10-28 20:25:07.016413-05
  my_unlogged          |            1 |                  3 |                  3 |              1 | 2023-10-28 20:25:07.016413-05
 ```
-
----
