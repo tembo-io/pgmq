@@ -161,7 +161,7 @@ $$ LANGUAGE plpgsql;
 ---- where these messages will be saved permanently.
 CREATE FUNCTION pgmq.archive(
     queue_name TEXT,
-    msg_id BIGINT[]
+    msg_ids BIGINT[]
 )
 RETURNS SETOF BIGINT AS $$
 DECLARE
@@ -181,7 +181,7 @@ BEGIN
         $QUERY$,
         queue_name, queue_name
     );
-    RETURN QUERY EXECUTE sql USING msg_id;
+    RETURN QUERY EXECUTE sql USING msg_ids;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -213,7 +213,7 @@ $$ LANGUAGE plpgsql;
 ---- deletes an array of message ids from the queue permanently
 CREATE FUNCTION pgmq.delete(
     queue_name TEXT,
-    msg_id BIGINT[]
+    msg_ids BIGINT[]
 )
 RETURNS SETOF BIGINT AS $$
 DECLARE
@@ -227,7 +227,7 @@ BEGIN
         $QUERY$,
         queue_name
     );
-    RETURN QUERY EXECUTE sql USING msg_id;
+    RETURN QUERY EXECUTE sql USING msg_ids;
 END;
 $$ LANGUAGE plpgsql;
 
