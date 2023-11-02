@@ -181,7 +181,7 @@ BEGIN
         $QUERY$,
         queue_name, queue_name
     );
-    RETURN QUERY EXECUTE sql USING msg_id;
+    RETURN QUERY EXECUTE sql USING msg_ids;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -227,7 +227,7 @@ BEGIN
         $QUERY$,
         queue_name
     );
-    RETURN QUERY EXECUTE sql USING msg_id;
+    RETURN QUERY EXECUTE sql USING msg_ids;
 END;
 $$ LANGUAGE plpgsql;
 
