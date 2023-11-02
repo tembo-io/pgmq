@@ -210,7 +210,7 @@ select pgmq.delete('my_queue', 5);
 Delete one or many messages from a queue.
 
 ```text
-pgmq.delete (queue_name text, msg_id: bigint[])
+pgmq.delete (queue_name text, msg_ids: bigint[])
 RETURNS SETOF bigint
 ```
 
@@ -219,7 +219,7 @@ RETURNS SETOF bigint
 | Parameter      | Type | Description     |
 | :---        |    :----   |          :--- |
 | queue_name      | text       | The name of the queue   |
-| msg_id      | bigint[]       | Array of message IDs to delete   |
+| msg_ids      | bigint[]       | Array of message IDs to delete   |
 
 Examples:
 
@@ -308,7 +308,7 @@ Deletes a batch of requested messages from the specified queue and inserts them 
  Returns an ARRAY of message ids that were successfully archived.
 
 ```text
-pgmq.archive(queue_name text, msg_id bigint[])
+pgmq.archive(queue_name text, msg_ids bigint[])
 RETURNS SETOF bigint
 ```
 
@@ -317,7 +317,7 @@ RETURNS SETOF bigint
 | Parameter      | Type | Description     |
 | :---        |    :----   |          :--- |
 | queue_name      | text       | The name of the queue   |
-| msg_id      | bigint[]       | Array of message IDs to archive   |
+| msg_ids      | bigint[]       | Array of message IDs to archive   |
 
 Examples:
 
