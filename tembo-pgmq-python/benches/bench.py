@@ -15,124 +15,7 @@ from tembo_pgmq_python import PGMQueue
 
 logging.basicConfig(level=logging.INFO)
 
-
-def produce(
-    queue_name: str,
-    connection_info: dict,
-    duration_seconds: int = 60,
-):
-    """Publishes messages at a given rate for a given duration
-    Assumes queue_name already exists. Writes results to csv.
-
-    Args:
-        queue_name: The name of the queue to publish to
-        duration_seconds: The number of seconds to publish messages
-    """
-    pid = os.getpid()
-    username = connection_info["username"]
-    password = connection_info["password"]
-    host = connection_info["host"]
-    port = connection_info["port"]
-    database = connection_info["database"]
-    url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
-    conn = psycopg2.connect(url)
-    conn.autocommit = True
-    cur = conn.cursor()
-
-    all_results = []
-
-    start_time = time.time()
-
-    num_msg = 0
-    running_duration = 0
-    last_print_time = time.time()
-
-    while running_duration < duration_seconds:
-        send_start = time.perf_counter()
-        cur.execute(f"""select * from pgmq.send('{queue_name}', '{{"hello": "world"}}')""")
-        msg_id = cur.fetchall()[0][0]
-        send_duration = time.perf_counter() - send_start
-        all_results.append({"operation": "write", "duration": send_duration, "msg_id": msg_id, "epoch": time.time()})
-        num_msg += 1
-        running_duration = int(time.time() - start_time)
-        # log every 5 seconds
-        if time.time() - last_print_time >= 5:
-            last_print_time = time.time()
-            logging.debug(f"pid: {pid}, total_sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
-    cur.close()
-    conn.close()
-    logging.debug(f"pid: {pid}, total_sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
-
-    csv_name = f"/tmp/tmp_produce_{pid}_{queue_name}.csv"
-    df = pd.DataFrame(all_results)
-    df.to_csv(csv_name, index=None)
-    copy_command = f"\COPY bench_results_{queue_name} FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa
-    psql_command = ["psql", url, "-c", copy_command]
-    subprocess.run(psql_command)
-    os.remove(csv_name)
-    logging.info(f"producer complete, pid: {pid}")
-
-
-def consume(queue_name: str, connection_info: dict):
-    """Consumes messages from a queue and archives them. Writes results to csv.
-
-    Halts consumption after 5 seconds of no messages.
-    """
-    pid = os.getpid()
-    username = connection_info["username"]
-    password = connection_info["password"]
-    host = connection_info["host"]
-    port = connection_info["port"]
-    database = connection_info["database"]
-    url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
-    conn = psycopg2.connect(url)
-    cur = conn.cursor()
-
-    conn.autocommit = True
-
-    cur = conn.cursor()
-    results = []
-    no_message_timeout = 0
-    while no_message_timeout < 5:
-        stmt = f"select * from pgmq.read('{queue_name}', 1, 1)"
-        read_start = time.perf_counter()
-        cur.execute(stmt)
-        # cur.execute("select * from pgmq.read(%s, %s, %s);", [queue_name, 1, 1])
-        read_duration = time.perf_counter() - read_start
-        message = cur.fetchall()
-
-        if len(message) == 0:
-            no_message_timeout += 1
-            if no_message_timeout > 2:
-                logging.debug(f"No messages for {no_message_timeout} consecutive reads")
-            time.sleep(0.500)
-            continue
-        else:
-            no_message_timeout = 0
-        msg_id = message[0][0]
-
-        results.append({"operation": "read", "duration": read_duration, "msg_id": msg_id, "epoch": time.time()})
-
-        archive_start = time.perf_counter()
-        cur.execute("select * from pgmq.archive(%s, %s);", [queue_name, msg_id])
-        cur.fetchall()
-
-        archive_duration = time.perf_counter() - archive_start
-        results.append({"operation": "archive", "duration": archive_duration, "msg_id": msg_id, "epoch": time.time()})
-    cur.close()
-    conn.close()
-
-    # divide by 2 because we're appending two results (read/archive) per message
-    num_consumed = len(results) / 2
-    logging.info(f"pid: {pid}, read {num_consumed} messages")
-
-    df = pd.DataFrame(results)
-    csv_name = f"/tmp/tmp_consume_{pid}_{queue_name}.csv"
-    df.to_csv(csv_name, index=None)
-    copy_command = f"\COPY bench_results_{queue_name} FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa: W605
-    psql_command = ["psql", url, "-c", copy_command]
-    subprocess.run(psql_command)
-    os.remove(csv_name)
+from benches.ops import produce, consume
 
 
 def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessing.Value, duration_seconds: int):
@@ -271,7 +154,7 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict, pg_
     # convert seconds to milliseconds
     df["duration_ms"] = df["duration"] * 1000
     df["time"] = pd.to_datetime(df["epoch"], unit="s")
-    result = df.groupby("operation").agg({"time": lambda x: x.max() - x.min(), "operation": "size"})
+    result = df.groupby("operation").agg({"time": lambda x: x.max() - x.min(), "batch_size": "sum"})
     result.columns = ["range", "num_messages"]
     result.reset_index(inplace=True)
 
@@ -308,10 +191,19 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict, pg_
     fig.subplots_adjust(top=0.8)
 
     # plot the operations
-    color_map = {"read": "orange", "write": "blue", "archive": "green", "select1": "red"}
+    color_map = {
+        "read": "orange",
+        "write": "blue",
+        "archive": "green",
+        "delete": "green",
+        "select1": "red"
+    }
     sigma = 1000  # Adjust as needed for the desired smoothing level
-    for op in ["read", "write", "archive", "select1"]:
+    for op in ["read", "write", "archive", "delete", "select1"]:
         _df = df[df["operation"] == op].sort_values("time")
+        if _df.shape[0] == 0:
+            # skip delete when archive, and vice-versa
+            continue
 
         if op != "select1":
             y_data = _df[["duration_ms"]].apply(lambda x: gaussian_filter1d(x, sigma))
@@ -361,6 +253,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--duration_seconds", type=int, required=True, help="how long the benchmark should run, in seconds"
     )
+    parser.add_argument("--batch_size", type=int, default=1, help="number of message per send/read operation")
     parser.add_argument("--read_concurrency", type=int, default=1, help="number of concurrent consumers")
     parser.add_argument("--write_concurrency", type=int, default=1, help="number of concurrent producers")
     parser.add_argument("--bench_name", type=str, required=False, help="the name of the benchmark")
@@ -390,6 +283,7 @@ if __name__ == "__main__":
             "database": result.path.lstrip("/"),
         }
 
+    batch_size = args.batch_size
     duration_seconds = args.duration_seconds
     bench_name = args.bench_name
 
@@ -412,7 +306,8 @@ if __name__ == "__main__":
             CREATE TABLE "bench_results_{test_queue}"(
                 operation text NULL,
                 duration float8 NULL,
-                msg_id int8 NULL,
+                msg_ids jsonb NULL,
+                batch_size int8 NULL,
                 epoch float8 NULL
             )
         """
