@@ -193,13 +193,7 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict, pg_
     fig.subplots_adjust(top=0.8)
 
     # plot the operations
-    color_map = {
-        "read": "orange",
-        "write": "blue",
-        "archive": "green",
-        "delete": "green",
-        "select1": "red"
-    }
+    color_map = {"read": "orange", "write": "blue", "archive": "green", "delete": "green", "select1": "red"}
     sigma = 1000  # Adjust as needed for the desired smoothing level
     for op in ["read", "write", "archive", "delete", "select1"]:
         _df = df[df["operation"] == op].sort_values("time")
@@ -257,8 +251,9 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("--write_batch_size", type=int, default=1, help="number of message per send operation")
-    parser.add_argument("--read_batch_size", type=int, default=1, help="number of message per read/delete/archive operation")
-
+    parser.add_argument(
+        "--read_batch_size", type=int, default=1, help="number of message per read/delete/archive operation"
+    )
 
     parser.add_argument("--read_concurrency", type=int, default=1, help="number of concurrent consumers")
     parser.add_argument("--write_concurrency", type=int, default=1, help="number of concurrent producers")
@@ -359,10 +354,7 @@ if __name__ == "__main__":
         )
     else:
         logging.info(f"Creating queue: {test_queue}, unlogged: {args.unlogged_queue}")
-        queue.create_queue(
-            test_queue,
-            unlogged=args.unlogged_queue
-        )
+        queue.create_queue(test_queue, unlogged=args.unlogged_queue)
 
     produce_csv = f"produce_{test_queue}.csv"
     consume_csv = f"consume_{test_queue}.csv"
@@ -389,7 +381,7 @@ if __name__ == "__main__":
     read_kwargs = {
         "queue_name": test_queue,
         "connection_info": connection_info,
-        "pattern": "delete", # TODO: parameterize this
+        "pattern": "delete",  # TODO: parameterize this
         "batch_size": args.read_batch_size,
     }
     for i in range(args.read_concurrency):

@@ -10,19 +10,8 @@ import psycopg2
 logging.basicConfig(level=logging.INFO)
 
 
-def produce(
-    queue_name: str,
-    connection_info: dict,
-    duration_seconds: int = 60,
-    batch_size: int = 1
-):
-    """Publishes messages at a given rate for a given duration
-    Assumes queue_name already exists. Writes results to csv.
-
-    Args:
-        queue_name: The name of the queue to publish to
-        duration_seconds: The number of seconds to publish messages
-    """
+def produce(queue_name: str, connection_info: dict, duration_seconds: int = 60, batch_size: int = 1):
+    """Sends minimal message to a queue for the specified with no pause in between sends"""
     pid = os.getpid()
     username = connection_info["username"]
     password = connection_info["password"]
@@ -51,13 +40,33 @@ def produce(
     while running_duration < duration_seconds:
         send_start = time.perf_counter()
         if batch_size > 1:
-            cur.execute("select * from pgmq.send_batch(%s, ARRAY[%s]::jsonb[])", (queue_name, message,))
+            cur.execute(
+                "select * from pgmq.send_batch(%s, ARRAY[%s]::jsonb[])",
+                (
+                    queue_name,
+                    message,
+                ),
+            )
 
         else:
-            cur.execute("select * from pgmq.send(%s, %s::jsonb)", (queue_name, message,))
+            cur.execute(
+                "select * from pgmq.send(%s, %s::jsonb)",
+                (
+                    queue_name,
+                    message,
+                ),
+            )
         msg_id = [x[0] for x in cur.fetchall()]
         send_duration = time.perf_counter() - send_start
-        all_results.append({"operation": "write", "duration": send_duration, "msg_id": msg_id, "batch_size": batch_size, "epoch": time.time()})
+        all_results.append(
+            {
+                "operation": "write",
+                "duration": send_duration,
+                "msg_id": msg_id,
+                "batch_size": batch_size,
+                "epoch": time.time(),
+            }
+        )
         num_msg += 1
         running_duration = int(time.time() - start_time)
         # log every 5 seconds
@@ -78,7 +87,7 @@ def produce(
     logging.info(f"producer complete, pid: {pid}")
 
 
-def consume(queue_name: str, connection_info: dict, pattern: str = 'delete', batch_size: int = 1):
+def consume(queue_name: str, connection_info: dict, pattern: str = "delete", batch_size: int = 1):
     """Consumes messages from a queue. Times and writes results to csv.
 
     Halts consumption after 5 seconds of no messages.
@@ -118,7 +127,15 @@ def consume(queue_name: str, connection_info: dict, pattern: str = 'delete', bat
 
         num_consumed = len(msg_ids)
 
-        results.append({"operation": "read", "duration": read_duration, "msg_id": msg_ids, "batch_size": num_consumed, "epoch": time.time()})
+        results.append(
+            {
+                "operation": "read",
+                "duration": read_duration,
+                "msg_id": msg_ids,
+                "batch_size": num_consumed,
+                "epoch": time.time(),
+            }
+        )
 
         archive_start = time.perf_counter()
         if pattern == "archive":
@@ -129,7 +146,15 @@ def consume(queue_name: str, connection_info: dict, pattern: str = 'delete', bat
         cur.fetchall()
 
         archive_duration = time.perf_counter() - archive_start
-        results.append({"operation": pattern, "duration": archive_duration, "msg_id": msg_ids, "batch_size": num_consumed, "epoch": time.time()})
+        results.append(
+            {
+                "operation": pattern,
+                "duration": archive_duration,
+                "msg_id": msg_ids,
+                "batch_size": num_consumed,
+                "epoch": time.time(),
+            }
+        )
 
         if num_consumed < batch_size:
             logging.debug(f"Consumed {num_consumed}/{batch_size} batch size")
