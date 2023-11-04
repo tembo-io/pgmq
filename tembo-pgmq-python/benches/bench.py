@@ -12,6 +12,7 @@ from tembo_pgmq_python import PGMQueue
 logging.basicConfig(level=logging.INFO)
 
 from benches.ops import consume, produce, queue_depth
+from benches.stats import summarize, plot_rolling
 
 if __name__ == "__main__":
     # run the concurrency read/write benchmark
