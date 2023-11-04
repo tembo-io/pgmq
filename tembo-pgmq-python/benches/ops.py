@@ -116,7 +116,9 @@ def consume(queue_name: str, connection_info: dict, pattern: str = 'delete', bat
 
         msg_ids = [x[0] for x in message]
 
-        results.append({"operation": "read", "duration": read_duration, "msg_id": msg_ids, "batch_size": batch_size, "epoch": time.time()})
+        num_consumed = len(msg_ids)
+
+        results.append({"operation": "read", "duration": read_duration, "msg_id": msg_ids, "batch_size": num_consumed, "epoch": time.time()})
 
         archive_start = time.perf_counter()
         if pattern == "archive":
@@ -127,7 +129,11 @@ def consume(queue_name: str, connection_info: dict, pattern: str = 'delete', bat
         cur.fetchall()
 
         archive_duration = time.perf_counter() - archive_start
-        results.append({"operation": pattern, "duration": archive_duration, "msg_id": msg_ids, "batch_size": batch_size, "epoch": time.time()})
+        results.append({"operation": pattern, "duration": archive_duration, "msg_id": msg_ids, "batch_size": num_consumed, "epoch": time.time()})
+
+        if num_consumed < batch_size:
+            logging.debug(f"Consumed {num_consumed}/{batch_size} batch size")
+
     cur.close()
     conn.close()
 
