@@ -1,5 +1,6 @@
 import json
 import logging
+import multiprocessing
 import os
 import subprocess
 import time
@@ -173,3 +174,71 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
     psql_command = ["psql", url, "-c", copy_command]
     subprocess.run(psql_command)
     os.remove(csv_name)
+
+
+def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessing.Value, duration_seconds: int):
+    username = connection_info["username"]
+    password = connection_info["password"]
+    host = connection_info["host"]
+    port = connection_info["port"]
+    database = connection_info["database"]
+    url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
+    conn = psycopg2.connect(url)
+    pid = os.getpid()
+    cur = conn.cursor()
+    conn.autocommit = True
+    all_metrics = []
+
+    cur.execute(
+        f"""
+        CREATE TABLE bench_results_{queue_name}_queue_depth(
+            queue_name text NULL,
+            queue_length int8 NULL,
+            total_messages int8 NULL,
+            select1 float8 NULL,
+            "time" float8 NULL
+        )"""
+    )
+
+    start = time.time()
+    while not kill_flag.value:
+        cur.execute(f"select * from pgmq.metrics('{queue_name}')")
+        metrics = cur.fetchall()[0]
+        depth = metrics[1]
+        total_messages = metrics[-2]
+
+        read_start = time.perf_counter()
+        cur.execute("select 1")
+        cur.fetchall()
+        sel_duration = time.perf_counter() - read_start
+        duration = int(time.time() - start)
+        all_metrics.append(
+            {
+                "queue_name": metrics[0],
+                "queue_length": depth,
+                "total_messages": total_messages,
+                "select1": sel_duration,
+                "time": time.time(),
+            }
+        )
+        log = {
+            "q_len": depth,
+            "elapsed": f"{duration}/{duration_seconds}",
+            "select1_ms": round(sel_duration * 1000, 2),
+            "tot_msg": total_messages,
+        }
+        logging.info(log)
+        time.sleep(5)
+    cur.close()
+    conn.close()
+    df = pd.DataFrame(all_metrics)
+    csv_name = f"/tmp/tmp_consume_{pid}_{queue_name}.csv"
+    df.to_csv(csv_name, index=None)
+    copy_command = (
+        f"\COPY bench_results_{queue_name}_queue_depth FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa: W605
+    )
+    psql_command = ["psql", url, "-c", copy_command]
+    subprocess.run(psql_command)
+    os.remove(csv_name)
+
+    return all_metrics
