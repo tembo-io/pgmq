@@ -15,7 +15,7 @@ from tembo_pgmq_python import PGMQueue
 
 logging.basicConfig(level=logging.INFO)
 
-from benches.ops import produce, consume
+from benches.ops import consume, produce
 
 
 def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessing.Value, duration_seconds: int):

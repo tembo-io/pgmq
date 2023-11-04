@@ -79,7 +79,6 @@ class PGMQueue:
             else:
                 conn.execute("select pgmq.create(%s);", [queue])
 
-
     def send(self, queue: str, message: dict, delay: int = 0) -> int:
         """Send a message to a queue"""
 
