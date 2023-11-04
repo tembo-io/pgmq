@@ -154,6 +154,8 @@ def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict, pg_
     # convert seconds to milliseconds
     df["duration_ms"] = df["duration"] * 1000
     df["time"] = pd.to_datetime(df["epoch"], unit="s")
+
+    # result df is rendered in table on top of plot
     result = df.groupby("operation").agg({"time": lambda x: x.max() - x.min(), "batch_size": "sum"})
     result.columns = ["range", "num_messages"]
     result.reset_index(inplace=True)
@@ -253,10 +255,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--duration_seconds", type=int, required=True, help="how long the benchmark should run, in seconds"
     )
-    parser.add_argument("--batch_size", type=int, default=1, help="number of message per send/read operation")
+
+    parser.add_argument("--write_batch_size", type=int, default=1, help="number of message per send operation")
+    parser.add_argument("--read_batch_size", type=int, default=1, help="number of message per read/delete/archive operation")
+
+
     parser.add_argument("--read_concurrency", type=int, default=1, help="number of concurrent consumers")
     parser.add_argument("--write_concurrency", type=int, default=1, help="number of concurrent producers")
     parser.add_argument("--bench_name", type=str, required=False, help="the name of the benchmark")
+
+    parser.add_argument("--unlogged_queue", type=bool, default=False, help="whether to use an unlogged queue")
 
     # partitioned queue configurations
     parser.add_argument("--partitioned_queue", type=bool, default=False, help="whether to use a partitioned queue")
@@ -283,7 +291,6 @@ if __name__ == "__main__":
             "database": result.path.lstrip("/"),
         }
 
-    batch_size = args.batch_size
     duration_seconds = args.duration_seconds
     bench_name = args.bench_name
 
@@ -346,14 +353,15 @@ if __name__ == "__main__":
 
     queue = PGMQueue(**connection_info)
     if partitioned_queue:
-        logging.debug(f"Creating partitioned queue: {test_queue}")
+        logging.info(f"Creating partitioned queue: {test_queue}")
         queue.create_partitioned_queue(
             test_queue, partition_interval=partition_interval, retention_interval=retention_interval
         )
     else:
-        logging.debug(f"Creating non-partitioned queue: {test_queue}")
+        logging.info(f"Creating queue: {test_queue}, unlogged: {args.unlogged_queue}")
         queue.create_queue(
             test_queue,
+            unlogged=args.unlogged_queue
         )
 
     produce_csv = f"produce_{test_queue}.csv"
@@ -361,9 +369,15 @@ if __name__ == "__main__":
 
     # run producing and consuming in parallel, separate processes
     producer_procs = {}
+    write_kwargs = {
+        "queue_name": test_queue,
+        "connection_info": connection_info,
+        "duration_seconds": duration_seconds,
+        "batch_size": args.write_batch_size,
+    }
     for i in range(args.write_concurrency):
         producer = f"producer_{i}"
-        producer_procs[producer] = Process(target=produce, args=(test_queue, connection_info, duration_seconds))
+        producer_procs[producer] = Process(target=produce, kwargs=write_kwargs)
         producer_procs[producer].start()
 
     # start a proc to poll for queue depth
@@ -372,9 +386,15 @@ if __name__ == "__main__":
     queue_depth_proc.start()
 
     consume_procs = {}
+    read_kwargs = {
+        "queue_name": test_queue,
+        "connection_info": connection_info,
+        "pattern": "delete", # TODO: parameterize this
+        "batch_size": args.read_batch_size,
+    }
     for i in range(args.read_concurrency):
         conumser = f"consumer_{i}"
-        consume_procs[conumser] = Process(target=consume, args=(test_queue, connection_info))
+        consume_procs[conumser] = Process(target=consume, kwargs=read_kwargs)
         consume_procs[conumser].start()
 
     logging.info("waiting for consumers")
@@ -409,6 +429,8 @@ if __name__ == "__main__":
         "produce_time_seconds": duration_seconds,
         "read_concurrency": args.read_concurrency,
         "write_concurrency": args.write_concurrency,
+        "write_batch_size": args.write_batch_size,
+        "read_batch_size": args.read_batch_size,
     }
     if partitioned_queue:
         params["partition_interval"] = partition_interval
