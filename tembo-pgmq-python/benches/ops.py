@@ -123,7 +123,7 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
     cur = conn.cursor()
     results = []
     no_message_timeout = 0
-    while no_message_timeout < 5:
+    while no_message_timeout < 20:
         # stmt = f"select * from pgmq.read('{queue_name}', 1, 1)"
         read_start = time.perf_counter()
         cur.execute("select * from pgmq.read(%s, 1, %s)", (queue_name, batch_size))
