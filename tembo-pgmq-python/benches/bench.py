@@ -12,7 +12,8 @@ from tembo_pgmq_python import PGMQueue
 logging.basicConfig(level=logging.INFO)
 
 from benches.ops import consume, produce, queue_depth
-from benches.stats import summarize, plot_rolling
+from benches.stats import stack_events, plot_rolling
+from benches.log import write_event_log
 
 if __name__ == "__main__":
     # run the concurrency read/write benchmark
@@ -40,7 +41,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--duration_seconds", type=int, required=True, help="how long the benchmark should run, in seconds"
     )
-
+    parser.add_argument("--message_size_bytes", type=int, default=1000, help="size of the message in bench, in bytes")
     parser.add_argument("--write_batch_size", type=int, default=1, help="number of message per send operation")
     parser.add_argument(
         "--read_batch_size", type=int, default=1, help="number of message per read/delete/archive operation"
@@ -85,37 +86,20 @@ if __name__ == "__main__":
     retention_interval = args.message_retention
 
     if bench_name is None:
-        bench_name = int(time.time())
+        time_now = int(time.time())
+        bench_name = f"bench_{time_now}"
 
     url = f"postgresql://{connection_info['username']}:{connection_info['password']}@{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"  # noqa: E501
     eng = create_engine(url)
 
-    # setup results table
-    test_queue = f"bench_queue_{bench_name}"
-    with eng.connect() as con:
-        con.execute(
-            text(
-                f"""
-            CREATE TABLE "bench_results_{test_queue}"(
-                operation text NULL,
-                duration float8 NULL,
-                msg_ids jsonb NULL,
-                batch_size int8 NULL,
-                epoch float8 NULL
-            )
-        """
-            )
-        )
-        con.commit()
-
-    with eng.connect() as con:
-        con.execute(text("select pg_stat_statements_reset()")).fetchall()
-        con.commit()
+    # setup results logging tables
+    from benches.log import setup_bench_results
+    setup_bench_results(eng, bench_name)
 
     # capture postgres settings
     query = """
     SELECT
-        name, setting
+        *
     FROM
         pg_settings
     WHERE name IN
@@ -139,21 +123,21 @@ if __name__ == "__main__":
 
     queue = PGMQueue(**connection_info)
     if partitioned_queue:
-        logging.info(f"Creating partitioned queue: {test_queue}")
+        logging.info(f"Creating partitioned queue: {bench_name}")
         queue.create_partitioned_queue(
-            test_queue, partition_interval=partition_interval, retention_interval=retention_interval
+            bench_name, partition_interval=partition_interval, retention_interval=retention_interval
         )
     else:
-        logging.info(f"Creating queue: {test_queue}, unlogged: {args.unlogged_queue}")
-        queue.create_queue(test_queue, unlogged=args.unlogged_queue)
+        logging.info(f"Creating queue: {bench_name}, unlogged: {args.unlogged_queue}")
+        queue.create_queue(bench_name, unlogged=args.unlogged_queue)
 
-    produce_csv = f"produce_{test_queue}.csv"
-    consume_csv = f"consume_{test_queue}.csv"
+    produce_csv = f"produce_{bench_name}.csv"
+    consume_csv = f"consume_{bench_name}.csv"
 
     # run producing and consuming in parallel, separate processes
     producer_procs = {}
     write_kwargs = {
-        "queue_name": test_queue,
+        "queue_name": bench_name,
         "connection_info": connection_info,
         "duration_seconds": duration_seconds,
         "batch_size": args.write_batch_size,
@@ -165,12 +149,12 @@ if __name__ == "__main__":
 
     # start a proc to poll for queue depth
     kill_flag = multiprocessing.Value("b", False)
-    queue_depth_proc = Process(target=queue_depth, args=(test_queue, connection_info, kill_flag, duration_seconds))
+    queue_depth_proc = Process(target=queue_depth, args=(bench_name, connection_info, kill_flag, duration_seconds))
     queue_depth_proc.start()
 
     consume_procs = {}
     read_kwargs = {
-        "queue_name": test_queue,
+        "queue_name": bench_name,
         "connection_info": connection_info,
         "pattern": "delete",  # TODO: parameterize this
         "batch_size": args.read_batch_size,
@@ -196,15 +180,9 @@ if __name__ == "__main__":
     kill_flag.value = True
     queue_depth_proc.join()
 
-    # save pg_stat_statements
-    with eng.connect() as con:
-        pg_stat_df = pd.read_sql("select * from pg_stat_statements", con=con)
-    pg_stat_df.to_sql(f"{bench_name}_pg_stat", index=None, con=eng)
-
     # once consuming finishes, summarize
-    results_file = f"results_{test_queue}.jpg"
-    # TODO: organize results in a directory or something, log all the params
-    filename = summarize(test_queue, queue, results_file=results_file, duration_seconds=duration_seconds)
+    # results_file = f"results_{bench_name}.jpg"
+    results_df = stack_events(bench_name, queue)
 
     params = {
         "bench_name": bench_name,
@@ -219,4 +197,8 @@ if __name__ == "__main__":
         params["partition_interval"] = partition_interval
         params["retention_interval"] = retention_interval
 
-    plot_rolling(filename, bench_name, duration_seconds, params=params, pg_settings=config_dict)
+    plot_rolling(results_df, bench_name, duration_seconds, params=params, pg_settings=config_dict)
+
+
+# from sqlalchemy.engine import Engine
+# def log_results(eng: Engine):

@@ -9,16 +9,25 @@ from sqlalchemy import create_engine, text
 from tembo_pgmq_python import PGMQueue
 
 
-def summarize(
-    queue_name: str, queue: PGMQueue, results_file: str, duration_seconds: int, boxplots: bool = False
-) -> str:
-    """summarizes bench results from postgres"""
+def stack_events(
+    bench_name: str,
+    queue: PGMQueue,
+) -> pd.DataFrame:
+    """stacks operation log to queue depth log into single dataframe
+    
+    each record is an event, either a write, read, delete, or a queue_depth log
 
-    con = create_engine(f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}")
-    df = pd.read_sql(f'''select * from "bench_results_{queue_name}"''', con=con)
+    queue_depth log happen on an interval and measure number of messages in queue and `select 1` latency
+    """
+    db_url = f"postgresql://{queue.username}:{queue.password}@{queue.host}:{queue.port}/{queue.database}"
+    con = create_engine(db_url)
+
+    bench_results_table = f"bench_results_{bench_name}"
+    df = pd.read_sql(f'''select * from "{bench_results_table}"''', con=con)
 
     # merge schemas of queue depth so we can plot it in-line with latency results
-    queue_depth = pd.read_sql(f'''select * from "bench_results_{queue_name}_queue_depth"''', con=con)
+    queue_depth_table = f"{bench_results_table}_queue_depth"
+    queue_depth = pd.read_sql(f'''select * from "{queue_depth_table}"''', con=con)
 
     sel1_df = queue_depth[["time", "select1"]]
     sel1_df["operation"] = "select1"
@@ -37,49 +46,36 @@ def summarize(
         },
         inplace=True,
     )
-    df = pd.concat([df, sel1_df, queue_depth[["operation", "queue_length", "msg_id", "epoch"]]])
 
-    # iteration
-    all_results_csv = f"all_results_{queue_name}.csv"
-    df.to_csv(all_results_csv, index=False)
+    events_df = pd.concat([df, sel1_df, queue_depth[["operation", "queue_length", "epoch"]]])
 
-    _num_df = df[df["operation"] == "archive"]
-    num_messages = _num_df.shape[0]
-    # convert seconds to milliseconds
-    df["duration"] = df["duration"] * 1000
+    from benches.log import write_event_log
+    # write event log back to postgres table
+    write_event_log(
+        db_url=db_url,
+        event_log=events_df,
+        bench_name=bench_name
+    )
 
-    if boxplots:
-        for op in ["read", "archive", "write"]:
-            _df = df[df["operation"] == op]
-            bbplot = _df.boxplot(
-                column="duration",
-                by="operation",
-                fontsize=12,
-                layout=(2, 1),
-                rot=90,
-                figsize=(25, 20),
-                return_type="axes",
-            )
-            title = f"""
-            num_messages = {num_messages}
-            duration = {duration_seconds}
-            """
-            bbplot[0].set_title(title)
-
-            filename = f"{op}_{results_file}"
-            bbplot[0].get_figure().savefig(filename)
-            logging.info("Saved: %s", filename)
-    return all_results_csv
+    # remove temp tables
+    with con.connect() as c:
+        c.execute(text(f'''DROP TABLE "{bench_results_table}"'''))
+        c.execute(text(f'''DROP TABLE "{queue_depth_table}"'''))
+    return events_df
 
 
-def plot_rolling(csv: str, bench_name: str, duration_sec: int, params: dict, pg_settings: dict):
-    df = pd.read_csv(csv)
+def plot_rolling(df: pd.DataFrame, bench_name: str, duration_sec: int, params: dict, pg_settings: dict):
     # convert seconds to milliseconds
     df["duration_ms"] = df["duration"] * 1000
     df["time"] = pd.to_datetime(df["epoch"], unit="s")
 
     # result df is rendered in table on top of plot
-    result = df.groupby("operation").agg({"time": lambda x: x.max() - x.min(), "batch_size": "sum"})
+    result = df.groupby("operation").agg(
+        {
+            "time": lambda x: x.max() - x.min(), # total duration of eacah operation
+            "batch_size": "sum" # sum the total number of messages read in each operation
+        }
+    )
     result.columns = ["range", "num_messages"]
     result.reset_index(inplace=True)
 

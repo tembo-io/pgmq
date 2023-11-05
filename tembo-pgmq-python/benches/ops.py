@@ -11,8 +11,15 @@ import psycopg2
 logging.basicConfig(level=logging.INFO)
 
 
-def produce(queue_name: str, connection_info: dict, duration_seconds: int = 60, batch_size: int = 1):
+def produce(
+        queue_name: str,
+        connection_info: dict,
+        duration_seconds: int = 60,
+        batch_size: int = 1,
+        message_size_bytes: int = 1000
+    ):
     """Sends minimal message to a queue for the specified with no pause in between sends"""
+    batch_size = int(batch_size)
     pid = os.getpid()
     username = connection_info["username"]
     password = connection_info["password"]
@@ -32,7 +39,19 @@ def produce(queue_name: str, connection_info: dict, duration_seconds: int = 60, 
     running_duration = 0
     last_print_time = time.time()
 
-    message = json.dumps({"hello": "world"})
+    payloads = {
+        22: "22B.json",
+        1000: "1KB.json",
+        10000: "10KB.json"
+    }
+
+    # get specified message payload by size
+    # just fail hard if its invalid value
+    message_file = payloads[message_size_bytes]
+
+    with open (f"benches/payloads/{message_file}", "r") as f:
+        message = json.dumps(json.load(f))
+
     if batch_size > 1:
         # create array of messages when in batch mode
         msg = [message for _ in range(batch_size)]
@@ -126,12 +145,12 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
 
         msg_ids = [x[0] for x in message]
 
-        num_consumed = len(msg_ids)
+        num_consumed = int(len(msg_ids))
 
         results.append(
             {
                 "operation": "read",
-                "duration": read_duration,
+                "duration_sec": read_duration,
                 "msg_id": msg_ids,
                 "batch_size": num_consumed,
                 "epoch": time.time(),
@@ -150,7 +169,7 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
         results.append(
             {
                 "operation": pattern,
-                "duration": archive_duration,
+                "duration_sec": archive_duration,
                 "msg_id": msg_ids,
                 "batch_size": num_consumed,
                 "epoch": time.time(),
@@ -224,7 +243,7 @@ def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessi
         log = {
             "q_len": depth,
             "elapsed": f"{duration}/{duration_seconds}",
-            "select1_ms": round(sel_duration * 1000, 2),
+            "select1_sec": sel_duration,
             "tot_msg": total_messages,
         }
         logging.info(log)
