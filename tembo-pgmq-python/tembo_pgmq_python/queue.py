@@ -67,14 +67,17 @@ class PGMQueue:
         with self.pool.connection() as conn:
             conn.execute("select pgmq.create(%s, %s::text, %s::text);", [queue, partition_interval, retention_interval])
 
-    def create_queue(self, queue: str) -> None:
+    def create_queue(self, queue: str, unlogged: bool = False) -> None:
         """Create a new queue
         Args:
             queue: The name of the queue.
         """
 
         with self.pool.connection() as conn:
-            conn.execute("select pgmq.create(%s);", [queue])
+            if unlogged:
+                conn.execute("select pgmq.create_unlogged(%s);", [queue])
+            else:
+                conn.execute("select pgmq.create(%s);", [queue])
 
     def send(self, queue: str, message: dict, delay: int = 0) -> int:
         """Send a message to a queue"""
