@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import multiprocessing
 import time
@@ -12,7 +13,7 @@ from tembo_pgmq_python import PGMQueue
 logging.basicConfig(level=logging.INFO)
 
 from benches.ops import consume, produce, queue_depth
-from benches.stats import stack_events, plot_rolling, summarize
+from benches.stats import plot_rolling, stack_events, summarize
 
 if __name__ == "__main__":
     # run the concurrency read/write benchmark
@@ -96,7 +97,7 @@ if __name__ == "__main__":
         "write_concurrency": args.write_concurrency,
         "write_batch_size": args.write_batch_size,
         "read_batch_size": args.read_batch_size,
-        "message_size_bytes": args.message_size_bytes
+        "message_size_bytes": args.message_size_bytes,
     }
 
     if partitioned_queue:
@@ -108,6 +109,7 @@ if __name__ == "__main__":
 
     # setup results logging tables
     from benches.log import setup_bench_results
+
     setup_bench_results(eng, bench_name)
 
     # capture postgres settings
@@ -181,17 +183,13 @@ if __name__ == "__main__":
     kill_flag.value = True
     queue_depth_proc.join()
 
-
     ## collect and summarize
     event_log = stack_events(bench_name, queue)
     stats_df = summarize(event_log)
 
     # get dump from pg_stat_statements
-    with eng.connect() as con:
-        rows = con.execute(text('''
-        SELECT jsonb_agg(row_to_json(t)) AS json_result
-        FROM (select * from pg_stat_statements) t;'''
-        )).fetchall()
+    with eng.connect() as c:
+        pg_stat_df = pd.read_sql(sql="select * from pg_stat_statements", con=c)
 
     # write bench summary back to db
     stat_dict = stats_df.set_index("operation").to_dict(orient="index")
@@ -204,10 +202,10 @@ if __name__ == "__main__":
     bench_summary = {
         "bench_name": bench_name,
         "total_msg_sent": writes["num_messages"],
-        "total_msg_read":  reads["num_messages"],
+        "total_msg_read": reads["num_messages"],
         "total_msg_deleted": deletes.get("num_messages"),
         "total_msg_archived": archives.get("num_messages"),
-        "server_spec":  {"todo": "cpu,mem,etc"},
+        "server_spec": json.dumps({"todo": "cpu,mem,etc"}),
         "message_size_bytes": args.message_size_bytes,
         "produce_duration_sec": writes["total_duration_seconds"],
         "consume_duration_sec": reads["total_duration_seconds"],
@@ -215,47 +213,36 @@ if __name__ == "__main__":
         "write_concurrency": args.write_concurrency,
         "write_batch_size": args.write_batch_size,
         "read_batch_size": args.read_batch_size,
-        "pg_settings": pg_settings,
-        "latency": {
-            "write": {
-                "mean": writes["mean"],
-                "stddev": writes["stddev"]
-            },
-            "read": {
-                "mean": reads["mean"],
-                "stddev": reads["stddev"]
-            },
-            "archive": {
-                "mean": archives.get("mean"),
-                "stddev": archives.get("stddev")
-            },
-            "delete": {
-                "mean": deletes.get("mean"),
-                "stddev": deletes.get("stddev")
-
+        "pg_settings": json.dumps(pg_settings),
+        "latency": json.dumps(
+            {
+                "write": {"mean": writes["mean"], "stddev": writes["stddev"]},
+                "read": {"mean": reads["mean"], "stddev": reads["stddev"]},
+                "archive": {"mean": archives.get("mean"), "stddev": archives.get("stddev")},
+                "delete": {"mean": deletes.get("mean"), "stddev": deletes.get("stddev")},
             }
-        },
-        "throughput": {
-            "write": {
-                "messages_per_second": writes["messages_per_second"],
-            },
-            "read": {
-                "messages_per_second": reads["messages_per_second"],
-            },
-            "archive": {
-                "messages_per_second": archives.get("messages_per_second"),
-            },
-            "delete": {
-                "messages_per_second": deletes.get("messages_per_second")
+        ),
+        "throughput": json.dumps(
+            {
+                "write": {
+                    "messages_per_second": writes["messages_per_second"],
+                },
+                "read": {
+                    "messages_per_second": reads["messages_per_second"],
+                },
+                "archive": {
+                    "messages_per_second": archives.get("messages_per_second"),
+                },
+                "delete": {"messages_per_second": deletes.get("messages_per_second")},
             }
-        },
-        "pg_stat_statements": pg_stat_stmts,
+        ),
+        "pg_stat_statements": json.dumps(pg_stat_df.to_dict(orient="records")),
     }
-    import orjson
-    with open("test.json", "w") as f:
-        import json
-        f.write(json.dumps(bench_summary))
-    print(orjson.dumps(bench_summary))
+
+    # write to results table
+    summary_df = pd.DataFrame([bench_summary])
+    with eng.connect() as c:
+        summary_df.to_sql("pgmq_bench_results", con=c, if_exists="append", index=None)
 
     plot_rolling(
         event_log=event_log,
@@ -263,5 +250,4 @@ if __name__ == "__main__":
         bench_name=bench_name,
         duration_sec=duration_seconds,
         params=bench_params,
-        pg_settings=pg_settings
     )

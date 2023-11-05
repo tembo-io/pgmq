@@ -2,8 +2,7 @@ from sqlalchemy import text
 
 
 def setup_bench_results(eng, bench_name: str):
-    """Setup logging and temp table
-    """
+    """Setup logging and temp table"""
     if bench_name is None:
         raise Exception("queue name must not be none")
 
@@ -28,14 +27,14 @@ def setup_bench_results(eng, bench_name: str):
     with eng.connect() as con:
         con.execute(text("select pg_stat_statements_reset()")).fetchall()
         con.commit()
-    
+
     # create table to log all bench results
     with eng.connect() as con:
         con.execute(
             text(
                 f"""
             CREATE TABLE IF NOT EXISTS "pgmq_bench_results" (
-                bench_name text NOT NULL,
+                bench_name text NOT NULL UNIQUE,
                 datetime timestamp with time zone NOT NULL DEFAULT now(),
                 total_msg_sent int8 NOT NULL,
                 total_msg_read int8 NOT NULL,
@@ -60,7 +59,7 @@ def setup_bench_results(eng, bench_name: str):
         con.commit()
 
     # create the bench's event log table
-    # 
+    #
     with eng.connect() as con:
         con.execute(
             text(
@@ -72,16 +71,19 @@ def setup_bench_results(eng, bench_name: str):
                 batch_size numeric NULL,
                 epoch numeric NOT NULL,
                 queue_length numeric NULL
-            )""")
+            )"""
+            )
         )
         con.commit()
 
 
-from sqlalchemy.engine import Engine
-import pandas as pd
-import subprocess
-import os
 import logging
+import os
+import subprocess
+
+import pandas as pd
+from sqlalchemy.engine import Engine
+
 
 def write_event_log(db_url: str, event_log: pd.DataFrame, bench_name: str):
     csv_name = f"/tmp/event_log_{bench_name}.csv"

@@ -12,12 +12,12 @@ logging.basicConfig(level=logging.INFO)
 
 
 def produce(
-        queue_name: str,
-        connection_info: dict,
-        duration_seconds: int = 60,
-        batch_size: int = 1,
-        message_size_bytes: int = 1000
-    ):
+    queue_name: str,
+    connection_info: dict,
+    duration_seconds: int = 60,
+    batch_size: int = 1,
+    message_size_bytes: int = 1000,
+):
     """Sends minimal message to a queue for the specified with no pause in between sends"""
     batch_size = int(batch_size)
     pid = os.getpid()
@@ -39,17 +39,13 @@ def produce(
     running_duration = 0
     last_print_time = time.time()
 
-    payloads = {
-        22: "22B.json",
-        1000: "1KB.json",
-        10000: "10KB.json"
-    }
+    payloads = {22: "22B.json", 1000: "1KB.json", 10000: "10KB.json"}
 
     # get specified message payload by size
     # just fail hard if its invalid value
     message_file = payloads[message_size_bytes]
 
-    with open (f"benches/payloads/{message_file}", "r") as f:
+    with open(f"benches/payloads/{message_file}", "r") as f:
         message = json.dumps(json.load(f))
 
     if batch_size > 1:

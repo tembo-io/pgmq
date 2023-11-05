@@ -14,7 +14,7 @@ def stack_events(
     queue: PGMQueue,
 ) -> pd.DataFrame:
     """stacks operation log to queue depth log into single dataframe
-    
+
     each record is an event, either a write, read, delete, or a queue_depth log
 
     queue_depth log happen on an interval and measure number of messages in queue and `select 1` latency
@@ -50,12 +50,9 @@ def stack_events(
     events_df = pd.concat([df, sel1_df, queue_depth[["operation", "queue_length", "epoch"]]])
 
     from benches.log import write_event_log
+
     # write event log back to postgres table
-    write_event_log(
-        db_url=db_url,
-        event_log=events_df,
-        bench_name=bench_name
-    )
+    write_event_log(db_url=db_url, event_log=events_df, bench_name=bench_name)
 
     # remove temp tables
     with con.connect() as c:
@@ -64,22 +61,14 @@ def stack_events(
     return events_df
 
 
-def plot_rolling(
-        event_log: pd.DataFrame,
-        summary_df: pd.DataFrame,
-        bench_name: str,
-        duration_sec: int,
-        params: dict,
-        pg_settings: dict
-    ):
+def plot_rolling(event_log: pd.DataFrame, summary_df: pd.DataFrame, bench_name: str, duration_sec: int, params: dict):
     def int_to_comma_string(n):
         return "{:,}".format(n)
 
     # Plotting
     fig, ax1 = plt.subplots(figsize=(20, 10))
     plt.suptitle("PGMQ Concurrent Produce/Consumer Benchmark")
-    ax1.text(0, -0.05, json.dumps(pg_settings, indent=2), transform=ax1.transAxes, va="top", ha="left")
-    ax1.text(0.85, -0.05, json.dumps(params, indent=2), transform=ax1.transAxes, va="top", ha="left")
+    ax1.text(0.25, -0.05, json.dumps(params, indent=2), transform=ax1.transAxes, va="top", ha="left")
 
     # Prepare the throughput table
     columns = ["Operation", "Duration (s)", "Total Messages", "msg/s"]
@@ -146,8 +135,8 @@ import numpy as np
 
 # # TODO: make return model data type
 def summarize(event_log: pd.DataFrame) -> dict:
-    '''Compute summary stats from the bench
-    
+    """Compute summary stats from the bench
+
     event_log: pd.DataFrame representnation of event_log table
         operation text NOT NULL,
         duration_sec numeric NULL,
@@ -155,21 +144,22 @@ def summarize(event_log: pd.DataFrame) -> dict:
         batch_size numeric NULL,
         epoch numeric NOT NULL,
         queue_length numeric NULL
-    '''
+    """
     event_log["duration_ms"] = event_log["duration_sec"] * 1000
     event_log["time"] = pd.to_datetime(event_log["epoch"], unit="s")
 
     # result df is rendered in table on top of plot
-    result = event_log.groupby("operation").agg(
-        {
-            "time": lambda x: x.max() - x.min(), # total duration of eacah operation
-            "duration_ms": [
-                np.mean,
-                np.std
-            ],
-            "batch_size": "sum", # sum the total number of messages read in each operation
-        }
-    ).reset_index()
+    result = (
+        event_log.groupby("operation")
+        .agg(
+            {
+                "time": lambda x: x.max() - x.min(),  # total duration of eacah operation
+                "duration_ms": [np.mean, np.std],
+                "batch_size": "sum",  # sum the total number of messages read in each operation
+            }
+        )
+        .reset_index()
+    )
     result.columns = ["operation", "range", "mean", "stddev", "num_messages"]
 
     result["total_duration_seconds"] = result["range"].apply(lambda x: x.total_seconds())
