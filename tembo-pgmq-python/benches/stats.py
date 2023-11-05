@@ -33,7 +33,7 @@ def stack_events(
     sel1_df["operation"] = "select1"
     sel1_df.rename(
         columns={
-            "select1": "duration",
+            "select1": "duration_sec",
             "time": "epoch",
         },
         inplace=True,
@@ -64,25 +64,14 @@ def stack_events(
     return events_df
 
 
-def plot_rolling(df: pd.DataFrame, bench_name: str, duration_sec: int, params: dict, pg_settings: dict):
-    # convert seconds to milliseconds
-    df["duration_ms"] = df["duration"] * 1000
-    df["time"] = pd.to_datetime(df["epoch"], unit="s")
-
-    # result df is rendered in table on top of plot
-    result = df.groupby("operation").agg(
-        {
-            "time": lambda x: x.max() - x.min(), # total duration of eacah operation
-            "batch_size": "sum" # sum the total number of messages read in each operation
-        }
-    )
-    result.columns = ["range", "num_messages"]
-    result.reset_index(inplace=True)
-
-    result.columns = ["operation", "range", "num_messages"]
-    result["total_duration_seconds"] = result["range"].apply(lambda x: x.total_seconds())
-    result["messages_per_second"] = result["num_messages"] / result["total_duration_seconds"]
-
+def plot_rolling(
+        event_log: pd.DataFrame,
+        summary_df: pd.DataFrame,
+        bench_name: str,
+        duration_sec: int,
+        params: dict,
+        pg_settings: dict
+    ):
     def int_to_comma_string(n):
         return "{:,}".format(n)
 
@@ -95,7 +84,7 @@ def plot_rolling(df: pd.DataFrame, bench_name: str, duration_sec: int, params: d
     # Prepare the throughput table
     columns = ["Operation", "Duration (s)", "Total Messages", "msg/s"]
     cell_text = []
-    for _, row in result.iterrows():
+    for _, row in summary_df.iterrows():
         operation = row["operation"]
         if operation in ["queue_depth", "select1"]:
             continue
@@ -115,7 +104,7 @@ def plot_rolling(df: pd.DataFrame, bench_name: str, duration_sec: int, params: d
     color_map = {"read": "orange", "write": "blue", "archive": "green", "delete": "green", "select1": "red"}
     sigma = 1000  # Adjust as needed for the desired smoothing level
     for op in ["read", "write", "archive", "delete", "select1"]:
-        _df = df[df["operation"] == op].sort_values("time")
+        _df = event_log[event_log["operation"] == op].sort_values("time")
         if _df.shape[0] == 0:
             # skip delete when archive, and vice-versa
             continue
@@ -137,7 +126,7 @@ def plot_rolling(df: pd.DataFrame, bench_name: str, duration_sec: int, params: d
 
     # Create a second y-axis for 'queue_length'
     ax2 = ax1.twinx()
-    queue_depth_data = df[df["operation"] == "queue_depth"]
+    queue_depth_data = event_log[event_log["operation"] == "queue_depth"]
     ax2.plot(queue_depth_data["time"], queue_depth_data["queue_length"], color="gray", label="queue_depth")
     ax2.set_ylabel("queue_depth", color="gray")
     ax2.tick_params("y", colors="gray")
@@ -150,3 +139,39 @@ def plot_rolling(df: pd.DataFrame, bench_name: str, duration_sec: int, params: d
     output_plot = f"{bench_name}_{duration_sec}.png"
     plt.savefig(output_plot)
     logging.info(f"Saved plot to: {output_plot}")
+
+
+import numpy as np
+
+
+# # TODO: make return model data type
+def summarize(event_log: pd.DataFrame) -> dict:
+    '''Compute summary stats from the bench
+    
+    event_log: pd.DataFrame representnation of event_log table
+        operation text NOT NULL,
+        duration_sec numeric NULL,
+        msg_ids jsonb NULL,
+        batch_size numeric NULL,
+        epoch numeric NOT NULL,
+        queue_length numeric NULL
+    '''
+    event_log["duration_ms"] = event_log["duration_sec"] * 1000
+    event_log["time"] = pd.to_datetime(event_log["epoch"], unit="s")
+
+    # result df is rendered in table on top of plot
+    result = event_log.groupby("operation").agg(
+        {
+            "time": lambda x: x.max() - x.min(), # total duration of eacah operation
+            "duration_ms": [
+                np.mean,
+                np.std
+            ],
+            "batch_size": "sum", # sum the total number of messages read in each operation
+        }
+    ).reset_index()
+    result.columns = ["operation", "range", "mean", "stddev", "num_messages"]
+
+    result["total_duration_seconds"] = result["range"].apply(lambda x: x.total_seconds())
+    result["messages_per_second"] = result["num_messages"] / result["total_duration_seconds"]
+    return result.drop("range", axis=1)

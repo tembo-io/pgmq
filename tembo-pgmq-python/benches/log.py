@@ -14,7 +14,7 @@ def setup_bench_results(eng, bench_name: str):
                 f"""
             CREATE TABLE "bench_results_{bench_name}"(
                 operation text NULL,
-                duration float8 NULL,
+                duration_sec float8 NULL,
                 msg_ids jsonb NULL,
                 batch_size int8 NULL,
                 epoch float8 NULL
@@ -37,8 +37,6 @@ def setup_bench_results(eng, bench_name: str):
             CREATE TABLE IF NOT EXISTS "pgmq_bench_results" (
                 bench_name text NOT NULL,
                 datetime timestamp with time zone NOT NULL DEFAULT now(),
-                batch_size int8 NULL,
-                epoch float8 NULL,
                 total_msg_sent int8 NOT NULL,
                 total_msg_read int8 NOT NULL,
                 total_msg_deleted int8 NULL,
@@ -91,5 +89,5 @@ def write_event_log(db_url: str, event_log: pd.DataFrame, bench_name: str):
     copy_command = f"\COPY event_log_{bench_name} FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa
     psql_command = ["psql", db_url, "-c", copy_command]
     subprocess.run(psql_command)
-    # os.remove(csv_name)
+    os.remove(csv_name)
     logging.info(f"Wrote event log to event_log_{bench_name}")
