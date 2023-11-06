@@ -58,6 +58,7 @@ def stack_events(
     with con.connect() as c:
         c.execute(text(f'''DROP TABLE "{bench_results_table}"'''))
         c.execute(text(f'''DROP TABLE "{queue_depth_table}"'''))
+        c.commit()
     return events_df
 
 

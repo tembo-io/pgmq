@@ -4,6 +4,7 @@ import logging
 import multiprocessing
 import time
 from multiprocessing import Process
+from typing import Optional
 
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -11,79 +12,38 @@ from sqlalchemy import create_engine, text
 from tembo_pgmq_python import PGMQueue
 
 logging.basicConfig(level=logging.INFO)
+from urllib.parse import urlparse
+
+import typer
 
 from benches.ops import consume, produce, queue_depth
 from benches.stats import plot_rolling, stack_events, summarize
 
-if __name__ == "__main__":
-    # run the concurrency read/write benchmark
-    # N processes concurrently sending messages to a single queue
-    # M processes concurrently reading messages from the same queue
-    # control parameters of the benchmark with the command line arguments provided below
 
-    # example usage (remove `poetry run`) if not using poetry to manage the environment
-    # 10 processes each writing 1 message at a time, as fast as possible for 60 seconds
-    # 10 processes, each reading->deleting up to 10 messages at a time, until all messages consumed
-    # excecute from pgmq/tembo-pgmq-python
-    #
-    # poetry run python benches/bench.py \
-    #   --postgres_connection='postgresql://$USER:$PASSWORD@$HOST:$PORT/$DATABASE' \
-    #   --duration_seconds=60 \
-    #   --write_concurrency=10 \
-    #   --write_batch_size=1 \
-    #   --read_concurrency=10 \
-    #   --read_batch_size=10
+def bench(
+    postgres_connection: str,
+    duration_seconds: int,
+    bench_name: Optional[str] = None,
+    message_size_bytes: int = 1000,
+    write_batch_size: int = 1,
+    read_batch_size: int = 1,
+    read_concurrency: int = 1,
+    write_concurrency: int = 1,
+    unlogged_queue: bool = False,
+    partitioned_queue: bool = False,
+    partition_interval: int = 10_000,
+    message_retention: int = 1_000_000,
+):
+    result = urlparse(postgres_connection)
+    connection_info = {
+        "username": result.username,
+        "password": result.password,
+        "host": result.hostname,
+        "port": int(result.port),
+        "database": result.path.lstrip("/"),
+    }
 
-    parser = argparse.ArgumentParser(description="PGMQ Benchmarking")
-
-    parser.add_argument("--postgres_connection", type=str, required=False, help="postgres connection string")
-
-    parser.add_argument(
-        "--duration_seconds", type=int, required=True, help="how long the benchmark should run, in seconds"
-    )
-    parser.add_argument("--message_size_bytes", type=int, default=1000, help="size of the message in bench, in bytes")
-    parser.add_argument("--write_batch_size", type=int, default=1, help="number of message per send operation")
-    parser.add_argument(
-        "--read_batch_size", type=int, default=1, help="number of message per read/delete/archive operation"
-    )
-
-    parser.add_argument("--read_concurrency", type=int, default=1, help="number of concurrent consumers")
-    parser.add_argument("--write_concurrency", type=int, default=1, help="number of concurrent producers")
-    parser.add_argument("--bench_name", type=str, required=False, help="the name of the benchmark")
-
-    parser.add_argument("--unlogged_queue", type=bool, default=False, help="whether to use an unlogged queue")
-
-    # partitioned queue configurations
-    parser.add_argument("--partitioned_queue", type=bool, default=False, help="whether to use a partitioned queue")
-    parser.add_argument("--partition_interval", type=int, default=10_000, help="number of messages per partition")
-    parser.add_argument("--message_retention", type=int, default=1_000_000, help="number of messages per partition")
-
-    args = parser.parse_args()
-
-    # default postgres connection - localhost pgrx
-    if args.postgres_connection is None:
-        import getpass
-
-        user = getpass.getuser()
-        connection_info = dict(host="localhost", port=28815, username=user, password="postgres", database="pgmq")
-    else:
-        from urllib.parse import urlparse
-
-        result = urlparse(args.postgres_connection)
-        connection_info = {
-            "username": result.username,
-            "password": result.password,
-            "host": result.hostname,
-            "port": int(result.port),
-            "database": result.path.lstrip("/"),
-        }
-
-    duration_seconds = args.duration_seconds
-    bench_name = args.bench_name
-
-    partitioned_queue = args.partitioned_queue
-    partition_interval = args.partition_interval
-    retention_interval = args.message_retention
+    retention_interval = message_retention
 
     if bench_name is None:
         time_now = int(time.time())
@@ -93,11 +53,11 @@ if __name__ == "__main__":
         "bench_name": bench_name,
         "host": connection_info["host"],
         "produce_time_seconds": duration_seconds,
-        "read_concurrency": args.read_concurrency,
-        "write_concurrency": args.write_concurrency,
-        "write_batch_size": args.write_batch_size,
-        "read_batch_size": args.read_batch_size,
-        "message_size_bytes": args.message_size_bytes,
+        "read_concurrency": read_concurrency,
+        "write_concurrency": write_concurrency,
+        "write_batch_size": write_batch_size,
+        "read_batch_size": read_batch_size,
+        "message_size_bytes": message_size_bytes,
     }
 
     if partitioned_queue:
@@ -131,8 +91,8 @@ if __name__ == "__main__":
             bench_name, partition_interval=partition_interval, retention_interval=retention_interval
         )
     else:
-        logging.info(f"Creating queue: {bench_name}, unlogged: {args.unlogged_queue}")
-        queue.create_queue(bench_name, unlogged=args.unlogged_queue)
+        logging.info(f"Creating queue: {bench_name}, unlogged: {unlogged_queue}")
+        queue.create_queue(bench_name, unlogged=unlogged_queue)
 
     produce_csv = f"produce_{bench_name}.csv"
     consume_csv = f"consume_{bench_name}.csv"
@@ -143,9 +103,9 @@ if __name__ == "__main__":
         "queue_name": bench_name,
         "connection_info": connection_info,
         "duration_seconds": duration_seconds,
-        "batch_size": args.write_batch_size,
+        "batch_size": write_batch_size,
     }
-    for i in range(args.write_concurrency):
+    for i in range(write_concurrency):
         producer = f"producer_{i}"
         producer_procs[producer] = Process(target=produce, kwargs=write_kwargs)
         producer_procs[producer].start()
@@ -160,9 +120,9 @@ if __name__ == "__main__":
         "queue_name": bench_name,
         "connection_info": connection_info,
         "pattern": "delete",  # TODO: parameterize this
-        "batch_size": args.read_batch_size,
+        "batch_size": read_batch_size,
     }
-    for i in range(args.read_concurrency):
+    for i in range(read_concurrency):
         conumser = f"consumer_{i}"
         consume_procs[conumser] = Process(target=consume, kwargs=read_kwargs)
         consume_procs[conumser].start()
@@ -206,13 +166,13 @@ if __name__ == "__main__":
         "total_msg_deleted": deletes.get("num_messages"),
         "total_msg_archived": archives.get("num_messages"),
         "server_spec": json.dumps({"todo": "cpu,mem,etc"}),
-        "message_size_bytes": args.message_size_bytes,
+        "message_size_bytes": message_size_bytes,
         "produce_duration_sec": writes["total_duration_seconds"],
         "consume_duration_sec": reads["total_duration_seconds"],
-        "read_concurrency": args.read_concurrency,
-        "write_concurrency": args.write_concurrency,
-        "write_batch_size": args.write_batch_size,
-        "read_batch_size": args.read_batch_size,
+        "read_concurrency": read_concurrency,
+        "write_concurrency": write_concurrency,
+        "write_batch_size": write_batch_size,
+        "read_batch_size": read_batch_size,
         "pg_settings": json.dumps(pg_settings),
         "latency": json.dumps(
             {
@@ -251,3 +211,22 @@ if __name__ == "__main__":
         duration_sec=duration_seconds,
         params=bench_params,
     )
+
+
+if __name__ == "__main__":
+    # run the concurrency read/write benchmark
+    # N processes concurrently sending messages to a single queue
+    # M processes concurrently reading messages from the same queue
+    # control parameters of the benchmark with the command line arguments provided below
+
+    # example usage (remove `poetry run`) if not using poetry to manage the environment
+    # 10 processes each writing 1 message at a time, as fast as possible for 60 seconds
+    # 10 processes, each reading->deleting up to 10 messages at a time, until all messages consumed
+    # excecute from pgmq/tembo-pgmq-python
+    #
+    # poetry run python -m benches.bench 'postgresql://$USER:$PASSWORD@$HOST:$PORT/$DATABASE' 60 \
+    #   --write-concurrency=10 \
+    #   --write-batch-size=1 \
+    #   --read-concurrency=10 \
+    #   --read-batch-size=10
+    typer.run(bench)

@@ -34,6 +34,7 @@ pandas-stubs = "^2.0.1.230501"
 sqlalchemy = "^2.0.13"
 psycopg2 = "^2.9.6"
 scipy = "^1"
+typer = {extras = ["all"], version = "^0.9.0"}
 types-psycopg2 = "^2.9.21.11"
 
 [tool.black]
