@@ -6,7 +6,7 @@ import subprocess
 import time
 
 import pandas as pd
-import psycopg2
+import psycopg
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,7 +27,7 @@ def produce(
     port = connection_info["port"]
     database = connection_info["database"]
     url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
-    conn = psycopg2.connect(url)
+    conn = psycopg.connect(url)
     conn.autocommit = True
     cur = conn.cursor()
 
@@ -57,7 +57,7 @@ def produce(
         send_start = time.perf_counter()
         if batch_size > 1:
             cur.execute(
-                "select * from pgmq.send_batch(%s, ARRAY[%s]::jsonb[])",
+                "select * from pgmq.send_batch(%s, %s::jsonb[])",
                 (
                     queue_name,
                     message,
@@ -78,7 +78,7 @@ def produce(
             {
                 "operation": "write",
                 "duration": send_duration,
-                "msg_id": msg_id,
+                # "msg_id": msg_id,
                 "batch_size": batch_size,
                 "epoch": time.time(),
             }
@@ -115,7 +115,7 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
     port = connection_info["port"]
     database = connection_info["database"]
     url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
-    conn = psycopg2.connect(url)
+    conn = psycopg.connect(url)
     cur = conn.cursor()
 
     conn.autocommit = True
@@ -147,7 +147,7 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
             {
                 "operation": "read",
                 "duration_sec": read_duration,
-                "msg_id": msg_ids,
+                # "msg_id": msg_ids,
                 "batch_size": num_consumed,
                 "epoch": time.time(),
             }
@@ -166,7 +166,7 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
             {
                 "operation": pattern,
                 "duration_sec": archive_duration,
-                "msg_id": msg_ids,
+                # "msg_id": msg_ids,
                 "batch_size": num_consumed,
                 "epoch": time.time(),
             }
@@ -175,20 +175,16 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
         if num_consumed < batch_size:
             logging.debug(f"Consumed {num_consumed}/{batch_size} batch size")
 
-    cur.close()
-    conn.close()
-
     # divide by 2 because we're appending two results (read/archive) per message
     num_consumed = len(results) / 2
     logging.info(f"pid: {pid}, read {num_consumed} messages")
 
-    df = pd.DataFrame(results)
-    csv_name = f"/tmp/tmp_consume_{pid}_{queue_name}.csv"
-    df.to_csv(csv_name, index=None)
-    copy_command = f"\COPY bench_results_{queue_name} FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa: W605
-    psql_command = ["psql", url, "-c", copy_command]
-    subprocess.run(psql_command)
-    os.remove(csv_name)
+    with cur.copy(f"COPY bench_results_{queue_name} FROM STDIN") as copy:
+        for record in results:
+            copy.write_row(tuple(record.values()))
+
+    cur.close()
+    conn.close()
 
 
 def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessing.Value, duration_seconds: int):
@@ -198,7 +194,7 @@ def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessi
     port = connection_info["port"]
     database = connection_info["database"]
     url = f"postgresql://{username}:{password}@{host}:{port}/{database}"
-    conn = psycopg2.connect(url)
+    conn = psycopg.connect(url)
     pid = os.getpid()
     cur = conn.cursor()
     conn.autocommit = True
@@ -244,16 +240,12 @@ def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessi
         }
         logging.info(log)
         time.sleep(5)
+
+    with cur.copy(f"COPY bench_results_{queue_name}_queue_depth FROM STDIN") as copy:
+        for record in all_metrics:
+            copy.write_row(tuple(record.values()))
+
     cur.close()
     conn.close()
-    df = pd.DataFrame(all_metrics)
-    csv_name = f"/tmp/tmp_consume_{pid}_{queue_name}.csv"
-    df.to_csv(csv_name, index=None)
-    copy_command = (
-        f"\COPY bench_results_{queue_name}_queue_depth FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa: W605
-    )
-    psql_command = ["psql", url, "-c", copy_command]
-    subprocess.run(psql_command)
-    os.remove(csv_name)
 
     return all_metrics

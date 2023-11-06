@@ -30,7 +30,7 @@ def stack_events(
     queue_depth = pd.read_sql(f'''select * from "{queue_depth_table}"''', con=con)
 
     sel1_df = queue_depth[["time", "select1"]]
-    sel1_df["operation"] = "select1"
+    sel1_df = sel1_df.assign(operation="select1")
     sel1_df.rename(
         columns={
             "select1": "duration_sec",
@@ -38,7 +38,7 @@ def stack_events(
         },
         inplace=True,
     )
-    queue_depth["operation"] = "queue_depth"
+    queue_depth = queue_depth.assign(operation="queue_depth")
     queue_depth.rename(
         columns={
             "total_messages": "msg_id",
@@ -134,14 +134,12 @@ def plot_rolling(event_log: pd.DataFrame, summary_df: pd.DataFrame, bench_name: 
 import numpy as np
 
 
-# # TODO: make return model data type
-def summarize(event_log: pd.DataFrame) -> dict:
+def summarize(event_log: pd.DataFrame) -> pd.DataFrame:
     """Compute summary stats from the bench
 
     event_log: pd.DataFrame representnation of event_log table
         operation text NOT NULL,
         duration_sec numeric NULL,
-        msg_ids jsonb NULL,
         batch_size numeric NULL,
         epoch numeric NOT NULL,
         queue_length numeric NULL

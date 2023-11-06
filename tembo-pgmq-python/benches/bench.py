@@ -1,4 +1,3 @@
-import argparse
 import json
 import logging
 import multiprocessing
@@ -33,7 +32,7 @@ def bench(
     partitioned_queue: bool = False,
     partition_interval: int = 10_000,
     message_retention: int = 1_000_000,
-):
+) -> str:
     result = urlparse(postgres_connection)
     connection_info = {
         "username": result.username,
@@ -80,9 +79,12 @@ def bench(
 
     with eng.connect() as con:
         results = con.execute(text(query)).fetchall()
-
     # Convert results to dictionary
     pg_settings = {row[0]: row[1] for row in results}
+
+    with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as con:
+        logging.info("Vacuuming")
+        con.execute(text("vacuum full"))
 
     queue = PGMQueue(**connection_info)
     if partitioned_queue:
@@ -93,9 +95,6 @@ def bench(
     else:
         logging.info(f"Creating queue: {bench_name}, unlogged: {unlogged_queue}")
         queue.create_queue(bench_name, unlogged=unlogged_queue)
-
-    produce_csv = f"produce_{bench_name}.csv"
-    consume_csv = f"consume_{bench_name}.csv"
 
     # run producing and consuming in parallel, separate processes
     producer_procs = {}
@@ -141,6 +140,7 @@ def bench(
 
     # stop the queue depth proc
     kill_flag.value = True
+    logging.info("Stopping queue depth proc")
     queue_depth_proc.join()
 
     ## collect and summarize
@@ -211,6 +211,12 @@ def bench(
         duration_sec=duration_seconds,
         params=bench_params,
     )
+
+    with eng.connect() as con:
+        con.execute(text(f"select pgmq.drop_queue('{bench_name}')"))
+        con.commit()
+
+    return bench_name
 
 
 if __name__ == "__main__":
