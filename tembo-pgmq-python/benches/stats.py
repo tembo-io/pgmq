@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt  # type: ignore
 from scipy.ndimage import gaussian_filter1d
 from sqlalchemy import create_engine, text
 
+from benches.log import write_event_log
 from tembo_pgmq_python import PGMQueue
 
 
@@ -48,8 +49,6 @@ def stack_events(
     )
 
     events_df = pd.concat([df, sel1_df, queue_depth[["operation", "queue_length", "epoch"]]])
-
-    from benches.log import write_event_log
 
     # write event log back to postgres table
     write_event_log(db_url=db_url, event_log=events_df, bench_name=bench_name)
