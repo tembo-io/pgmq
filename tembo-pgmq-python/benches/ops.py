@@ -39,7 +39,6 @@ def produce(
     running_duration = 0
     last_print_time = time.time()
 
-    logging.info(f"Running message_size_bytes: {message_size_bytes}")
     payloads = {22: "22B.json", 1000: "1KB.json", 10000: "10KB.json"}
 
     # get specified message payload by size
