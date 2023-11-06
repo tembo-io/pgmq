@@ -39,6 +39,7 @@ def produce(
     running_duration = 0
     last_print_time = time.time()
 
+    logging.info(f"Running message_size_bytes: {message_size_bytes}")
     payloads = {22: "22B.json", 1000: "1KB.json", 10000: "10KB.json"}
 
     # get specified message payload by size
@@ -78,7 +79,6 @@ def produce(
             {
                 "operation": "write",
                 "duration": send_duration,
-                # "msg_id": msg_id,
                 "batch_size": batch_size,
                 "epoch": time.time(),
             }
@@ -89,17 +89,15 @@ def produce(
         if time.time() - last_print_time >= 5:
             last_print_time = time.time()
             logging.debug(f"pid: {pid}, total_sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
-    cur.close()
-    conn.close()
+
     logging.debug(f"pid: {pid}, total_sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
 
-    csv_name = f"/tmp/tmp_produce_{pid}_{queue_name}.csv"
-    df = pd.DataFrame(all_results)
-    df.to_csv(csv_name, index=None)
-    copy_command = f"\COPY bench_results_{queue_name} FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa
-    psql_command = ["psql", url, "-c", copy_command]
-    subprocess.run(psql_command)
-    os.remove(csv_name)
+    with cur.copy(f"COPY bench_results_{queue_name} FROM STDIN") as copy:
+        for record in all_results:
+            copy.write_row(tuple(record.values()))
+
+    cur.close()
+    conn.close()
     logging.info(f"producer complete, pid: {pid}")
 
 
@@ -147,7 +145,6 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
             {
                 "operation": "read",
                 "duration_sec": read_duration,
-                # "msg_id": msg_ids,
                 "batch_size": num_consumed,
                 "epoch": time.time(),
             }
@@ -166,7 +163,6 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
             {
                 "operation": pattern,
                 "duration_sec": archive_duration,
-                # "msg_id": msg_ids,
                 "batch_size": num_consumed,
                 "epoch": time.time(),
             }

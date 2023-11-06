@@ -23,9 +23,9 @@ def run_multi(infile: str):
 
     # bench.yaml
     globals:
-    postgres_connection: 'postgresql://postgres:postgres@localhost:5432/postgres'
-    duration_seconds: 1
-    message_size_bytes: 1000
+        postgres_connection: 'postgresql://postgres:postgres@localhost:5432/postgres'
+        duration_seconds: 60
+        message_size_bytes: 1000
     benches:
     - read_concurrency: 1
         read_batch_size: 1

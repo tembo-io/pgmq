@@ -103,6 +103,7 @@ def bench(
         "connection_info": connection_info,
         "duration_seconds": duration_seconds,
         "batch_size": write_batch_size,
+        "message_size_bytes": message_size_bytes,
     }
     for i in range(write_concurrency):
         producer = f"producer_{i}"
