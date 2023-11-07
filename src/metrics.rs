@@ -110,9 +110,10 @@ fn build_summary_query(queue_name: &str) -> String {
                 (NOW() at time zone 'utc')::timestamp at time zone 'utc' as scrape_time
             FROM {fq_table}) as q_summary
         CROSS JOIN
-            (SELECT
-                (last_value - 1) as total_messages
-            from {fq_table}_msg_id_seq) as q_sent_summary
+            (
+                SELECT (CASE WHEN is_called THEN last_value ELSE 0 END) as total_messages
+                FROM {fq_table}_msg_id_seq
+            ) as q_sent_summary
         "
     )
 }
