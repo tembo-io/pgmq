@@ -1,4 +1,4 @@
-# Postgres Message Queue (PGMQ)
+# Postgres Message Queue (PGMQ) 
 
 A lightweight message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq) but on Postgres.
 
