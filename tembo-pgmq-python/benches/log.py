@@ -14,7 +14,6 @@ def setup_bench_results(eng, bench_name: str):
             CREATE TABLE "bench_results_{bench_name}"(
                 operation text NULL,
                 duration_sec float8 NULL,
-                msg_ids jsonb NULL,
                 batch_size int8 NULL,
                 epoch float8 NULL
             )
@@ -67,7 +66,6 @@ def setup_bench_results(eng, bench_name: str):
             CREATE TABLE IF NOT EXISTS "event_log_{bench_name}" (
                 operation text NOT NULL,
                 duration_sec numeric NULL,
-                msg_ids jsonb NULL,
                 batch_size numeric NULL,
                 epoch numeric NOT NULL,
                 queue_length numeric NULL
