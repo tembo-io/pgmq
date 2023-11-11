@@ -27,3 +27,7 @@ pub fn pgmq_delete_batch() {}
 pub fn pgmq_send() {}
 #[pg_extern(sql = "")]
 pub fn pgmq_send_batch() {}
+#[pg_extern(sql = "")]
+pub fn metrics() {}
+#[pg_extern(sql = "")]
+pub fn metrics_all() {}
