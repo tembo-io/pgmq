@@ -56,9 +56,8 @@ jobs:
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
           git checkout v4.7.4 && \
-          sudo make install && cd ../
-          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.5/pgrx-install/share/postgresql/extension/
-          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.5/pgrx-install/lib/postgresql/
+          sudo PG_CONFIG=~/.pgrx/15.5/pgrx-install/bin/pg_config make && \
+          sudo PG_CONFIG=~/.pgrx/15.5/pgrx-install/bin/pg_config make install
       - name: Run old version (0.14.2)
         run: |
           rm -rf ./target/pgrx-test-data-* || true
