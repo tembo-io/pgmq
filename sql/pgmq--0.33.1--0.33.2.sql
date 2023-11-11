@@ -8,6 +8,8 @@ CREATE TYPE pgmq.metrics_result AS (
     scrape_time timestamp with time zone
 );
 
+DROP FUNCTION pgmq."metrics"(text);
+
 -- get metrics for a single queue
 CREATE OR REPLACE FUNCTION pgmq.metrics(queue_name TEXT)
 RETURNS pgmq.metrics_result AS $$
@@ -46,6 +48,8 @@ BEGIN
     RETURN result_row;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP FUNCTION pgmq."metrics_all"();
 
 -- get metrics for all queues
 CREATE OR REPLACE FUNCTION pgmq."metrics_all"()
