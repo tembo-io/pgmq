@@ -51,11 +51,11 @@ jobs:
       fail-fast: false
       matrix:
         pg: [
-          {version: "12.16", pgrx_version: "pg12"},
-          {version: "13.12", pgrx_version: "pg13"},
-          {version: "14.9", pgrx_version: "pg14"},
-          {version: "15.4", pgrx_version: "pg15"},
-          {version: "16.0", pgrx_version: "pg16"}
+          {version: "12.17", pgrx_version: "pg12"},
+          {version: "13.13", pgrx_version: "pg13"},
+          {version: "14.10", pgrx_version: "pg14"},
+          {version: "15.5", pgrx_version: "pg15"},
+          {version: "16.1", pgrx_version: "pg16"}
         ]
     steps:
       - uses: actions/checkout@v2
@@ -91,9 +91,9 @@ jobs:
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
           git checkout v4.7.4 && \
-          sudo make install && cd ../
-          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/share/postgresql/extension/
-          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/lib/postgresql/
+          sed -i 's|PG_CONFIG = pg_config|PG_CONFIG = ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/bin/pg_config|' Makefile && \
+          make && \
+          make install 
       - name: Run tests
         run: |
           rm -rf ./target/pgrx-test-data-* || true

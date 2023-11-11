@@ -28,6 +28,6 @@ pub fn pgmq_send() {}
 #[pg_extern(sql = "")]
 pub fn pgmq_send_batch() {}
 #[pg_extern(sql = "")]
-pub fn metrics() {}
+pub fn pgmq_metrics_wrapper() {}
 #[pg_extern(sql = "")]
-pub fn metrics_all() {}
+pub fn pgmq_metrics_all_wrapper() {}
