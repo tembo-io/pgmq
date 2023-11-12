@@ -58,7 +58,8 @@ jobs:
           git checkout v4.7.4 && \
           sed -i 's|PG_CONFIG = pg_config|PG_CONFIG = ~/.pgrx/15.5/pgrx-install/bin/pg_config|' Makefile && \
           make && \
-          make install
+          make install && \
+          ls -alh /home/runner/.pgrx/15.5/pgrx-install/share/postgresql/extension/
       - name: Run old version (0.14.2)
         run: |
           rm -rf ./target/pgrx-test-data-* || true
