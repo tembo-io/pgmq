@@ -6,7 +6,7 @@ inputs:
     required: true
   pg_version:
     description: 'The version of postgres'
-    default: "15.4"
+    default: "15.5"
   pgrx_pg_version:
     description: 'Pgrx pg version alias'
     default: "pg15"
