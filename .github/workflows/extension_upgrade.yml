@@ -59,7 +59,7 @@ jobs:
           sed -i 's|PG_CONFIG = pg_config|PG_CONFIG = ~/.pgrx/15.5/pgrx-install/bin/pg_config|' Makefile && \
           make && \
           make install && \
-          ls -alh /home/runner/.pgrx/15.5/pgrx-install/share/postgresql/extension/
+          ls -alh /home/runner/.pgrx/15.5/pgrx-install/share/postgresql/extension/pg_partman*
       - name: Run old version (0.14.2)
         run: |
           rm -rf ./target/pgrx-test-data-* || true
@@ -72,6 +72,7 @@ jobs:
           psql $DATABASE_URL -c "CREATE EXTENSION pgmq;"
           psql $DATABASE_URL -c "select * from pgmq_create('test_queue_1')"
           psql $DATABASE_URL -c "select * from pgmq_create_partitioned('test_partitioned_queue_1');"
+          ls -alh /home/runner/.pgrx/15.5/pgrx-install/share/postgresql/extension/pg_partman*
       - name: Checkout branch's version
         env:
           CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
@@ -83,6 +84,7 @@ jobs:
           force: true
       - name: Upgrade and run tests
         run: |
+          ls -alh /home/runner/.pgrx/15.5/pgrx-install/share/postgresql/extension/pg_partman*
           export DATABASE_URL=postgres://$USER:postgres@localhost:28815/pgmq
           SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
           psql $DATABASE_URL -c "ALTER EXTENSION pgmq UPDATE;"
