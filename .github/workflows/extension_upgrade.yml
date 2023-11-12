@@ -78,10 +78,6 @@ jobs:
           CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
         run: |
           git checkout $CI_BRANCH
-      - uses: ./.github/actions/pgx-init
-        with:
-          working-directory: ./
-          force: true
       - name: Upgrade and run tests
         run: |
           ls -alh /home/runner/.pgrx/15.5/pgrx-install/share/postgresql/extension/pg_partman*
