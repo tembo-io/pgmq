@@ -183,6 +183,11 @@ jobs:
           username: ${{ secrets.QUAY_USER_TEMBO }}
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
+      - name: debug dir
+        id: listdir
+        run: |
+          ls -alh
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
