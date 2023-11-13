@@ -101,8 +101,6 @@ jobs:
           PGRX_POSTGRES=${{ matrix.pg.pgrx_version }} make test
 
   publish:
-    # only publish release events
-    if: github.event_name == 'release'
     name: trunk publish
     runs-on: ubuntu-22.04
     steps:
@@ -146,8 +144,8 @@ jobs:
           trunk publish pgmq --version ${pgmq_ver} --file .trunk/pgmq-${pgmq_ver}.tar.gz --description "A lightweight distributed message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
     name: Build and push images
-    needs:
-      - publish
+    # needs:
+    #   - publish
     runs-on:
       - self-hosted
       - dind
@@ -165,6 +163,7 @@ jobs:
          mv stoml_linux_amd64 stoml
          chmod +x stoml
          sudo mv stoml /usr/local/bin/
+
       - name: Set version strings
         id: versions
         run: |
@@ -183,18 +182,21 @@ jobs:
           username: ${{ secrets.QUAY_USER_TEMBO }}
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
-      - name: debug dir
-        id: listdir
+      - name: Determine tags
+        id: set_tags
         run: |
-          ls -alh
+          if [ "${{ github.event_name }}" == "release" ]; then
+            echo "IMAGE_TAGS=quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.SHORT_SHA }} quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }} quay.io/tembo/pgmq-pg:latest" >> $GITHUB_OUTPUT
+          else
+            echo "IMAGE_TAGS=quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.SHORT_SHA }}" >> $GITHUB_OUTPUT
 
-      - name: Build and push
+      - name: Build and push releases
+        # only publish release events
+        if: github.event_name == 'release'
         uses: docker/build-push-action@v5
         with:
           file: ./images/pgmq-pg/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64
           push: true
-          tags: |
-            quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }}
-            quay.io/tembo/pgmq-pg:latest
+          tags: ${{ steps.set_tags.outputs.IMAGE_TAGS }}
