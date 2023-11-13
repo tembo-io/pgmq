@@ -182,19 +182,27 @@ jobs:
           username: ${{ secrets.QUAY_USER_TEMBO }}
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
-      - name: Determine tags
-        id: set_tags
-        run: |
-          if [ "${{ github.event_name }}" == "release" ]; then
-            echo "IMAGE_TAGS=quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.SHORT_SHA }} quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }} quay.io/tembo/pgmq-pg:latest" >> $GITHUB_OUTPUT
-          else
-            echo "IMAGE_TAGS=quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.SHORT_SHA }}" >> $GITHUB_OUTPUT
-
-      - name: Build and push releases
+      - name: Build and push -- Commit
+        # push commit build when not a release
+        if: github.event_name != 'release'
         uses: docker/build-push-action@v5
         with:
           file: ./images/pgmq-pg/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64
           push: true
-          tags: ${{ steps.set_tags.outputs.IMAGE_TAGS }}
+          tags: |
+            quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.SHORT_SHA }}
+
+      - name: Build and push -- Releases
+        # only publish release events
+        if: github.event_name == 'release'
+        uses: docker/build-push-action@v5
+        with:
+          file: ./images/pgmq-pg/Dockerfile
+          context: .
+          platforms: linux/amd64, linux/arm64
+          push: true
+          tags: |
+            quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }}
+            quay.io/tembo/pgmq-pg:latest
