@@ -1,0 +1,18 @@
+name: Test ARM builder
+on:
+  pull_request:
+    branches:
+     - main
+jobs:
+  arm:
+    name: Test if ARM is working
+    runs-on:
+      - "dind"
+      - "self-hosted"
+      - "arm64"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Show architecture
+        run: |
+          echo "I am running on:"
+          uname -m
