@@ -19,7 +19,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN $HOME/.cargo/bin/rustup default stable
 
 # init pgrx
-RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.10.2 --locked
+RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.11.0 --locked
 RUN $HOME/.cargo/bin/cargo pgrx init --pg15 $(which pg_config)
 
 # install pgmq
