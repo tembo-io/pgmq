@@ -39,7 +39,7 @@ pub fn create_queue(name: CheckedName<'_>, is_unlogged: bool) -> Result<String, 
     Ok(format!(
         "
         CREATE {maybe_unlogged} TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name} (
-            msg_id BIGSERIAL PRIMARY KEY,
+            msg_id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             vt TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -53,7 +53,7 @@ pub fn create_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
     Ok(format!(
         "
         CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{name} (
-            msg_id BIGSERIAL PRIMARY KEY,
+            msg_id BIGINT PRIMARY KEY,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
