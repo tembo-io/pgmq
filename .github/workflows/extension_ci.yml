@@ -129,10 +129,6 @@ jobs:
       - name: trunk build
         working-directory: ./
         run: trunk build
-        # use below when trunk build supports --dockerfile for pgrx
-        # run: |
-        #   pgmq_ver=$(stoml extension/Cargo.toml package.version)
-        #   trunk build --path . --dockerfile ./Dockerfile.build --install-command "cd extension && cargo pgrx install" --name pgmq --version ${pgmq_ver}
       - name: trunk publish
         working-directory: ./
         env:
