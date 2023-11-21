@@ -1323,7 +1323,7 @@ dependencies = [
 
 [[package]]
 name = "pgmq"
-version = "0.33.2"
+version = "0.33.3"
 dependencies = [
  "chrono",
  "pgmq-core",
@@ -1340,7 +1340,7 @@ dependencies = [
 
 [[package]]
 name = "pgmq-core"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "chrono",
  "log",
