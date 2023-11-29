@@ -50,6 +50,10 @@ docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io
 
 If you'd like to build from source, you can follow the instructions in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+### Updating
+
+To update PGMQ versions, follow the instructions in [UPDATING.md](UPDATING.md).
+
 ## Client Libraries
 
 - [Rust](https://github.com/tembo-io/pgmq/tree/main/pgmq-rs)
