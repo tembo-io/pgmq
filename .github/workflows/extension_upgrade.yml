@@ -41,10 +41,10 @@ jobs:
       - name: Get current version
         id: current-version
         run: echo "CI_BRANCH=$(git name-rev --name-only HEAD)" >> $GITHUB_OUTPUT
-      - name: Checkout old version (0.14.2)
+      - name: Checkout old version (1.0.0)
         run: |
           git fetch --tags
-          git checkout tags/v0.14.2
+          git checkout tags/v1.0.0
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./
@@ -60,7 +60,7 @@ jobs:
           make && \
           make install && \
           ls -alh /home/runner/.pgrx/15.5/pgrx-install/share/postgresql/extension/pg_partman*
-      - name: Run old version (0.14.2)
+      - name: Run old version (1.0.0)
         run: |
           rm -rf ./target/pgrx-test-data-* || true
           pg_version=$(stoml Cargo.toml features.default)
@@ -70,8 +70,8 @@ jobs:
           psql $DATABASE_URL -c "DROP EXTENSION IF EXISTS pg_partman CASCADE;"
           psql $DATABASE_URL -c "CREATE EXTENSION pg_partman;"
           psql $DATABASE_URL -c "CREATE EXTENSION pgmq;"
-          psql $DATABASE_URL -c "select * from pgmq_create('test_queue_1')"
-          psql $DATABASE_URL -c "select * from pgmq_create_partitioned('test_partitioned_queue_1');"
+          psql $DATABASE_URL -c "select * from pgmq.create('test_queue_1')"
+          psql $DATABASE_URL -c "select * from pgmq.create_partitioned('test_partitioned_queue_1');"
           ls -alh /home/runner/.pgrx/15.5/pgrx-install/share/postgresql/extension/pg_partman*
       - name: Checkout branch's version
         env:
