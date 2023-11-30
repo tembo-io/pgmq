@@ -3,7 +3,6 @@ pgrx::pg_module_magic!();
 pub mod api;
 pub mod errors;
 pub mod partition;
-pub mod removed_functions;
 pub mod util;
 
 pgrx::extension_sql_file!("./sql_src.sql", name = "bootstrap");
