@@ -65,7 +65,6 @@ Community
 - [Elixir](https://github.com/v0idpwn/pgmq-elixir)
 - [Elixir + Broadway](https://github.com/v0idpwn/off_broadway_pgmq)
 
-
 ## SQL Examples
 
 
