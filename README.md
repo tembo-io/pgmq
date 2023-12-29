@@ -62,6 +62,9 @@ To update PGMQ versions, follow the instructions in [UPDATING.md](UPDATING.md).
 Community
 
 - [Go](https://github.com/craigpastro/pgmq-go)
+- [Elixir](https://github.com/v0idpwn/pgmq-elixir)
+- [Elixir + Broadway](https://github.com/v0idpwn/off_broadway_pgmq)
+
 
 ## SQL Examples
 
