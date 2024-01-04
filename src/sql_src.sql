@@ -300,13 +300,13 @@ BEGIN
                 EXTRACT(epoch FROM (NOW() - max(enqueued_at)))::int as newest_msg_age_sec,
                 EXTRACT(epoch FROM (NOW() - min(enqueued_at)))::int as oldest_msg_age_sec,
                 NOW() as scrape_time
-            FROM pgmq.q_%I
+            FROM pgmq.q_%s
         ),
         all_metrics AS (
             SELECT CASE
                 WHEN is_called THEN last_value ELSE 0
                 END as total_messages
-            FROM pgmq.q_%I_msg_id_seq
+            FROM pgmq.q_%s_msg_id_seq
         )
         SELECT 
             '%s' as queue_name,
