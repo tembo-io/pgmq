@@ -1,12 +1,3 @@
-CREATE TYPE pgmq.metrics_result AS (
-    queue_name text,
-    queue_length bigint,
-    newest_msg_age_sec int,
-    oldest_msg_age_sec int,
-    total_messages bigint,
-    scrape_time timestamp with time zone
-);
-
 -- get metrics for a single queue
 CREATE OR REPLACE FUNCTION pgmq.metrics(queue_name TEXT)
 RETURNS pgmq.metrics_result AS $$
