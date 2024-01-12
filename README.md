@@ -3,6 +3,7 @@
 A lightweight message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq) but on Postgres.
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-293gc1k0k-3K8z~eKW1SEIfrqEI~5_yw)
+[![PGXN version](https://badge.fury.io/pg/pgmq.svg)](https://pgxn.org/dist/pgmq/)
 
 **Documentation**: https://tembo-io.github.io/pgmq/
 
@@ -68,21 +69,20 @@ Community
 
 ## SQL Examples
 
-
 ```bash
 # Connect to Postgres
 psql postgres://postgres:postgres@0.0.0.0:5432/postgres
 ```
 
 ```sql
--- create the extension
+-- create the extension in the "pgmq" schema
 CREATE EXTENSION pgmq;
 ```
 
 ### Creating a queue
 
-Every queue is its own table in Postgres. The table name is the queue name prefixed with `q_`.
-For example, `q_my_queue` is the table for the queue `my_queue`.
+Every queue is its own table in the `pgmq` schema. The table name is the queue name prefixed with `q_`.
+For example, `pgmq.q_my_queue` is the table for the queue `my_queue`.
 
 ```sql
 -- creates the queue
@@ -121,11 +121,11 @@ The message id is returned from the send function.
 ### Read messages
 
 Read `2` message from the queue. Make them invisible for `30` seconds.
- If the messages are not deleted or archived within 30 seconds, they will become visible again
-    and can be read by another consumer.
+If the messages are not deleted or archived within 30 seconds, they will become visible again
+and can be read by another consumer.
 
 ```sql
-SELECT pgmq.read('my_queue', 30, 2);
+SELECT * FROM pgmq.read('my_queue', 30, 2);
 ```
 
 ```text
@@ -161,11 +161,10 @@ SELECT pgmq.pop('my_queue');
 
 ### Archive a message
 
-Archiving a message removes it from the queue, and inserts it to the archive table.
-
-Archive message with msg_id=2.
+Archiving a message removes it from the queue and inserts it to the archive table.
 
 ```sql
+-- Archive message with msg_id=2.
 SELECT pgmq.archive('my_queue', 2);
 ```
 
@@ -176,8 +175,8 @@ SELECT pgmq.archive('my_queue', 2);
 (1 row)
 ```
 
-Archive tables have the prefix `a_`:
 ```sql
+-- Archive tables have the prefix `a_`:
 SELECT * FROM pgmq.a_my_queue;
 ```
 
