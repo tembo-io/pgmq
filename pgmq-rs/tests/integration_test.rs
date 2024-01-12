@@ -606,6 +606,29 @@ async fn test_archive() {
     assert_eq!(num_rows_archive, 1);
 }
 
+#[tokio::test]
+async fn test_archive_batch() {
+    let test_queue = "test_archive_batch_queue".to_owned();
+    let queue = init_queue(&test_queue).await;
+    let msg = MyMessage::default();
+
+    let msg_1 = queue.send(&test_queue, &msg).await.unwrap();
+    let msg_2 = queue.send(&test_queue, &msg).await.unwrap();
+    let msg_3 = queue.send(&test_queue, &msg).await.unwrap();
+
+    let num_moved = queue
+        .archive_batch(&test_queue, &[msg_1, msg_2, msg_3])
+        .await
+        .unwrap();
+    assert_eq!(num_moved, 3);
+
+    let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
+    assert_eq!(num_rows_queue, 0);
+
+    let num_rows_archive = archive_rowcount(&test_queue, &queue.connection).await;
+    assert_eq!(num_rows_archive, 3);
+}
+
 /// test db operations that should produce errors
 #[tokio::test]
 async fn test_database_error_modes() {
