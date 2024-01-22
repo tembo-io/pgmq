@@ -9,4 +9,4 @@ docker/**
 *.deb
 poetry.lock
 site
-*.bak
+META.json

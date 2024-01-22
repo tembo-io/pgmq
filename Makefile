@@ -1,4 +1,5 @@
 PGRX_POSTGRES ?= pg15
+DISTNAME = $(shell grep -m 1 '^name' Cargo.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
 DISTVERSION  = $(shell grep -m 1 '^version' Cargo.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
 
 test:
@@ -12,9 +13,13 @@ format:
 run.postgres:
 	docker run -d --name pgmq-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest
 
-META.json.bak: Cargo.toml META.json
-	@sed -i.bak "s/@CARGO_VERSION@/$(DISTVERSION)/g" META.json
+META.json: META.json.in Cargo.toml
+	@sed "s/@CARGO_VERSION@/$(DISTVERSION)/g" $< > $@
 
-pgxn-zip: META.json.bak
-	git archive --format zip --prefix=pgmq-$(DISTVERSION)/ -o pgmq-$(DISTVERSION).zip HEAD
-	@mv META.json.bak META.json
+$(DISTNAME)-$(DISTVERSION).zip: META.json
+	git archive --format zip --prefix $(DISTNAME)-$(DISTVERSION)/ --add-file $< -o $(DISTNAME)-$(DISTVERSION).zip HEAD
+
+pgxn-zip: $(DISTNAME)-$(DISTVERSION).zip
+
+clean:
+	@rm -rf META.json $(DISTNAME)-$(DISTVERSION).zip
