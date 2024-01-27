@@ -153,11 +153,7 @@ pub fn purge_queue(name: &str) -> Result<String, PgmqError> {
     Ok(format!("DELETE FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name};"))
 }
 
-pub fn enqueue(
-    name: &str,
-    messages_num: usize,
-    delay: &u64,
-) -> Result<String, PgmqError> {
+pub fn enqueue(name: &str, messages_num: usize, delay: &u64) -> Result<String, PgmqError> {
     // construct string of comma separated messages
     check_input(name)?;
     let mut values = "".to_owned();
