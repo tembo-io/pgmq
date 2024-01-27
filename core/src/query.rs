@@ -155,15 +155,16 @@ pub fn purge_queue(name: &str) -> Result<String, PgmqError> {
 
 pub fn enqueue(
     name: &str,
-    messages: &[serde_json::Value],
+    messages_num: usize,
     delay: &u64,
 ) -> Result<String, PgmqError> {
     // construct string of comma separated messages
     check_input(name)?;
     let mut values = "".to_owned();
-    for message in messages.iter() {
-        let full_msg = format!("((now() + interval '{delay} seconds'), '{message}'::json),");
-        values.push_str(&full_msg)
+
+    for i in messages_num {
+        let full_msg = format!("((now() + interval '{delay} seconds'), ${}::json),", i + 1);
+        values.push_str(&full_msg);
     }
     // drop trailing comma from constructed string
     values.pop();
