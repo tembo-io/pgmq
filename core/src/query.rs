@@ -153,17 +153,14 @@ pub fn purge_queue(name: &str) -> Result<String, PgmqError> {
     Ok(format!("DELETE FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name};"))
 }
 
-pub fn enqueue(
-    name: &str,
-    messages: &[serde_json::Value],
-    delay: &u64,
-) -> Result<String, PgmqError> {
+pub fn enqueue(name: &str, messages_num: usize, delay: &u64) -> Result<String, PgmqError> {
     // construct string of comma separated messages
     check_input(name)?;
     let mut values = "".to_owned();
-    for message in messages.iter() {
-        let full_msg = format!("((now() + interval '{delay} seconds'), '{message}'::json),");
-        values.push_str(&full_msg)
+
+    for i in 0..messages_num {
+        let full_msg = format!("((now() + interval '{delay} seconds'), ${}::json),", i + 1);
+        values.push_str(&full_msg);
     }
     // drop trailing comma from constructed string
     values.pop();
@@ -408,14 +405,9 @@ $$ LANGUAGE plpgsql;
 
     #[test]
     fn test_enqueue() {
-        let mut msgs: Vec<serde_json::Value> = Vec::new();
-        let msg = serde_json::json!({
-            "foo": "bar"
-        });
-        msgs.push(msg);
-        let query = enqueue("yolo", &msgs, &0).unwrap();
+        let query = enqueue("yolo", 1, &0).unwrap();
         assert!(query.contains("q_yolo"));
-        assert!(query.contains("{\"foo\":\"bar\"}"));
+        assert!(query.contains("(now() + interval '0 seconds'), $1::json)"));
     }
 
     #[test]
