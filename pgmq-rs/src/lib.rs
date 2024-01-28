@@ -320,8 +320,8 @@ impl PGMQueue {
         message: &T,
     ) -> Result<i64, PgmqError> {
         let msg = serde_json::json!(&message);
-        let msgs: [serde_json::Value; 1] = [msg];
-        let row: PgRow = sqlx::query(&core_query::enqueue(queue_name, &msgs, &0)?)
+        let row: PgRow = sqlx::query(&core_query::enqueue(queue_name, 1, &0)?)
+            .bind(msg)
             .fetch_one(&self.connection)
             .await?;
         let msg_id: i64 = row.get("msg_id");
@@ -385,10 +385,9 @@ impl PGMQueue {
         message: &T,
         delay: u64,
     ) -> Result<i64, PgmqError> {
-        let mut msgs: Vec<serde_json::Value> = Vec::new();
         let msg = serde_json::json!(&message);
-        msgs.push(msg);
-        let row: PgRow = sqlx::query(&core_query::enqueue(queue_name, &msgs, &delay)?)
+        let row: PgRow = sqlx::query(&core_query::enqueue(queue_name, 1, &delay)?)
+            .bind(msg)
             .fetch_one(&self.connection)
             .await?;
         let msg_id: i64 = row.get("msg_id");
@@ -440,15 +439,13 @@ impl PGMQueue {
         queue_name: &str,
         messages: &[T],
     ) -> Result<Vec<i64>, PgmqError> {
-        let mut msgs: Vec<serde_json::Value> = Vec::new();
         let mut msg_ids: Vec<i64> = Vec::new();
+        let query = core_query::enqueue(queue_name, messages.len(), &0)?;
+        let mut q = sqlx::query(&query);
         for msg in messages.iter() {
-            let binding = serde_json::json!(&msg);
-            msgs.push(binding)
+            q = q.bind(serde_json::json!(msg));
         }
-        let rows: Vec<PgRow> = sqlx::query(&core_query::enqueue(queue_name, &msgs, &0)?)
-            .fetch_all(&self.connection)
-            .await?;
+        let rows: Vec<PgRow> = q.fetch_all(&self.connection).await?;
         for row in rows.iter() {
             msg_ids.push(row.get("msg_id"));
         }
