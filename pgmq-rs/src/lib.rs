@@ -440,7 +440,8 @@ impl PGMQueue {
         messages: &[T],
     ) -> Result<Vec<i64>, PgmqError> {
         let mut msg_ids: Vec<i64> = Vec::new();
-        let mut q = sqlx::query(&core_query::enqueue(queue_name, messages.len(), &0)?);
+        let query = core_query::enqueue(queue_name, messages.len(), &0)?;
+        let mut q = sqlx::query(&query);
         for msg in messages.iter() {
             q = q.bind(serde_json::json!(msg));
         }
