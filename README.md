@@ -20,9 +20,11 @@ Try it for free at [tembo.io](https://tembo.io)
 - Messages can be archived, instead of deleted, for long-term retention and replayability
 
 ## Support
+
 Postgres 12-16.
 
 ## Table of Contents
+
 - [Postgres Message Queue (PGMQ)](#postgres-message-queue-pgmq)
   - [Features](#features)
   - [Support](#support)
@@ -67,6 +69,7 @@ Community
 - [Elixir](https://github.com/v0idpwn/pgmq-elixir)
 - [Elixir + Broadway](https://github.com/v0idpwn/off_broadway_pgmq)
 - [Java (Spring Boot)](https://github.com/adamalexandru4/pgmq-spring)
+- [Javascript (NodeJs)](https://github.com/Muhammad-Magdi/pgmq-js)
 
 ## SQL Examples
 
@@ -184,7 +187,7 @@ SELECT * FROM pgmq.a_my_queue;
 ```text
  msg_id | read_ct |         enqueued_at          |          archived_at          |              vt               |     message
 --------+---------+------------------------------+-------------------------------+-------------------------------+-----------------
-      2 |       1 | 2023-04-25 00:55:40.68417-05 | 2023-04-25 00:56:35.937594-05 | 2023-04-25 00:56:20.532012-05 | {"foo": "bar2"}```
+      2 |       1 | 2023-04-25 00:55:40.68417-05 | 2023-04-25 00:56:35.937594-05 | 2023-04-25 00:56:20.532012-05 | {"foo": "bar2"}
 ```
 
 ### Delete a message
@@ -243,15 +246,12 @@ Partitions behavior is configured at the time queues are created, via `pgmq.crea
 
 `queue_name: text`: The name of the queue. Queues are Postgres tables prepended with `q_`. For example, `q_my_queue`. The archive is instead prefixed by `a_`, for example `a_my_queue`.
 
-
 `partition_interval: text` - The interval at which partitions are created. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, queues are partitioned by the time at which messages are sent to the table (`enqueued_at`). A value of `'daily'` would create a new partition each day. When it is an integer value, queues are partitioned by the `msg_id`. A value of `'100'` will create a new partition every 100 messages. The value must agree with `retention_interval` (time based or numeric). The default value is `daily`.
-
 
 `retention_interval: text` - The interval for retaining partitions. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, partitions containing data greater than the duration will be dropped. When it is an integer value, any messages that have a `msg_id` less than `max(msg_id) - retention_interval` will be dropped. For example, if the max `msg_id` is 100 and the `retention_interval` is 60, any partitions with `msg_id` values less than 40 will be dropped. The value must agree with `partition_interval` (time based or numeric). The default is `'5 days'`. Note: `retention_interval` does not apply to messages that have been deleted via `pgmq.delete()` or archived with `pgmq.archive()`. `pgmq.delete()` removes messages forever and `pgmq.archive()` moves messages to the corresponding archive table forever (for example, `a_my_queue`).
 
-
 In order for automatic partition maintenance to take place, several settings must be added to the `postgresql.conf` file, which is typically located in the postgres `DATADIR`.
- `pg_partman_bgw.interval`
+`pg_partman_bgw.interval`
 in `postgresql.conf`. Below are the default configuration values set in Tembo docker images.
 
 Add the following to `postgresql.conf`. Note, changing `shared_preload_libraries` requires a restart of Postgres.
@@ -264,7 +264,6 @@ pg_partman_bgw.interval = 60
 pg_partman_bgw.role = 'postgres'
 pg_partman_bgw.dbname = 'postgres'
 ```
-
 
 ## Visibility Timeout (vt)
 
