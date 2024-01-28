@@ -1,6 +1,6 @@
 [package]
 name = "pgmq-core"
-version = "0.8.4"
+version = "0.8.5"
 edition = "2021"
 authors = ["Tembo.io"]
 description = "Core functionality shared between the PGMQ Rust SDK and Postgres Extension"
