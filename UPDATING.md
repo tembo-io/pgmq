@@ -34,3 +34,4 @@ ALTER EXTENSION pgmq UPDATE
 ```
 
 If successfull, pgmq is updated!
+
