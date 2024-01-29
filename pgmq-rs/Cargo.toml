@@ -7,7 +7,7 @@ description = "A distributed message queue for Rust applications, on Postgres."
 documentation = "https://docs.rs/pgmq"
 homepage = "https://github.com/tembo-io/pgmq"
 keywords = ["messaging", "queues", "postgres"]
-license = "Apache 2.0"
+license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/tembo-io/pgmq"
 
