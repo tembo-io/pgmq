@@ -11,11 +11,13 @@ on:
       - main
     paths-ignore:
       - 'pgmq-rs/**'
+      - 'tembo-pgmq-python/**'
   push:
     branches:
       - main
     paths-ignore:
       - 'pgmq-rs/**'
+      - 'tembo-pgmq-python/**'
   release:
     types:
       - created
