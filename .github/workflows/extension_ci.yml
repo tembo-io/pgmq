@@ -57,11 +57,11 @@ jobs:
       fail-fast: false
       matrix:
         pg: [
-          {version: "12.17", pgrx_version: "pg12"},
-          {version: "13.13", pgrx_version: "pg13"},
-          {version: "14.10", pgrx_version: "pg14"},
-          {version: "15.5", pgrx_version: "pg15"},
-          {version: "16.1", pgrx_version: "pg16"}
+          {version: "12.18", pgrx_version: "pg12"},
+          {version: "13.14", pgrx_version: "pg13"},
+          {version: "14.11", pgrx_version: "pg14"},
+          {version: "15.6", pgrx_version: "pg15"},
+          {version: "16.2", pgrx_version: "pg16"}
         ]
     steps:
       - uses: actions/checkout@v2
@@ -109,6 +109,9 @@ jobs:
   publish:
     name: trunk publish
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        pg-version: [14, 15, 16]
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust stable toolchain
@@ -134,7 +137,7 @@ jobs:
          cargo install pg-trunk
       - name: trunk build
         working-directory: ./
-        run: trunk build --pg-version 15
+        run: trunk build --pg-version ${{ matrix.pg-version }}
       - name: trunk publish
         # only publish release events
         if: github.event_name == 'release'
