@@ -33,7 +33,11 @@ def test_lifecycle() -> None:
     message = queue.read(test_queue, vt = 20)
     assert message is None, "no messaged expected in queue"
 
+    # test send_batch
+    messages = [test_message, test_message]
+    msg_ids = queue.send_batch(test_queue, messages)
+    assert len(msg_ids) == 2
+
     # test purge
-    msg_id = queue.send(test_queue, test_message)
     purged = queue.purge(test_queue)
-    assert purged == 1
+    assert purged == len(messages)
