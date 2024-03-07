@@ -1,7 +1,7 @@
 use log::info;
 use pgmq_core::{
     errors::PgmqError,
-    types::{Message, TABLE_PREFIX},
+    types::{Message, QUEUE_PREFIX},
     util::{check_input, connect},
 };
 use serde::{Deserialize, Serialize};
@@ -21,6 +21,8 @@ pub struct PGMQueueExt {
 pub struct PGMQueueMeta {
     pub queue_name: String,
     pub created_at: chrono::DateTime<Utc>,
+    pub is_unlogged: bool,
+    pub is_partitioned: bool,
 }
 impl PGMQueueExt {
     /// Initialize a connection to PGMQ/Postgres
@@ -51,7 +53,16 @@ impl PGMQueueExt {
     /// Errors when there is any database error and Ok(false) when the queue already exists.
     pub async fn create(&self, queue_name: &str) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
-        sqlx::query!("SELECT * from pgmq_create($1::text);", queue_name)
+        sqlx::query!("SELECT * from pgmq.create($1::text);", queue_name)
+            .execute(&self.connection)
+            .await?;
+        Ok(true)
+    }
+
+    /// Errors when there is any database error and Ok(false) when the queue already exists.
+    pub async fn create_unlogged(&self, queue_name: &str) -> Result<bool, PgmqError> {
+        check_input(queue_name)?;
+        sqlx::query!("SELECT * from pgmq.create_unlogged($1::text);", queue_name)
             .execute(&self.connection)
             .await?;
         Ok(true)
@@ -61,7 +72,7 @@ impl PGMQueueExt {
     /// Errors when there is any database error and Ok(false) when the queue already exists.
     pub async fn create_partitioned(&self, queue_name: &str) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
-        let queue_table = format!("public.{TABLE_PREFIX}_{queue_name}");
+        let queue_table = format!("pgmq.{QUEUE_PREFIX}_{queue_name}");
         // we need to check whether the queue exists first
         // pg_partman create operations are currently unable to be idempotent
         let exists_stmt = format!(
@@ -76,7 +87,7 @@ impl PGMQueueExt {
             Ok(false)
         } else {
             sqlx::query!(
-                "SELECT * from pgmq_create_partitioned($1::text);",
+                "SELECT * from pgmq.create_partitioned($1::text);",
                 queue_name
             )
             .execute(&self.connection)
@@ -90,7 +101,7 @@ impl PGMQueueExt {
         check_input(queue_name)?;
         self.connection
             .execute(sqlx::query!(
-                "SELECT * from pgmq_drop_queue($1::text);",
+                "SELECT * from pgmq.drop_queue($1::text);",
                 queue_name
             ))
             .await?;
@@ -101,16 +112,16 @@ impl PGMQueueExt {
     /// Drop an existing queue table.
     pub async fn purge_queue(&self, queue_name: &str) -> Result<i64, PgmqError> {
         check_input(queue_name)?;
-        let purged = sqlx::query!("SELECT * from pgmq_purge_queue($1::text);", queue_name)
+        let purged = sqlx::query!("SELECT * from pgmq.purge_queue($1::text);", queue_name)
             .fetch_one(&self.connection)
             .await?;
 
-        Ok(purged.pgmq_purge_queue.expect("no purged count"))
+        Ok(purged.purge_queue.expect("no purged count"))
     }
 
     /// List all queues in the Postgres instance.
     pub async fn list_queues(&self) -> Result<Option<Vec<PGMQueueMeta>>, PgmqError> {
-        let queues = sqlx::query!("SELECT * from pgmq_list_queues();")
+        let queues = sqlx::query!("SELECT * from pgmq.list_queues();")
             .fetch_all(&self.connection)
             .await?;
         if queues.is_empty() {
@@ -121,6 +132,8 @@ impl PGMQueueExt {
                 .map(|q| PGMQueueMeta {
                     queue_name: q.queue_name.expect("queue_name missing"),
                     created_at: q.created_at.expect("created_at missing"),
+                    is_unlogged: q.is_unlogged.expect("is_unlogged missing"),
+                    is_partitioned: q.is_partitioned.expect("is_partitioned missing"),
                 })
                 .collect();
             Ok(Some(queues))
@@ -136,7 +149,7 @@ impl PGMQueueExt {
     ) -> Result<Message<T>, PgmqError> {
         check_input(queue_name)?;
         let updated = sqlx::query!(
-            "SELECT * from pgmq_set_vt($1::text, $2::bigint, $3::integer);",
+            "SELECT * from pgmq.set_vt($1::text, $2::bigint, $3::integer);",
             queue_name,
             msg_id,
             vt
@@ -163,7 +176,7 @@ impl PGMQueueExt {
         check_input(queue_name)?;
         let msg = serde_json::json!(&message);
         let sent = sqlx::query!(
-            "SELECT pgmq_send as msg_id from pgmq_send($1::text, $2::jsonb, 0::integer);",
+            "SELECT send as msg_id from pgmq.send($1::text, $2::jsonb, 0::integer);",
             queue_name,
             msg
         )
@@ -181,7 +194,7 @@ impl PGMQueueExt {
         check_input(queue_name)?;
         let msg = serde_json::json!(&message);
         let sent = sqlx::query!(
-            "SELECT pgmq_send as msg_id from pgmq_send($1::text, $2::jsonb, $3::int);",
+            "SELECT send as msg_id from pgmq.send($1::text, $2::jsonb, $3::int);",
             queue_name,
             msg,
             delay as i32
@@ -198,7 +211,7 @@ impl PGMQueueExt {
     ) -> Result<Option<Message<T>>, PgmqError> {
         check_input(queue_name)?;
         let row = sqlx::query!(
-            "SELECT * from pgmq_read($1::text, $2, $3)",
+            "SELECT * from pgmq.read($1::text, $2, $3)",
             queue_name,
             vt,
             1
@@ -240,7 +253,7 @@ impl PGMQueueExt {
         let poll_interval_ms =
             poll_interval.map_or(DEFAULT_POLL_INTERVAL_MS, |i| i.as_millis() as i32);
         let result = sqlx::query!(
-            "SELECT * from pgmq_read_with_poll($1::text, $2, $3, $4, $5)",
+            "SELECT * from pgmq.read_with_poll($1::text, $2, $3, $4, $5)",
             queue_name,
             vt,
             max_batch_size,
@@ -282,30 +295,32 @@ impl PGMQueueExt {
     pub async fn archive(&self, queue_name: &str, msg_id: i64) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
         let arch = sqlx::query!(
-            "SELECT * from pgmq_archive($1::text, $2::bigint)",
+            "SELECT * from pgmq.archive($1::text, $2::bigint)",
             queue_name,
             msg_id
         )
         .fetch_one(&self.connection)
         .await?;
-        Ok(arch.pgmq_archive.expect("no archive result"))
+        Ok(arch.archive.expect("no archive result"))
     }
 
-    /// Move a message to the archive table.
+    /// Move a slice of messages to the archive table.
     pub async fn archive_batch(
         &self,
         queue_name: &str,
         msg_ids: &[i64],
-    ) -> Result<bool, PgmqError> {
+    ) -> Result<usize, PgmqError> {
         check_input(queue_name)?;
-        let arch = sqlx::query!(
-            "SELECT * from pgmq_archive($1::text, $2::bigint[])",
+        let qty = sqlx::query!(
+            "SELECT * from pgmq.archive($1::text, $2::bigint[])",
             queue_name,
             msg_ids
         )
-        .fetch_one(&self.connection)
-        .await?;
-        Ok(arch.pgmq_archive.expect("no archive result"))
+        .fetch_all(&self.connection)
+        .await?
+        .len();
+
+        Ok(qty)
     }
 
     // Read and message and immediately delete it.
@@ -314,7 +329,7 @@ impl PGMQueueExt {
         queue_name: &str,
     ) -> Result<Option<Message<T>>, PgmqError> {
         check_input(queue_name)?;
-        let row = sqlx::query!("SELECT * from pgmq_pop($1::text)", queue_name,)
+        let row = sqlx::query!("SELECT * from pgmq.pop($1::text)", queue_name,)
             .fetch_optional(&self.connection)
             .await?;
         match row {
@@ -342,24 +357,27 @@ impl PGMQueueExt {
     // Delete a message by message id.
     pub async fn delete(&self, queue_name: &str, msg_id: i64) -> Result<bool, PgmqError> {
         let row = sqlx::query!(
-            "SELECT * from pgmq_delete($1::text, $2::bigint)",
+            "SELECT * from pgmq.delete($1::text, $2::bigint)",
             queue_name,
             msg_id
         )
         .fetch_one(&self.connection)
         .await?;
-        Ok(row.pgmq_delete.expect("no delete result"))
+        Ok(row.delete.expect("no delete result"))
     }
 
     // Delete with a slice of message ids
-    pub async fn delete_batch(&self, queue_name: &str, msg_id: &[i64]) -> Result<bool, PgmqError> {
-        let row = sqlx::query!(
-            "SELECT * from pgmq_delete($1::text, $2::bigint[])",
+    pub async fn delete_batch(&self, queue_name: &str, msg_id: &[i64]) -> Result<usize, PgmqError> {
+        let qty = sqlx::query!(
+            "SELECT * from pgmq.delete($1::text, $2::bigint[])",
             queue_name,
             msg_id
         )
-        .fetch_one(&self.connection)
-        .await?;
-        Ok(row.pgmq_delete.expect("no delete result"))
+        .fetch_all(&self.connection)
+        .await?
+        .len();
+
+        // FIXME: change function signature to Vec<i64> and return rows
+        Ok(qty)
     }
 }

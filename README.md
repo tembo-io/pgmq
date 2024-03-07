@@ -2,20 +2,33 @@
 
 A lightweight message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq) but on Postgres.
 
-[![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-20dtnhcmo-pLNV7_Aobi50TdTLpfQ~EQ)
+Try it for free at [tembo.io](https://tembo.io)
+
+[![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-293gc1k0k-3K8z~eKW1SEIfrqEI~5_yw)
+[![OSSRank](https://shields.io/endpoint?url=https://ossrank.com/shield/3809)](https://ossrank.com/p/3809)
+[![PGXN version](https://badge.fury.io/pg/pgmq.svg)](https://pgxn.org/dist/pgmq/)
+
+**Documentation**: https://tembo-io.github.io/pgmq/
+
+**Source**: https://github.com/tembo-io/pgmq
 
 ## Features
 
-- Lightweight - Built with Rust and Postgres only
+- Lightweight - No background worker or external dependencies, just Postgres functions packaged in an extension
 - Guaranteed "exactly once" delivery of messages to a consumer within a visibility timeout
 - API parity with [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq)
-- Messages stay in the queue until explicitly deleted
+- Messages stay in the queue until explicitly removed
 - Messages can be archived, instead of deleted, for long-term retention and replayability
-- High performance operations with index-only scans
+
+## Support
+
+Postgres 12-16.
 
 ## Table of Contents
+
 - [Postgres Message Queue (PGMQ)](#postgres-message-queue-pgmq)
   - [Features](#features)
+  - [Support](#support)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
   - [Client Libraries](#client-libraries)
@@ -42,6 +55,10 @@ docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io
 
 If you'd like to build from source, you can follow the instructions in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+### Updating
+
+To update PGMQ versions, follow the instructions in [UPDATING.md](UPDATING.md).
+
 ## Client Libraries
 
 - [Rust](https://github.com/tembo-io/pgmq/tree/main/pgmq-rs)
@@ -50,9 +67,12 @@ If you'd like to build from source, you can follow the instructions in [CONTRIBU
 Community
 
 - [Go](https://github.com/craigpastro/pgmq-go)
+- [Elixir](https://github.com/v0idpwn/pgmq-elixir)
+- [Elixir + Broadway](https://github.com/v0idpwn/off_broadway_pgmq)
+- [Java (Spring Boot)](https://github.com/adamalexandru4/pgmq-spring)
+- [Javascript (NodeJs)](https://github.com/Muhammad-Magdi/pgmq-js)
 
 ## SQL Examples
-
 
 ```bash
 # Connect to Postgres
@@ -60,22 +80,22 @@ psql postgres://postgres:postgres@0.0.0.0:5432/postgres
 ```
 
 ```sql
--- create the extension
+-- create the extension in the "pgmq" schema
 CREATE EXTENSION pgmq;
 ```
 
 ### Creating a queue
 
-Every queue is its own table in Postgres. The table name is the queue name prefixed with `pgmq_`.
- For example, `pgmq_my_queue` is the table for the queue `my_queue`.
+Every queue is its own table in the `pgmq` schema. The table name is the queue name prefixed with `q_`.
+For example, `pgmq.q_my_queue` is the table for the queue `my_queue`.
 
 ```sql
 -- creates the queue
-SELECT pgmq_create('my_queue');
+SELECT pgmq.create('my_queue');
 ```
 
 ```text
- pgmq_create
+ create
 -------------
 
 (1 row)
@@ -85,19 +105,19 @@ SELECT pgmq_create('my_queue');
 
 ```sql
 -- messages are sent as JSON
-SELECT * from pgmq_send('my_queue', '{"foo": "bar1"}');
-SELECT * from pgmq_send('my_queue', '{"foo": "bar2"}');
+SELECT * from pgmq.send('my_queue', '{"foo": "bar1"}');
+SELECT * from pgmq.send('my_queue', '{"foo": "bar2"}');
 ```
 
 The message id is returned from the send function.
 
 ```text
- pgmq_send
+ send
 -----------
          1
 (1 row)
 
- pgmq_send
+ send
 -----------
          2
 (1 row)
@@ -106,11 +126,11 @@ The message id is returned from the send function.
 ### Read messages
 
 Read `2` message from the queue. Make them invisible for `30` seconds.
- If the messages are not deleted or archived within 30 seconds, they will become visible again
-    and can be read by another consumer.
+If the messages are not deleted or archived within 30 seconds, they will become visible again
+and can be read by another consumer.
 
 ```sql
-SELECT * from pgmq_read('my_queue', 30, 2);
+SELECT * FROM pgmq.read('my_queue', 30, 2);
 ```
 
 ```text
@@ -123,7 +143,7 @@ SELECT * from pgmq_read('my_queue', 30, 2);
 If the queue is empty, or if all messages are currently invisible, no rows will be returned.
 
 ```sql
-SELECT * from pgmq_read('my_queue', 30, 1);
+SELECT pgmq.read('my_queue', 30, 1);
 ```
 
 ```text
@@ -135,7 +155,7 @@ SELECT * from pgmq_read('my_queue', 30, 1);
 
 ```sql
 -- Read a message and immediately delete it from the queue. Returns `None` if the queue is empty.
-SELECT * from pgmq_pop('my_queue');
+SELECT pgmq.pop('my_queue');
 ```
 
 ```text
@@ -146,29 +166,29 @@ SELECT * from pgmq_pop('my_queue');
 
 ### Archive a message
 
-Archiving a message removes it from the queue, and inserts it to the archive table.
-
-Archive message with msg_id=2.
+Archiving a message removes it from the queue and inserts it to the archive table.
 
 ```sql
-SELECT * from pgmq_archive('my_queue', 2);
+-- Archive message with msg_id=2.
+SELECT pgmq.archive('my_queue', 2);
 ```
 
 ```text
- pgmq_archive
+ archive
 --------------
  t
 (1 row)
 ```
 
 ```sql
-SELECT * from pgmq_my_queue_archive;
+-- Archive tables have the prefix `a_`:
+SELECT * FROM pgmq.a_my_queue;
 ```
 
 ```text
  msg_id | read_ct |         enqueued_at          |          archived_at          |              vt               |     message
 --------+---------+------------------------------+-------------------------------+-------------------------------+-----------------
-      2 |       1 | 2023-04-25 00:55:40.68417-05 | 2023-04-25 00:56:35.937594-05 | 2023-04-25 00:56:20.532012-05 | {"foo": "bar2"}```
+      2 |       1 | 2023-04-25 00:55:40.68417-05 | 2023-04-25 00:56:35.937594-05 | 2023-04-25 00:56:20.532012-05 | {"foo": "bar2"}
 ```
 
 ### Delete a message
@@ -176,11 +196,11 @@ SELECT * from pgmq_my_queue_archive;
 Send another message, so that we can delete it.
 
 ```sql
-SELECT * from pgmq_send('my_queue', '{"foo": "bar3"}');
+SELECT pgmq.send('my_queue', '{"foo": "bar3"}');
 ```
 
 ```text
- pgmq_send
+ send
 -----------
         3
 (1 row)
@@ -189,11 +209,11 @@ SELECT * from pgmq_send('my_queue', '{"foo": "bar3"}');
 Delete the message with id `3` from the queue named `my_queue`.
 
 ```sql
-SELECT pgmq_delete('my_queue', 3);
+SELECT pgmq.delete('my_queue', 3);
 ```
 
 ```text
- pgmq_delete
+ delete
 -------------
  t
 (1 row)
@@ -204,11 +224,11 @@ SELECT pgmq_delete('my_queue', 3);
 Delete the queue `my_queue`.
 
 ```sql
-SELECT pgmq_drop_queue('my_queue');
+SELECT pgmq.drop_queue('my_queue');
 ```
 
 ```text
- pgmq_drop_queue
+ drop_queue
 -----------------
  t
 (1 row)
@@ -220,22 +240,19 @@ SELECT pgmq_drop_queue('my_queue');
 
 You will need to install [pg_partman](https://github.com/pgpartman/pg_partman/) if you want to use `pgmq` partitioned queues.
 
-`pgmq` queue tables can be created as a partitioned table by using `pgmq_create_partitioned()`. [pg_partman](https://github.com/pgpartman/pg_partman/)
+`pgmq` queue tables can be created as a partitioned table by using `pgmq.create_partitioned()`. [pg_partman](https://github.com/pgpartman/pg_partman/)
 handles all maintenance of queue tables. This includes creating new partitions and dropping old partitions.
 
-Partitions behavior is configured at the time queues are created, via `pgmq_create_partitioned()`. This function has three parameters:
+Partitions behavior is configured at the time queues are created, via `pgmq.create_partitioned()`. This function has three parameters:
 
-`queue_name: text`: The name of the queue. Queues are Postgres tables prepended with `pgmq_`. For example, `pgmq_my_queue`.
-
+`queue_name: text`: The name of the queue. Queues are Postgres tables prepended with `q_`. For example, `q_my_queue`. The archive is instead prefixed by `a_`, for example `a_my_queue`.
 
 `partition_interval: text` - The interval at which partitions are created. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, queues are partitioned by the time at which messages are sent to the table (`enqueued_at`). A value of `'daily'` would create a new partition each day. When it is an integer value, queues are partitioned by the `msg_id`. A value of `'100'` will create a new partition every 100 messages. The value must agree with `retention_interval` (time based or numeric). The default value is `daily`.
 
-
-`retention_interval: text` - The interval for retaining partitions. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, partitions containing data greater than the duration will be dropped. When it is an integer value, any messages that have a `msg_id` less than `max(msg_id) - retention_interval` will be dropped. For example, if the max `msg_id` is 100 and the `retention_interval` is 60, any partitions with `msg_id` values less than 40 will be dropped. The value must agree with `partition_interval` (time based or numeric). The default is `'5 days'`. Note: `retention_interval` does not apply to messages that have been deleted via `pgmq_delete()` or archived with `pgmq_archive()`. `pgmq_delete()` removes messages forever and `pgmq_archive()` moves messages to the corresponding archive table forever (for example, `pgmq_my_queue_archive`).
-
+`retention_interval: text` - The interval for retaining partitions. This can be either any valid Postgres `Duration` supported by pg_partman, or an integer value. When it is a duration, partitions containing data greater than the duration will be dropped. When it is an integer value, any messages that have a `msg_id` less than `max(msg_id) - retention_interval` will be dropped. For example, if the max `msg_id` is 100 and the `retention_interval` is 60, any partitions with `msg_id` values less than 40 will be dropped. The value must agree with `partition_interval` (time based or numeric). The default is `'5 days'`. Note: `retention_interval` does not apply to messages that have been deleted via `pgmq.delete()` or archived with `pgmq.archive()`. `pgmq.delete()` removes messages forever and `pgmq.archive()` moves messages to the corresponding archive table forever (for example, `a_my_queue`).
 
 In order for automatic partition maintenance to take place, several settings must be added to the `postgresql.conf` file, which is typically located in the postgres `DATADIR`.
- `pg_partman_bgw.interval`
+`pg_partman_bgw.interval`
 in `postgresql.conf`. Below are the default configuration values set in Tembo docker images.
 
 Add the following to `postgresql.conf`. Note, changing `shared_preload_libraries` requires a restart of Postgres.
@@ -249,10 +266,9 @@ pg_partman_bgw.role = 'postgres'
 pg_partman_bgw.dbname = 'postgres'
 ```
 
-
 ## Visibility Timeout (vt)
 
-pgmq guarantees exactly once delivery of a message within a visibility timeout. The visibility timeout is the amount of time a message is invisible to other consumers after it has been read by a consumer. If the message is NOT deleted or archived within the visibility timeout, it will become visible again and can be read by another consumer. The visibility timeout is set when a message is read from the queue, via `pgmq_read()`. It is recommended to set a `vt` value that is greater than the expected time it takes to process a message. After the application successfully processes the message, it should call `pgmq_delete()` to completely remove the message from the queue or `pgmq_archive()` to move it to the archive table for the queue.
+pgmq guarantees exactly once delivery of a message within a visibility timeout. The visibility timeout is the amount of time a message is invisible to other consumers after it has been read by a consumer. If the message is NOT deleted or archived within the visibility timeout, it will become visible again and can be read by another consumer. The visibility timeout is set when a message is read from the queue, via `pgmq.read()`. It is recommended to set a `vt` value that is greater than the expected time it takes to process a message. After the application successfully processes the message, it should call `pgmq.delete()` to completely remove the message from the queue or `pgmq.archive()` to move it to the archive table for the queue.
 
 ## ✨ Contributors
 

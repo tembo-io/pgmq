@@ -7,7 +7,7 @@ use pgmq_core::{
         assign_archive, assign_queue, create_archive, create_archive_index, create_index,
         create_meta, grant_pgmon_meta, grant_pgmon_queue, grant_pgmon_queue_seq, insert_meta,
     },
-    types::{PGMQ_SCHEMA, TABLE_PREFIX},
+    types::{PGMQ_SCHEMA, QUEUE_PREFIX},
     util::CheckedName,
 };
 
@@ -31,10 +31,8 @@ pub fn init_partitioned_queue(
         create_archive_index(name)?,
         assign_archive(name)?,
         create_partitioned_table(name, partition_col, partition_interval)?,
-        insert_meta(name, true)?,
+        insert_meta(name, true, false)?,
         set_retention_config(name, retention_interval)?,
-        grant_pgmon_queue(name)?,
-        grant_pgmon_queue_seq(name)?,
     ])
 }
 
@@ -57,7 +55,7 @@ pub fn init_partitioned_queue_client_only(
         create_archive_index(name)?,
         assign_archive(name)?,
         create_partitioned_table(name, partition_col, partition_interval)?,
-        insert_meta(name, true)?,
+        insert_meta(name, true, false)?,
         set_retention_config(name, retention_interval)?,
         grant_pgmon_queue(name)?,
         grant_pgmon_queue_seq(name)?,
@@ -80,8 +78,8 @@ fn create_partitioned_queue(
 ) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue} (
-            msg_id BIGSERIAL NOT NULL,
+        CREATE TABLE IF NOT EXISTS {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{queue} (
+            msg_id BIGINT GENERATED ALWAYS AS IDENTITY,
             read_ct INT DEFAULT 0 NOT NULL,
             enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
             vt TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -97,7 +95,7 @@ pub fn create_partitioned_index(
 ) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        CREATE INDEX IF NOT EXISTS pgmq_partition_idx_{queue} ON {PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue} ({partiton_col});
+        CREATE INDEX IF NOT EXISTS pgmq_partition_idx_{queue} ON {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{queue} ({partiton_col});
         "
     ))
 }
@@ -109,7 +107,7 @@ fn create_partitioned_table(
 ) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        SELECT {PARTMAN_SCHEMA}.create_parent('{PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue}', '{partition_col}', 'native', '{partition_interval}');
+        SELECT {PARTMAN_SCHEMA}.create_parent('{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{queue}', '{partition_col}', 'native', '{partition_interval}');
         "
     ))
 }
@@ -123,13 +121,13 @@ fn create_partitioned_table(
 fn set_retention_config(queue: CheckedName<'_>, retention: &str) -> Result<String, PgmqError> {
     Ok(format!(
         "
-        UPDATE {PGMQ_SCHEMA}.part_config
+        UPDATE {PARTMAN_SCHEMA}.part_config
         SET
             retention = '{retention}',
             retention_keep_table = false,
             retention_keep_index = true,
             automatic_maintenance = 'on'
-        WHERE parent_table = '{PGMQ_SCHEMA}.{TABLE_PREFIX}_{queue}';
+        WHERE parent_table = '{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{queue}';
         "
     ))
 }

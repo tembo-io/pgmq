@@ -7,3 +7,6 @@ Dockerfile
 .dockerignore
 docker/**
 *.deb
+poetry.lock
+site
+META.json

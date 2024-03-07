@@ -1,9 +1,6 @@
 use std::fmt::Display;
 
-use crate::{
-    errors::PgmqError,
-    types::{Message, TABLE_PREFIX},
-};
+use crate::{errors::PgmqError, types::Message};
 use log::LevelFilter;
 use serde::Deserialize;
 use sqlx::error::Error;
@@ -18,13 +15,13 @@ use url::{ParseError, Url};
 pub fn conn_options(url: &str) -> Result<PgConnectOptions, ParseError> {
     // Parse url
     let parsed = Url::parse(url)?;
-    let mut options = PgConnectOptions::new()
+    let options = PgConnectOptions::new()
         .host(parsed.host_str().ok_or(ParseError::EmptyHost)?)
         .port(parsed.port().ok_or(ParseError::InvalidPort)?)
         .username(parsed.username())
         .password(parsed.password().ok_or(ParseError::IdnaError)?)
-        .database(parsed.path().trim_start_matches('/'));
-    options.log_statements(LevelFilter::Debug);
+        .database(parsed.path().trim_start_matches('/'))
+        .log_statements(LevelFilter::Debug);
     Ok(options)
 }
 
@@ -101,13 +98,17 @@ pub fn check_input(input: &str) -> Result<(), PgmqError> {
 
     // Default value of `NAMEDATALEN`, set in `src/include/pg_config_manual.h`
     const NAMEDATALEN: usize = 64;
+
     // The maximum length of an identifier.
     // Longer names can be used in commands, but they'll be truncated
     const MAX_IDENTIFIER_LEN: usize = NAMEDATALEN - 1;
-    // The max length of a PGMQ table, considering its prefix and the underline after it (e.g. "pgmq_")
-    const MAX_PGMQ_TABLE_LEN: usize = MAX_IDENTIFIER_LEN - TABLE_PREFIX.len() - 1;
+    const BIGGEST_CONCAT: &str = "archived_at_idx_";
 
-    let is_short_enough = input.len() <= MAX_PGMQ_TABLE_LEN;
+    // The max length of the name of a PGMQ queue, considering that the biggest
+    // postgres identifier created by PGMQ is the index on archived_at
+    const MAX_PGMQ_QUEUE_LEN: usize = MAX_IDENTIFIER_LEN - BIGGEST_CONCAT.len();
+
+    let is_short_enough = input.len() <= MAX_PGMQ_QUEUE_LEN;
     let has_valid_characters = input
         .as_bytes()
         .iter()

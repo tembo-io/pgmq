@@ -211,9 +211,20 @@ impl PGMQueue {
     /// }
     pub async fn create(&self, queue_name: &str) -> Result<(), PgmqError> {
         let mut tx = self.connection.begin().await?;
-        let setup = query::init_queue_client_only(queue_name)?;
+        let setup = query::init_queue_client_only(queue_name, false)?;
         for q in setup {
-            sqlx::query(&q).execute(&mut tx).await?;
+            sqlx::query(&q).execute(&mut *tx).await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Create an unlogged queue
+    pub async fn create_unlogged(&self, queue_name: &str) -> Result<(), PgmqError> {
+        let mut tx = self.connection.begin().await?;
+        let setup = query::init_queue_client_only(queue_name, true)?;
+        for q in setup {
+            sqlx::query(&q).execute(&mut *tx).await?;
         }
         tx.commit().await?;
         Ok(())
@@ -247,7 +258,7 @@ impl PGMQueue {
         let mut tx = self.connection.begin().await?;
         let setup = query::destroy_queue_client_only(queue_name)?;
         for q in setup {
-            sqlx::query(&q).execute(&mut tx).await?;
+            sqlx::query(&q).execute(&mut *tx).await?;
         }
         tx.commit().await?;
         Ok(())
@@ -309,8 +320,8 @@ impl PGMQueue {
         message: &T,
     ) -> Result<i64, PgmqError> {
         let msg = serde_json::json!(&message);
-        let msgs: [serde_json::Value; 1] = [msg];
-        let row: PgRow = sqlx::query(&core_query::enqueue(queue_name, &msgs, &0)?)
+        let row: PgRow = sqlx::query(&core_query::enqueue(queue_name, 1, &0)?)
+            .bind(msg)
             .fetch_one(&self.connection)
             .await?;
         let msg_id: i64 = row.get("msg_id");
@@ -374,10 +385,9 @@ impl PGMQueue {
         message: &T,
         delay: u64,
     ) -> Result<i64, PgmqError> {
-        let mut msgs: Vec<serde_json::Value> = Vec::new();
         let msg = serde_json::json!(&message);
-        msgs.push(msg);
-        let row: PgRow = sqlx::query(&core_query::enqueue(queue_name, &msgs, &delay)?)
+        let row: PgRow = sqlx::query(&core_query::enqueue(queue_name, 1, &delay)?)
+            .bind(msg)
             .fetch_one(&self.connection)
             .await?;
         let msg_id: i64 = row.get("msg_id");
@@ -429,15 +439,13 @@ impl PGMQueue {
         queue_name: &str,
         messages: &[T],
     ) -> Result<Vec<i64>, PgmqError> {
-        let mut msgs: Vec<serde_json::Value> = Vec::new();
         let mut msg_ids: Vec<i64> = Vec::new();
+        let query = core_query::enqueue(queue_name, messages.len(), &0)?;
+        let mut q = sqlx::query(&query);
         for msg in messages.iter() {
-            let binding = serde_json::json!(&msg);
-            msgs.push(binding)
+            q = q.bind(serde_json::json!(msg));
         }
-        let rows: Vec<PgRow> = sqlx::query(&core_query::enqueue(queue_name, &msgs, &0)?)
-            .fetch_all(&self.connection)
-            .await?;
+        let rows: Vec<PgRow> = q.fetch_all(&self.connection).await?;
         for row in rows.iter() {
             msg_ids.push(row.get("msg_id"));
         }
@@ -793,15 +801,60 @@ impl PGMQueue {
     ///     Ok(())
     /// }
     pub async fn archive(&self, queue_name: &str, msg_id: i64) -> Result<u64, PgmqError> {
-        let query = core_query::archive_batch(queue_name)?;
-        let row = sqlx::query(&query)
-            .bind(vec![msg_id])
-            .execute(&self.connection)
-            .await?;
-        let num_deleted = row.rows_affected();
-        Ok(num_deleted)
+        self.archive_batch(queue_name, &[msg_id]).await
     }
 
+    /// Moves multiple messages, by message id, from the queue table to archive table
+    /// View messages on the archive table with sql:
+    /// ```sql
+    /// SELECT * FROM pgmq_<queue_name>_archive;
+    /// ```
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{PgmqError, PGMQueue};
+    /// use serde::Serialize;
+    /// use serde_json::Value;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///
+    ///     let msgs = vec![
+    ///         serde_json::json!({"foo": "bar1"}),
+    ///         serde_json::json!({"foo": "bar2"}),
+    ///         serde_json::json!({"foo": "bar3"}),
+    ///     ];
+    ///
+    ///     let msg_ids: Vec<i64> = queue
+    ///        .send_batch(&my_queue, &msgs)
+    ///        .await
+    ///        .expect("Failed to enqueue messages");
+    ///
+    ///     queue.archive_batch(&my_queue, &msg_ids).await.expect("failed to archive messages");
+    ///
+    ///     Ok(())
+    /// }
+    pub async fn archive_batch(&self, queue_name: &str, msg_ids: &[i64]) -> Result<u64, PgmqError> {
+        let query = core_query::archive_batch(queue_name)?;
+        let row = sqlx::query(&query)
+            .bind(msg_ids)
+            .execute(&self.connection)
+            .await?;
+
+        let num_achived = row.rows_affected();
+
+        Ok(num_achived)
+    }
     /// Reads single message from the queue and delete it at the same time.
     /// Similar to [read](#method.read) and [read_batch](#method.read_batch),
     /// if no messages are available, [`Option::None`] is returned. Unlike these methods,

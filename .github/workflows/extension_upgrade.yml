@@ -9,9 +9,13 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 'pgmq-rs/**'
   push:
     branches:
       - main
+    paths-ignore:
+      - 'pgmq-rs/**'
   release:
     types:
       - created
@@ -28,40 +32,56 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "pgmq-extension-test"
+          prefix-key: "pgmq-extension-upgrade-test"
           workspaces: |
             pgmq
           # Additional directories to cache
           cache-directories: |
             /home/runner/.pgrx
+      - name: Get current version
+        id: current-version
+        run: echo "CI_BRANCH=$(git name-rev --name-only HEAD)" >> $GITHUB_OUTPUT
+      - name: Checkout old version (1.0.0)
+        run: |
+          git fetch --tags
+          git checkout tags/v1.0.0
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./
-      - name: upgrade and test
+          force: true
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
+      - name: Install pg_partman
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
-          sudo make install && cd ../
-          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.4/pgrx-install/share/postgresql/extension/
-          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.4/pgrx-install/lib/postgresql/
+          git checkout v4.7.4 && \
+          sed -i 's|PG_CONFIG = pg_config|PG_CONFIG = ~/.pgrx/15.6/pgrx-install/bin/pg_config|' Makefile && \
+          make && \
+          make install && \
+          ls -alh /home/runner/.pgrx/15.6/pgrx-install/share/postgresql/extension/pg_partman*
+      - name: Run old version (1.0.0)
+        run: |
           rm -rf ./target/pgrx-test-data-* || true
-          # Config
           pg_version=$(stoml Cargo.toml features.default)
-          # Get current branch
-          export DATABASE_URL=postgres://$USER:postgres@localhost:28815/pgmq
-          export CI_BRANCH=$(git name-rev --name-only HEAD)
-          # Build and install old pgmq version
-          git fetch --tags
-          git checkout tags/v0.14.2
           SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
+          export DATABASE_URL=postgres://$USER:postgres@localhost:28815/pgmq
+          psql $DATABASE_URL -c "DROP EXTENSION IF EXISTS pgmq CASCADE;"
+          psql $DATABASE_URL -c "DROP EXTENSION IF EXISTS pg_partman CASCADE;"
           psql $DATABASE_URL -c "CREATE EXTENSION pg_partman;"
           psql $DATABASE_URL -c "CREATE EXTENSION pgmq;"
-          psql $DATABASE_URL -c "select * from pgmq_create('test_queue_1')"
-          psql $DATABASE_URL -c "select * from pgmq_create_partitioned('test_partitioned_queue_1');"
-          # Checkout branch and attempt to update extension version
+          psql $DATABASE_URL -c "select * from pgmq.create('test_queue_1')"
+          psql $DATABASE_URL -c "select * from pgmq.create_partitioned('test_partitioned_queue_1');"
+          ls -alh /home/runner/.pgrx/15.6/pgrx-install/share/postgresql/extension/pg_partman*
+      - name: Checkout branch's version
+        env:
+          CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
+        run: |
           git checkout $CI_BRANCH
+      - name: Upgrade and run tests
+        run: |
+          ls -alh /home/runner/.pgrx/15.6/pgrx-install/share/postgresql/extension/pg_partman*
+          export DATABASE_URL=postgres://$USER:postgres@localhost:28815/pgmq
           SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
           psql $DATABASE_URL -c "ALTER EXTENSION pgmq UPDATE;"
-          # Run extension tests
-          SQLX_OFFLINE=true cargo pgrx test ${pg_version}
+          SQLX_OFFLINE=true make test

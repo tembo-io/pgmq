@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * from pgmq.create($1::text);",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "create",
+        "type_info": "Void"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "8bf48b3cab42cc04047e8cc16cdd4064c3768328a673d8a278002afa85b2b1d4"
+}

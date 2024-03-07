@@ -65,62 +65,59 @@ class PGMQueue:
         """
 
         with self.pool.connection() as conn:
-            conn.execute("select pgmq_create(%s, %s::text, %s::text);", [queue, partition_interval, retention_interval])
+            conn.execute("select pgmq.create(%s, %s::text, %s::text);", [queue, partition_interval, retention_interval])
 
-    def create_queue(self, queue: str) -> None:
+    def create_queue(self, queue: str, unlogged: bool = False) -> None:
         """Create a new queue
         Args:
             queue: The name of the queue.
         """
 
         with self.pool.connection() as conn:
-            conn.execute("select pgmq_create(%s);", [queue])
+            if unlogged:
+                conn.execute("select pgmq.create_unlogged(%s);", [queue])
+            else:
+                conn.execute("select pgmq.create(%s);", [queue])
 
-    def send(self, queue: str, message: dict, delay: Optional[int] = None) -> int:
+    def send(self, queue: str, message: dict, delay: int = 0) -> int:
         """Send a message to a queue"""
 
         with self.pool.connection() as conn:
-            if delay is not None:
-                # TODO(chuckend): implement send_delay in pgmq
-                raise NotImplementedError("send_delay is not implemented in pgmq")
             message = conn.execute(
-                "select * from pgmq_send(%s, %s);",
-                [queue, Jsonb(message)],  # type: ignore
+                "select * from pgmq.send(%s, %s,%s);",
+                [queue, Jsonb(message), delay],  # type: ignore
             ).fetchall()
         return message[0][0]
 
-    def send_batch(self, queue: str, messages: list[dict], delay: Optional[int] = None) -> list[int]:
+    def send_batch(self, queue: str, messages: list[dict], delay: int = 0) -> list[int]:
         """Send a batch of messages to a queue"""
 
         with self.pool.connection() as conn:
-            if delay is not None:
-                # TODO(chuckend): implement send_delay in pgmq
-                raise NotImplementedError("send_delay is not implemented in pgmq")
             result = conn.execute(
-                "select * from pgmq_send_batch(%s, %s);",
-                [queue, [Jsonb(message) for message in messages]],  # type: ignore
+                "select * from pgmq.send_batch(%s, %s, %s);",
+                [queue, [Jsonb(message) for message in messages], delay],  # type: ignore
             ).fetchall()
         return [message[0] for message in result]
 
     def read(self, queue: str, vt: Optional[int] = None) -> Optional[Message]:
         """Read a message from a queue"""
         with self.pool.connection() as conn:
-            rows = conn.execute("select * from pgmq_read(%s, %s, %s);", [queue, vt or self.vt, 1]).fetchall()
+            rows = conn.execute("select * from pgmq.read(%s, %s, %s);", [queue, vt or self.vt, 1]).fetchall()
 
         messages = [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
         return messages[0] if len(messages) == 1 else None
 
     def read_batch(self, queue: str, vt: Optional[int] = None, batch_size=1) -> Optional[list[Message]]:
-        """Read abatch of messages from a queue"""
+        """Read a batch of messages from a queue"""
         with self.pool.connection() as conn:
-            rows = conn.execute("select * from pgmq_read(%s, %s, %s);", [queue, vt or self.vt, batch_size]).fetchall()
+            rows = conn.execute("select * from pgmq.read(%s, %s, %s);", [queue, vt or self.vt, batch_size]).fetchall()
 
         return [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
 
     def pop(self, queue: str) -> Message:
         """Read a message from a queue"""
         with self.pool.connection() as conn:
-            rows = conn.execute("select * from pgmq_pop(%s);", [queue]).fetchall()
+            rows = conn.execute("select * from pgmq.pop(%s);", [queue]).fetchall()
 
         messages = [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
         return messages[0]
@@ -128,13 +125,22 @@ class PGMQueue:
     def delete(self, queue: str, msg_id: int) -> bool:
         """Delete a message from a queue"""
         with self.pool.connection() as conn:
-            row = conn.execute("select pgmq_delete(%s, %s);", [queue, msg_id]).fetchall()
+            row = conn.execute("select pgmq.delete(%s, %s);", [queue, msg_id]).fetchall()
 
         return row[0][0]
 
     def archive(self, queue: str, msg_id: int) -> bool:
         """Archive a message from a queue"""
         with self.pool.connection() as conn:
-            row = conn.execute("select pgmq_archive(%s, %s);", [queue, msg_id]).fetchall()
+            row = conn.execute("select pgmq.archive(%s, %s);", [queue, msg_id]).fetchall()
+
+        return row[0][0]
+
+    def purge(self, queue: str) -> int:
+        """Purge a queue
+
+        Returns the number of messages purged"""
+        with self.pool.connection() as conn:
+            row = conn.execute("select pgmq.purge_queue(%s);", [queue]).fetchall()
 
         return row[0][0]

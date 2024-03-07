@@ -1,4 +1,4 @@
-use pgmq_core::types::TABLE_PREFIX;
+use pgmq_core::types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres, Row};
@@ -61,7 +61,16 @@ struct YoloMessage {
 }
 
 async fn rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
-    let row_ct_query = format!("SELECT count(*) as ct FROM {TABLE_PREFIX}_{qname}");
+    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{qname}");
+    sqlx::query(&row_ct_query)
+        .fetch_one(connection)
+        .await
+        .unwrap()
+        .get::<i64, usize>(0)
+}
+
+async fn archive_rowcount(qname: &str, connection: &Pool<Postgres>) -> i64 {
+    let row_ct_query = format!("SELECT count(*) as ct FROM {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{qname}");
     sqlx::query(&row_ct_query)
         .fetch_one(connection)
         .await
@@ -249,7 +258,6 @@ async fn test_ext_archive_batch() {
         "test_ext_archive_batch_{}",
         rand::thread_rng().gen_range(0..100000)
     );
-    let test_queue_archive = format!("{}_archive", test_queue);
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
 
@@ -265,9 +273,9 @@ async fn test_ext_archive_batch() {
     let post_archive_rowcount = rowcount(&test_queue, &queue.connection).await;
 
     assert_eq!(post_archive_rowcount, 0);
-    assert_eq!(archive_result, true);
+    assert_eq!(archive_result, 3);
 
-    let post_archive_archive_rowcount = rowcount(&test_queue_archive, &queue.connection).await;
+    let post_archive_archive_rowcount = archive_rowcount(&test_queue, &queue.connection).await;
     assert_eq!(post_archive_archive_rowcount, 3);
 }
 
@@ -289,7 +297,7 @@ async fn test_ext_delete_batch() {
         .expect("delete batch error");
     let post_delete_rowcount = rowcount(&test_queue, &queue.connection).await;
     assert_eq!(post_delete_rowcount, 0);
-    assert_eq!(delete_result, true);
+    assert_eq!(delete_result, 3);
 }
 
 #[tokio::test]

@@ -11,11 +11,13 @@ on:
       - main
     paths-ignore:
       - 'pgmq-rs/**'
+      - 'tembo-pgmq-python/**'
   push:
     branches:
       - main
     paths-ignore:
       - 'pgmq-rs/**'
+      - 'tembo-pgmq-python/**'
   release:
     types:
       - created
@@ -51,6 +53,16 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: [
+          {version: "12.18", pgrx_version: "pg12"},
+          {version: "13.14", pgrx_version: "pg13"},
+          {version: "14.11", pgrx_version: "pg14"},
+          {version: "15.6", pgrx_version: "pg15"},
+          {version: "16.2", pgrx_version: "pg16"}
+        ]
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust stable toolchain
@@ -59,7 +71,7 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "pgmq-extension-test"
+          prefix-key: "pgmq-extension-test-${{ matrix.pg.pgrx_version }}"
           workspaces: |
             pgmq
           # Additional directories to cache
@@ -68,24 +80,38 @@ jobs:
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./
-      - name: test
+          pgrx_pg_version: ${{ matrix.pg.pgrx_version }}
+          pg_version: ${{ matrix.pg.version }}
+      - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
+          sudo apt-get update
+          sudo apt-get install -y --allow-downgrades postgresql-client-common=238
+          sudo apt-get install -y --allow-downgrades postgresql-common=238 postgresql-server-dev-14
+          sudo apt-get install -y --allow-downgrades postgresql-server-dev-all
+          # We need to make sure that only clang 14 is installed in the host before
+          # it tries to compile pgrx, as having multiple versions cause issues
+          # per https://github.com/pgcentralfoundation/pgrx/issues/1298
+          sudo apt-get autoremove -y clang-13 lldb-13 lld-13 clang-15 lldb-15 lld-15
+      - name: Install pg_partman
+        run: |
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
-          sudo make install && cd ../
-          cp /usr/share/postgresql/14/extension/pg_partman* ~/.pgrx/15.4/pgrx-install/share/postgresql/extension/
-          cp /usr/lib/postgresql/14/lib/pg_partman_bgw.so ~/.pgrx/15.4/pgrx-install/lib/postgresql/
+          git checkout v4.7.4 && \
+          sed -i 's|PG_CONFIG = pg_config|PG_CONFIG = ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/bin/pg_config|' Makefile && \
+          make && \
+          make install 
+      - name: Run tests
+        run: |
           rm -rf ./target/pgrx-test-data-* || true
-          pg_version=$(stoml Cargo.toml features.default)
-          cargo pgrx run ${pg_version} --pgcli || true
-          cargo pgrx test ${pg_version}
+          cargo pgrx run ${{ matrix.pg.pgrx_version }} --pgcli || true
+          PGRX_POSTGRES=${{ matrix.pg.pgrx_version }} make test
 
   publish:
-    # only publish release events
-    if: github.event_name == 'release'
     name: trunk publish
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        pg-version: [14, 15, 16]
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust stable toolchain
@@ -111,12 +137,10 @@ jobs:
          cargo install pg-trunk
       - name: trunk build
         working-directory: ./
-        run: trunk build
-        # use below when trunk build supports --dockerfile for pgrx
-        # run: |
-        #   pgmq_ver=$(stoml extension/Cargo.toml package.version)
-        #   trunk build --path . --dockerfile ./Dockerfile.build --install-command "cd extension && cargo pgrx install" --name pgmq --version ${pgmq_ver}
+        run: trunk build --pg-version ${{ matrix.pg-version }}
       - name: trunk publish
+        # only publish release events
+        if: github.event_name == 'release'
         working-directory: ./
         env:
           TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
@@ -124,11 +148,11 @@ jobs:
           pgmq_ver=$(stoml Cargo.toml package.version)
           pgmq_descr=$(stoml Cargo.toml package.description)
           pgmq_repo=$(stoml Cargo.toml package.repository)
-          trunk publish pgmq --version ${pgmq_ver} --file .trunk/pgmq-${pgmq_ver}.tar.gz --description "A lightweight distributed message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
+          trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
     name: Build and push images
-    needs:
-      - publish
+    # needs:
+    #   - publish
     runs-on:
       - self-hosted
       - dind
@@ -146,23 +170,46 @@ jobs:
          mv stoml_linux_amd64 stoml
          chmod +x stoml
          sudo mv stoml /usr/local/bin/
+
       - name: Set version strings
         id: versions
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "TAG_VER=$(/usr/local/bin/stoml Cargo.toml package.version)" >> $GITHUB_OUTPUT
-      - name: Build and upload image
-        run: |
-          docker build --build-arg="PGMQ_VER=${{ steps.versions.outputs.TAG_VER }}" -t pgmq-pg images/pgmq-pg
-          docker tag pgmq-pg quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }}
-          docker tag pgmq-pg quay.io/tembo/pgmq-pg:latest
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+  
       - name: Login to Quay
         uses: docker/login-action@v2
         with:
           registry: quay.io/tembo
           username: ${{ secrets.QUAY_USER_TEMBO }}
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
-      - name: Push image
-        run: |
-          docker push quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }}
-          docker push quay.io/tembo/pgmq-pg:latest
+
+      - name: Build and push -- Commit
+        # push commit build when not a release
+        if: github.event_name != 'release'
+        uses: docker/build-push-action@v5
+        with:
+          file: ./images/pgmq-pg/Dockerfile
+          context: .
+          platforms: linux/amd64, linux/arm64
+          push: true
+          tags: |
+            quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.SHORT_SHA }}
+
+      - name: Build and push -- Releases
+        # only publish release events
+        if: github.event_name == 'release'
+        uses: docker/build-push-action@v5
+        with:
+          file: ./images/pgmq-pg/Dockerfile
+          context: .
+          platforms: linux/amd64, linux/arm64
+          push: true
+          tags: |
+            quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }}
+            quay.io/tembo/pgmq-pg:latest

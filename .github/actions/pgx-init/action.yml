@@ -4,6 +4,15 @@ inputs:
   working-directory:
     description: 'The directory in which there is a pgrx extension project'
     required: true
+  pg_version:
+    description: 'The version of postgres'
+    default: "15.5"
+  pgrx_pg_version:
+    description: 'Pgrx pg version alias'
+    default: "pg15"
+  force:
+    description: 'Force install'
+    default: false
 outputs: {}
 runs:
   using: "composite"
@@ -26,7 +35,11 @@ runs:
             echo "pgrx is not a dependency: skipping"
             echo "skip=true" >> $GITHUB_OUTPUT
           else
-            cargo install --version ${pgrx_version} cargo-pgrx
+            if [ ${{ inputs.force }} ]; then
+              cargo install --version ${pgrx_version} --force cargo-pgrx
+            else
+              cargo install --version ${pgrx_version} cargo-pgrx
+            fi
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
       - name: pgrx init
@@ -35,12 +48,11 @@ runs:
         working-directory: ${{ inputs.working-directory }}
         run: |
           set -x
-          pg_version=$(stoml Cargo.toml features.default)
           # pgrx init can take a long time, and it re-compiles postgres even when there
           # is a cached version. So, we can just check for the directory and
           cat /home/runner/.pgrx/config.toml || true
-          if find /home/runner/.pgrx | grep $(awk -F "=" '/${pg_version}/ {print $2}' /home/runner/.pgrx/config.toml | tr -d '"'); then
+          if find /home/runner/.pgrx | grep $(awk -F "=" '/${{ inputs.pg_version}}/ {print $2}' /home/runner/.pgrx/config.toml | tr -d '"'); then
             echo "Already found pgrx is initialized. Skipping 'cargo pgrx init' command."
           else
-            cargo pgrx init --${pg_version} download || true
+            cargo pgrx init --${{inputs.pgrx_pg_version}} download || true
           fi

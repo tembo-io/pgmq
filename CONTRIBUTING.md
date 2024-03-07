@@ -20,7 +20,7 @@ To build pgmq from source, you need
 Once you have those pre-requisites, you need to setup `pgrx`.
 
 ```bash
-cargo install --locked cargo-pgrx --version 0.9.8
+cargo install --locked cargo-pgrx --version 0.11.0
 ```
 
 Clone the repo and change into the directory.
@@ -60,13 +60,13 @@ cargo pgrx init
 you want to build against (`PG_CONFIG` in `~/.pgrx/PG_VERSION/pgrx-install/bin/pg_config`
 and `PGDATA` in `~/.pgrx/data-PG_MAJOR_VERSION`)
 
-Example steps using `pg_partman` 4.7.3 and `PostgreSQL` 15.4:
+Example steps using `pg_partman` 4.7.3 and `PostgreSQL` 15.5:
 
 ```bash
 wget https://github.com/pgpartman/pg_partman/archive/refs/tags/v4.7.3.tar.gz
 tar xvfz v4.7.3.tar.gz
 cd pg_partman-4.7.3
-make install PG_CONFIG=~/.pgrx/15.4/pgrx-install/bin/pg_config PG_DATA=~/.pgrx/data-15
+make install PG_CONFIG=~/.pgrx/15.5/pgrx-install/bin/pg_config PG_DATA=~/.pgrx/data-15
 ```
 
 Then, you can use the run command, which will build and install the extension
