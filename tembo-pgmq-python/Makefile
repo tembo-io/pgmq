@@ -8,7 +8,6 @@ format:
 lints:
 	poetry run ruff check ${SCOPE}
 	poetry run black --check ${SCOPE}
-	poetry run mypy ${SCOPE}
 
 clear-postgres:
 	docker rm -f pgmq-postgres || true

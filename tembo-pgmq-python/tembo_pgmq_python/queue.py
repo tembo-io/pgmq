@@ -138,7 +138,7 @@ class PGMQueue:
 
     def purge(self, queue: str) -> int:
         """Purge a queue
-        
+
         Returns the number of messages purged"""
         with self.pool.connection() as conn:
             row = conn.execute("select pgmq.purge_queue(%s);", [queue]).fetchall()
