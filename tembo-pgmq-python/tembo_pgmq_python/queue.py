@@ -135,3 +135,12 @@ class PGMQueue:
             row = conn.execute("select pgmq.archive(%s, %s);", [queue, msg_id]).fetchall()
 
         return row[0][0]
+
+    def purge(self, queue: str) -> int:
+        """Purge a queue
+
+        Returns the number of messages purged"""
+        with self.pool.connection() as conn:
+            row = conn.execute("select pgmq.purge_queue(%s);", [queue]).fetchall()
+
+        return row[0][0]

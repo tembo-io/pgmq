@@ -1,14 +1,13 @@
 SCOPE=tembo_pgmq_python/
+POETRY_VERSION:=1.7.1
 
 format:
 	poetry run black ${SCOPE}
-	poetry run isort --atomic .
+	poetry run ruff check --silent --fix --exit-zero ${SCOPE}
 
 lints:
+	poetry run ruff check ${SCOPE}
 	poetry run black --check ${SCOPE}
-	poetry run isort --check-only ${SCOPE}
-	poetry run flake8 ${SCOPE}
-	poetry run mypy ${SCOPE}
 
 clear-postgres:
 	docker rm -f pgmq-postgres || true
