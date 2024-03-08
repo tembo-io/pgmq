@@ -38,6 +38,7 @@ locust = "^2.16.1"
 ruff = "^0.3.1"
 pyyaml = "^6.0.1"
 seaborn = "^0.13.0"
+psycopg = {version = "^3.1.14", extras = ["binary", "pool"]}
 
 [tool.black]
 line-length = 120
