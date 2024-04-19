@@ -71,6 +71,7 @@ Community
 - [Elixir + Broadway](https://github.com/v0idpwn/off_broadway_pgmq)
 - [Java (Spring Boot)](https://github.com/adamalexandru4/pgmq-spring)
 - [Javascript (NodeJs)](https://github.com/Muhammad-Magdi/pgmq-js)
+- [.NET](https://github.com/brianpursley/Npgmq)
 
 ## SQL Examples
 
