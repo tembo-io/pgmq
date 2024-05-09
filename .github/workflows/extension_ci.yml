@@ -57,11 +57,11 @@ jobs:
       fail-fast: false
       matrix:
         pg: [
-          {version: "12.18", pgrx_version: "pg12"},
-          {version: "13.14", pgrx_version: "pg13"},
-          {version: "14.11", pgrx_version: "pg14"},
-          {version: "15.6", pgrx_version: "pg15"},
-          {version: "16.2", pgrx_version: "pg16"}
+          {version: "12.19", pgrx_version: "pg12"},
+          {version: "13.15", pgrx_version: "pg13"},
+          {version: "14.12", pgrx_version: "pg14"},
+          {version: "15.7", pgrx_version: "pg15"},
+          {version: "16.3", pgrx_version: "pg16"}
         ]
     steps:
       - uses: actions/checkout@v2
