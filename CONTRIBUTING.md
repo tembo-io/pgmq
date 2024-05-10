@@ -20,7 +20,7 @@ To build pgmq from source, you need
 Once you have those pre-requisites, you need to setup `pgrx`.
 
 ```bash
-cargo install --locked cargo-pgrx --version 0.11.0
+cargo install --locked cargo-pgrx --version 0.11.3
 ```
 
 Clone the repo and change into the directory.
@@ -41,7 +41,7 @@ Initialize `cargo-pgrx`, and tell it the path to the your `pg_config`. For examp
 if `pg_config` is on your `$PATH` and you have Postgres 15, you can run:
 
 ```bash
-cargo pgrx init --pg15=`which pg_config`
+cargo pgrx init --pg16=`which pg_config`
 ```
 Then, to install the release build, you can simply run:
 ```
@@ -73,7 +73,7 @@ Then, you can use the run command, which will build and install the extension
 and drop you into psql:
 
 ```bash
-cargo pgrx run pg15
+cargo pgrx run pg16
 ```
 
 Finally, you can create the extension and get started with the example in the [README.md](README.md).

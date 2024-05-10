@@ -13,7 +13,7 @@ installed you can perform the update to `1.1.0`.
 If pgrx wasn't initialized yet:
 ```
 # Remember to use the flag for your postgres major version
-cargo pgrx init --pg15=`which pg_config`
+cargo pgrx init --6=`which pg_config`
 ```
 
 Clone the pgmq repo and checkout the desired version. For example, for `1.0.0`:

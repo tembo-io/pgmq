@@ -1,7 +1,7 @@
-PGRX_POSTGRES ?= pg15
+PGRX_POSTGRES ?= pg16
 DISTNAME = $(shell grep -m 1 '^name' Cargo.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
 DISTVERSION  = $(shell grep -m 1 '^version' Cargo.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
-PG_VERSION:=15
+PG_VERSION:=16
 PGRX_PG_CONFIG =$(shell cargo pgrx info pg-config ${PGRX_POSTGRES})
 
 test:

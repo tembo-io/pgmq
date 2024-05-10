@@ -6,10 +6,10 @@ inputs:
     required: true
   pg_version:
     description: 'The version of postgres'
-    default: "15.5"
+    default: "16.3"
   pgrx_pg_version:
     description: 'Pgrx pg version alias'
-    default: "pg15"
+    default: "pg16"
   force:
     description: 'Force install'
     default: false
