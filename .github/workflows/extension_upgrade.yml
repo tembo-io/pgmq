@@ -63,6 +63,7 @@ jobs:
       - name: Run old version (1.0.0)
         run: |
           rm -rf ./target/pgrx-test-data-* || true
+          cargo install cargo-pgrx --version 0.11.0
           SQLX_OFFLINE=true cargo pgrx run pg16 --pgcli || true
           export DATABASE_URL=postgres://$USER:postgres@localhost:28815/pgmq
           psql $DATABASE_URL -c "DROP EXTENSION IF EXISTS pgmq CASCADE;"
@@ -80,6 +81,7 @@ jobs:
       - name: Upgrade and run tests
         run: |
           ls -alh /home/runner/.pgrx/15.6/pgrx-install/share/postgresql/extension/pg_partman*
+          cargo install cargo-pgrx --version 0.11.3
           export DATABASE_URL=postgres://$USER:postgres@localhost:28815/pgmq
           SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
           psql $DATABASE_URL -c "ALTER EXTENSION pgmq UPDATE;"
