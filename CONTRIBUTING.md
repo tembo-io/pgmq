@@ -20,7 +20,7 @@ To build pgmq from source, you need
 Once you have those pre-requisites, you need to setup `pgrx`.
 
 ```bash
-cargo install --locked cargo-pgrx --version 0.11.0
+cargo install --locked cargo-pgrx --version 0.11.3
 ```
 
 Clone the repo and change into the directory.

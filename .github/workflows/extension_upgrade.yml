@@ -63,8 +63,7 @@ jobs:
       - name: Run old version (1.0.0)
         run: |
           rm -rf ./target/pgrx-test-data-* || true
-          pg_version=$(stoml Cargo.toml features.default)
-          SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
+          SQLX_OFFLINE=true cargo pgrx run pg16 --pgcli || true
           export DATABASE_URL=postgres://$USER:postgres@localhost:28815/pgmq
           psql $DATABASE_URL -c "DROP EXTENSION IF EXISTS pgmq CASCADE;"
           psql $DATABASE_URL -c "DROP EXTENSION IF EXISTS pg_partman CASCADE;"
