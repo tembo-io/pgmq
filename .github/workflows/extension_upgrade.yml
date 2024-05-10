@@ -80,7 +80,6 @@ jobs:
           git checkout $CI_BRANCH
       - name: Upgrade and run tests
         run: |
-          ls -alh /home/runner/.pgrx/15.6/pgrx-install/share/postgresql/extension/pg_partman*
           cargo install cargo-pgrx --version 0.11.3
           export DATABASE_URL=postgres://$USER:postgres@localhost:28816/pgmq
           SQLX_OFFLINE=true cargo pgrx run ${pg_version} --pgcli || true
