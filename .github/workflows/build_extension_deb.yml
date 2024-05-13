@@ -6,9 +6,6 @@ defaults:
     working-directory: ./
 
 on:
-  pull_request:
-    branches:
-      - main
   release:
     types:
       - created
@@ -27,12 +24,12 @@ jobs:
         pgrx_version:
           - 0.11.3
         postgres: 
-            # - 14
-            # - 15
+            - 14
+            - 15
             - 16
         box:
           - { runner: ubuntu-20.04, arch: amd64 }
-        #   - { runner: arm-runner, arch: arm64 }
+          - { runner: arm-runner, arch: arm64 }
     runs-on: ${{ matrix.box.runner }}
     timeout-minutes: 90
     steps:
@@ -94,13 +91,13 @@ jobs:
           sudo chmod -R 00755 ${package_dir}
           sudo dpkg-deb --build --root-owner-group ${package_dir}
 
-      - name: Prepare Release
+      - name: Prepare release
         run: |
           deb_version=$(grep '^version' Cargo.toml | head -1 | awk -F '"' '{print $2}')
-          echo UPLOAD_URL=$(curl --silent https://api.github.com/repos/${{ github.repository }}/releases/latest | jq .upload_url --raw-output) >> $GITHUB_ENV
+          echo UPLOAD_URL=$(curl --silent https://api.github.com/repos/${{ github.repository }}/releases/tags/v${deb_version} | jq .upload_url --raw-output) >> $GITHUB_ENV
           echo ASSET_NAME=${{ matrix.extension_name }}-${deb_version}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu.deb >> $GITHUB_ENV
 
-      - name: Upload deb to release
+      - name: Upload deb to github release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
