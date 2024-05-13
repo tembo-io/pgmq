@@ -102,8 +102,8 @@ jobs:
       - name: test-upload
 
         run: |
-          echo "UPLOAD_URL: $UPLOAD_URL"
-          echo "ASSET_PATH: $ASSET_PATH"
+          echo "UPLOAD_URL: ${{ env.UPLOAD_URL }}"
+          echo "ASSET_PATH: ${{ env.ASSET_NAME }}"
           echo "ASSET_NAME: $ASSET_NAME"
   
       # - name: Upload deb to release
