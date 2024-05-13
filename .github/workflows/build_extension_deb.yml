@@ -26,10 +26,13 @@ jobs:
           - pgmq
         pgrx_version:
           - 0.11.3
-        postgres: [14, 15, 16]
+        postgres: 
+            # - 14
+            # - 15
+            - 16
         box:
           - { runner: ubuntu-20.04, arch: amd64 }
-          - { runner: arm-runner, arch: arm64 }
+        #   - { runner: arm-runner, arch: arm64 }
     runs-on: ${{ matrix.box.runner }}
     timeout-minutes: 90
     steps:
@@ -93,13 +96,15 @@ jobs:
 
       - name: Get upload url
         run: |
+          deb_version=$(grep '^version' Cargo.toml | head -1 | awk -F '"' '{print $2}')
           echo UPLOAD_URL=$(curl --silent https://api.github.com/repos/${{ github.repository }}/releases/latest | jq .upload_url --raw-output) >> $GITHUB_ENV
-
+          echo ASSET_NAME=${{ matrix.extension_name }}-${deb_version}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu.deb
       - name: test-upload
 
         run: |
-          echo ./${{ matrix.extension_name }}-${{ github.ref_name }}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu.deb 
-          echo ${{ matrix.extension_name }}-${{ github.ref_name }}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu.deb
+          echo "UPLOAD_URL: $UPLOAD_URL"
+          echo "ASSET_PATH: $ASSET_PATH"
+          echo "ASSET_NAME: $ASSET_NAME"
   
       # - name: Upload deb to release
       #   uses: actions/upload-release-asset@v1
@@ -107,6 +112,6 @@ jobs:
       #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       #   with:
       #     upload_url: ${{ env.UPLOAD_URL }}
-      #     asset_path: ./${{ matrix.extension_name }}-${{ github.ref_name }}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu.deb
-      #     asset_name: ${{ matrix.extension_name }}-${{ github.ref_name }}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu.deb
+      #     asset_path: ./${{ env.ASSET_NAME }}
+      #     asset_name: ${{ env.ASSET_NAME }}
       #     asset_content_type: application/vnd.debian.binary-package
