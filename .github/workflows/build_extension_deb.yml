@@ -98,7 +98,7 @@ jobs:
         run: |
           deb_version=$(grep '^version' Cargo.toml | head -1 | awk -F '"' '{print $2}')
           echo UPLOAD_URL=$(curl --silent https://api.github.com/repos/${{ github.repository }}/releases/latest | jq .upload_url --raw-output) >> $GITHUB_ENV
-          echo ASSET_NAME=${{ matrix.extension_name }}-${deb_version}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu.deb
+          echo ASSET_NAME=${{ matrix.extension_name }}-${deb_version}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu.deb >> $GITHUB_ENV
       - name: test-upload
 
         run: |
