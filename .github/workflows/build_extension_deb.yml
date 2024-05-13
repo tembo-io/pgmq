@@ -60,9 +60,7 @@ jobs:
           cargo install cargo-pgrx --version ${{ matrix.pgrx_version }} --locked
           cargo pgrx init --pg${{ matrix.postgres }}=/usr/lib/postgresql/${{ matrix.postgres }}/bin/pg_config
 
-          # selects the pgVer from pg_config on path
-          # https://github.com/tcdi/pgrx/issues/288
-          cargo pgrx package --no-default-features --features pg${{ matrix.postgres }}
+          cargo pgrx package --pg-config $(cargo pgrx info pg-config ${{ matrix.postgres }})
 
           # Create installable package
           mkdir archive
