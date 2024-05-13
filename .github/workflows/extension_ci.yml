@@ -106,7 +106,7 @@ jobs:
           cargo pgrx run ${{ matrix.pg.pgrx_version }} --pgcli || true
           PGRX_POSTGRES=${{ matrix.pg.pgrx_version }} make test
 
-  publish-trunk:
+  publish:
     name: trunk publish
     runs-on: ubuntu-22.04
     strategy:
