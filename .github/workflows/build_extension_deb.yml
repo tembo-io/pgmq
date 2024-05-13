@@ -17,7 +17,7 @@ jobs:
   build-deb:
     # source: https://github.com/supabase/pg_jsonschema/blob/29fcd5b23abe3dd6a78a490082f34113de7813a1/.github/workflows/release.yml
     name: release .deb
-    # if: github.event_name == 'release'
+    if: github.event_name == 'release'
     strategy:
       matrix:
         extension_name:
@@ -94,24 +94,18 @@ jobs:
           sudo chmod -R 00755 ${package_dir}
           sudo dpkg-deb --build --root-owner-group ${package_dir}
 
-      - name: Get upload url
+      - name: Prepare Release
         run: |
           deb_version=$(grep '^version' Cargo.toml | head -1 | awk -F '"' '{print $2}')
           echo UPLOAD_URL=$(curl --silent https://api.github.com/repos/${{ github.repository }}/releases/latest | jq .upload_url --raw-output) >> $GITHUB_ENV
           echo ASSET_NAME=${{ matrix.extension_name }}-${deb_version}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu.deb >> $GITHUB_ENV
-      - name: test-upload
 
-        run: |
-          echo "UPLOAD_URL: ${{ env.UPLOAD_URL }}"
-          echo "ASSET_PATH: ${{ env.ASSET_NAME }}"
-          echo "ASSET_NAME: $ASSET_NAME"
-  
-      # - name: Upload deb to release
-      #   uses: actions/upload-release-asset@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ env.UPLOAD_URL }}
-      #     asset_path: ./${{ env.ASSET_NAME }}
-      #     asset_name: ${{ env.ASSET_NAME }}
-      #     asset_content_type: application/vnd.debian.binary-package
+      - name: Upload deb to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ env.UPLOAD_URL }}
+          asset_path: ./${{ env.ASSET_NAME }}
+          asset_name: ${{ env.ASSET_NAME }}
+          asset_content_type: application/vnd.debian.binary-package
