@@ -76,10 +76,7 @@ jobs:
           cp archive/*.control ${package_dir}/var/lib/postgresql/extension
           cp archive/*.sql ${package_dir}/var/lib/postgresql/extension
 
-          # Create install control file
-          extension_version=${{ github.ref_name }}
-          # strip the leading v
-          deb_version=${extension_version:1}
+          deb_version=$(grep '^version' Cargo.toml | head -1 | awk -F '"' '{print $2}')
 
           mkdir -p ${package_dir}/DEBIAN
           touch ${package_dir}/DEBIAN/control
