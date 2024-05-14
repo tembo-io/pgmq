@@ -33,7 +33,7 @@ jobs:
     runs-on: ${{ matrix.box.runner }}
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: build release artifacts
         run: |
@@ -57,7 +57,8 @@ jobs:
 
           source "$HOME/.cargo/env"
 
-          cargo install cargo-pgrx --version ${{ matrix.pgrx_version }} --locked
+          pgrx_ver=$(grep '^pgrx' Cargo.toml | head -1 | awk -F '"' '{print $2}')
+          cargo install cargo-pgrx --version ${pgrx_ver} --locked
           cargo pgrx init --pg${{ matrix.postgres }}=/usr/lib/postgresql/${{ matrix.postgres }}/bin/pg_config
 
           cargo pgrx package --pg-config $(cargo pgrx info pg-config ${{ matrix.postgres }})
