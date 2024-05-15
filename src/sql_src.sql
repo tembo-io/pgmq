@@ -29,6 +29,13 @@ CREATE TYPE pgmq.message_record AS (
     message JSONB
 );
 
+CREATE TYPE pgmq.queue_record AS (
+    queue_name VARCHAR,
+    is_partitioned BOOLEAN,
+    is_unlogged BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE
+);
+
 ------------------------------------------------------------
 -- Functions
 ------------------------------------------------------------
@@ -308,7 +315,7 @@ BEGIN
                 END as total_messages
             FROM pgmq.q_%s_msg_id_seq
         )
-        SELECT 
+        SELECT
             '%s' as queue_name,
             q_summary.queue_length,
             q_summary.newest_msg_age_sec,
@@ -336,4 +343,12 @@ BEGIN
         RETURN NEXT result_row;
     END LOOP;
 END;
+$$ LANGUAGE plpgsql;
+
+-- list queues
+CREATE OR REPLACE FUNCTION pgmq."list_queues"()
+RETURNS SETOF pgmq.queue_record AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM pgmq.meta;
+END
 $$ LANGUAGE plpgsql;

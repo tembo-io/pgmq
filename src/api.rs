@@ -51,7 +51,7 @@ pub fn delete_queue(queue_name: String, partitioned: bool) -> Result<(), PgmqExt
     Ok(())
 }
 
-#[pg_extern(name = "list_queues")]
+#[pg_extern(name = "_list_queues_old")]
 fn pgmq_list_queues() -> Result<
     TableIterator<
         'static,
@@ -64,29 +64,7 @@ fn pgmq_list_queues() -> Result<
     >,
     spi::Error,
 > {
-    let results = listit()?;
-    Ok(TableIterator::new(results))
-}
-
-pub fn listit() -> Result<Vec<(String, TimestampWithTimeZone, bool, bool)>, spi::Error> {
-    let mut results: Vec<(String, TimestampWithTimeZone, bool, bool)> = Vec::new();
-    let query = format!("SELECT * FROM {PGMQ_SCHEMA}.meta");
-    let _: Result<(), spi::Error> = Spi::connect(|client| {
-        let tup_table: SpiTupleTable = client.select(&query, None, None)?;
-        for row in tup_table {
-            let queue_name = row["queue_name"].value::<String>()?.expect("no queue_name");
-            let created_at = row["created_at"]
-                .value::<TimestampWithTimeZone>()?
-                .expect("no created_at");
-            let is_partitioned = row["is_partitioned"]
-                .value::<bool>()?
-                .expect("no is_partitioned");
-            let is_unlogged = row["is_unlogged"].value::<bool>()?.expect("no is_unlogged");
-            results.push((queue_name, created_at, is_partitioned, is_unlogged));
-        }
-        Ok(())
-    });
-    Ok(results)
+    todo!()
 }
 
 #[pg_extern(name = "purge_queue")]
