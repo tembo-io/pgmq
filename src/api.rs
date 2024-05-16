@@ -5,45 +5,20 @@ use pgrx::warning;
 
 use crate::errors::PgmqExtError;
 use crate::partition;
-use crate::partition::PARTMAN_SCHEMA;
 
-use pgmq_core::{
-    query::{destroy_queue, init_queue},
-    types::{PGMQ_SCHEMA, QUEUE_PREFIX},
-};
+use pgmq_core::query::init_queue;
 
-#[pg_extern(name = "drop_queue")]
+#[pg_extern(name = "_drop_queue_old")]
 fn pgmq_drop_queue(
-    queue_name: String,
-    partitioned: default!(bool, false),
+    _queue_name: String,
+    _partitioned: default!(bool, false),
 ) -> Result<bool, PgmqExtError> {
-    delete_queue(queue_name, partitioned)?;
-    Ok(true)
+    todo!()
 }
 
 #[pg_extern(name = "_detach_archive_old")]
 fn pgmq_detach_archive(_queue_name: String) -> Result<(), PgmqExtError> {
     todo!()
-}
-
-pub fn delete_queue(queue_name: String, partitioned: bool) -> Result<(), PgmqExtError> {
-    // TODO: we should keep track whether queue is partitioned in pgmq_meta
-    // then read that to determine we want to delete the part_config entries
-    // this should go out before 1.0
-    let mut queries = destroy_queue(&queue_name)?;
-    if partitioned {
-        let queue_table = format!("{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{queue_name}");
-        queries.push(format!(
-            "DELETE FROM {PARTMAN_SCHEMA}.part_config where parent_table = '{queue_table}';"
-        ))
-    }
-    let _: Result<(), spi::Error> = Spi::connect(|mut client| {
-        for q in queries {
-            client.update(q.as_str(), None, None)?;
-        }
-        Ok(())
-    });
-    Ok(())
 }
 
 #[pg_extern(name = "_list_queues_old")]

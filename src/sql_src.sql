@@ -422,3 +422,61 @@ BEGIN
     RETURN result;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE FUNCTION pgmq.drop_queue(queue_name TEXT, is_partitioned BOOLEAN DEFAULT FALSE)
+RETURNS void AS $$
+DECLARE
+    sql TEXT;
+    result pgmq.message_record;
+BEGIN
+    EXECUTE FORMAT(
+        $QUERY$
+        ALTER EXTENSION pgmq DROP TABLE pgmq.q_%s
+        $QUERY$,
+        queue_name
+    );
+
+    EXECUTE FORMAT(
+        $QUERY$
+        ALTER EXTENSION pgmq DROP TABLE pgmq.a_%s
+        $QUERY$,
+        queue_name
+    );
+
+    EXECUTE FORMAT(
+        $QUERY$
+        DROP TABLE IF EXISTS pgmq.q_%s
+        $QUERY$,
+        queue_name
+    );
+
+    EXECUTE FORMAT(
+        $QUERY$
+        DROP TABLE IF EXISTS pgmq.a_%s
+        $QUERY$,
+        queue_name
+    );
+
+     IF EXISTS (
+          SELECT 1
+          FROM information_schema.tables
+          WHERE table_name = 'meta' and table_schema = 'pgmq'
+     ) THEN
+        EXECUTE FORMAT(
+            $QUERY$
+            DELETE FROM pgmq.meta WHERE queue_name = '%s'
+            $QUERY$,
+            queue_name
+        );
+     END IF;
+
+     IF is_partitioned THEN
+        EXECUTE FORMAT(
+          $QUERY$
+          DELETE FROM public.part_config where parent_table = '%s'
+          $QUERY$,
+          queue_name
+        );
+     END IF;
+END;
+$$ LANGUAGE plpgsql;
