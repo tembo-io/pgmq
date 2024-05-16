@@ -36,7 +36,7 @@ END
 $$ LANGUAGE plpgsql;
 
 -- pop a single message
-DROP FUNCTION pgmq."pop"();
+DROP FUNCTION IF EXISTS pgmq."pop"(TEXT);
 CREATE OR REPLACE FUNCTION pgmq.pop(queue_name TEXT)
 RETURNS pgmq.message_record AS $$
 DECLARE
@@ -66,7 +66,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Sets vt of a message, returns it
-DROP FUNCTION pgmq."set_vt"();
+DROP FUNCTION IF EXISTS pgmq."set_vt"(TEXT, BIGINT, INTEGER);
 CREATE OR REPLACE FUNCTION pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt INTEGER)
 RETURNS pgmq.message_record AS $$
 DECLARE
