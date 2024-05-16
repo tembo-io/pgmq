@@ -1,11 +1,7 @@
 use pgrx::prelude::*;
 use pgrx::spi;
-use pgrx::warning;
 
 use crate::errors::PgmqExtError;
-use crate::partition;
-
-use pgmq_core::query::init_queue;
 
 #[pg_extern(name = "_drop_queue_old")]
 fn pgmq_drop_queue(
@@ -47,50 +43,22 @@ fn pgmq_create_non_partitioned(_queue_name: &str) -> Result<(), PgmqExtError> {
 }
 
 #[pg_extern(name = "_create_unlogged_old")]
-fn pgmq_create_unlogged(queue_name: &str) -> Result<(), PgmqExtError> {
+fn pgmq_create_unlogged(_queue_name: &str) -> Result<(), PgmqExtError> {
     todo!()
 }
 
-#[pg_extern(name = "create_partitioned")]
+#[pg_extern(name = "_create_partitioned_old")]
 fn pgmq_create_partitioned(
-    queue_name: &str,
-    partition_interval: default!(String, "'10000'"),
-    retention_interval: default!(String, "'100000'"),
+    _queue_name: &str,
+    _partition_interval: default!(String, "'10000'"),
+    _retention_interval: default!(String, "'100000'"),
 ) -> Result<(), PgmqExtError> {
-    // validate pg_partman is installed
-    match Spi::get_one::<bool>(&partition::partman_installed())?
-        .expect("could not query extensions table")
-    {
-        true => (),
-        false => {
-            warning!("pg_partman not installed. Install https://github.com/pgpartman/pg_partman and then run `CREATE EXTENSION pg_partman;`");
-            return Err(PgmqExtError::MissingDependency("pg_partman".to_owned()));
-        }
-    };
-    validate_same_type(&partition_interval, &retention_interval)?;
-    let setup =
-        partition::init_partitioned_queue(queue_name, &partition_interval, &retention_interval)?;
-    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        for q in setup {
-            let _ = c.update(&q, None, None)?;
-        }
-        Ok(())
-    });
-    Ok(ran?)
+    todo!()
 }
 
 #[pg_extern(name = "create_old")]
 fn pgmq_create(_queue_name: &str) -> Result<(), PgmqExtError> {
     todo!()
-}
-
-pub fn validate_same_type(a: &str, b: &str) -> Result<(), PgmqExtError> {
-    // either both can be ints, or not not ints
-    match (a.parse::<i32>(), b.parse::<i32>()) {
-        (Ok(_), Ok(_)) => Ok(()),
-        (Err(_), Err(_)) => Ok(()),
-        _ => Err(PgmqExtError::TypeErrorError("".to_owned())),
-    }
 }
 
 // reads and deletes at same time
@@ -135,23 +103,4 @@ fn pgmq_set_vt(
     PgmqExtError,
 > {
     todo!();
-}
-
-#[cfg(any(test, feature = "pg_test"))]
-#[pg_schema]
-mod tests {
-    use super::*;
-
-    #[pg_test]
-    fn test_validate_same_type() {
-        let invalid = validate_same_type("10", "daily");
-        assert!(invalid.is_err());
-        let invalid = validate_same_type("daily", "10");
-        assert!(invalid.is_err());
-
-        let valid = validate_same_type("10", "10");
-        assert!(valid.is_ok());
-        let valid = validate_same_type("daily", "weekly");
-        assert!(valid.is_ok());
-    }
 }
