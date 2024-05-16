@@ -67,13 +67,9 @@ fn pgmq_list_queues() -> Result<
     todo!()
 }
 
-#[pg_extern(name = "purge_queue")]
-fn pgmq_purge_queue(queue_name: String) -> Result<i64, PgmqExtError> {
-    Spi::connect(|mut client| {
-        let query = pgmq_core::query::purge_queue(&queue_name)?;
-        let tup_table = client.update(query.as_str(), None, None)?;
-        Ok(tup_table.len() as i64)
-    })
+#[pg_extern(name = "_purge_queue_removed")]
+fn pgmq_purge_queue(_queue_name: String) -> Result<i64, PgmqExtError> {
+    todo!()
 }
 
 #[pg_extern(name = "create_non_partitioned")]
