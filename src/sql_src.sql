@@ -355,12 +355,20 @@ $$ LANGUAGE plpgsql;
 
 -- purge queue, deleting all entries in it.
 CREATE OR REPLACE FUNCTION pgmq."purge_queue"(queue_name TEXT)
-RETURNS INTEGER AS $$
+RETURNS BIGINT AS $$
 DECLARE
   deleted_count INTEGER;
 BEGIN
   EXECUTE format('DELETE FROM pgmq.q_%s', queue_name);
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RETURN deleted_count;
+END
+$$ LANGUAGE plpgsql;
+
+-- unassign archive, so it can be kept when a queue is deleted
+CREATE OR REPLACE FUNCTION pgmq."detach_archive"(queue_name TEXT)
+RETURNS VOID AS $$
+BEGIN
+  EXECUTE format('ALTER EXTENSION pgmq DROP TABLE pgmq.a_%s', queue_name);
 END
 $$ LANGUAGE plpgsql;
