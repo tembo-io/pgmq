@@ -687,7 +687,7 @@ BEGIN
   EXECUTE FORMAT(
     $QUERY$
     CREATE TABLE IF NOT EXISTS pgmq.q_%s (
-        msg_id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+        msg_id BIGINT GENERATED ALWAYS AS IDENTITY,
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -721,6 +721,13 @@ BEGIN
 
   EXECUTE FORMAT(
     $QUERY$
+    SELECT public.create_parent('pgmq.q_%s', '%s', 'native', '%s');
+    $QUERY$,
+    queue_name, partition_col, partition_interval
+  );
+
+  EXECUTE FORMAT(
+    $QUERY$
     CREATE INDEX IF NOT EXISTS q_%s_part_idx ON pgmq.q_%s (%s);
     $QUERY$,
     queue_name, queue_name, partition_col
@@ -731,13 +738,6 @@ BEGIN
     CREATE INDEX IF NOT EXISTS archived_at_idx_%s ON pgmq.a_%s (archived_at);
     $QUERY$,
     queue_name, queue_name
-  );
-
-  EXECUTE FORMAT(
-    $QUERY$
-    SELECT public.create_parent('pgmq.q_%s', '%s', 'native', '%s');
-    $QUERY$,
-    queue_name, partition_col, partition_interval
   );
 
   EXECUTE FORMAT(
