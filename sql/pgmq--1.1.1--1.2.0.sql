@@ -6,7 +6,7 @@ CREATE TYPE pgmq.queue_record AS (
 );
 
 -- list queues
-DROP FUNCTION pgmq."list_queues"();
+DROP FUNCTION IF EXISTS pgmq."list_queues"();
 
 CREATE OR REPLACE FUNCTION pgmq."list_queues"()
 RETURNS SETOF pgmq.queue_record AS $$
@@ -87,6 +87,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP FUNCTION IF EXISTS pgmq.drop_queue(TEXT, BOOLEAN);
 CREATE OR REPLACE FUNCTION pgmq.drop_queue(queue_name TEXT, is_partitioned BOOLEAN DEFAULT FALSE)
 RETURNS void AS $$
 BEGIN
