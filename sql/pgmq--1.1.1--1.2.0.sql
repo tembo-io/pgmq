@@ -87,9 +87,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP FUNCTION IF EXISTS pgmq.drop_queue(TEXT, BOOLEAN);
 CREATE OR REPLACE FUNCTION pgmq.drop_queue(queue_name TEXT, is_partitioned BOOLEAN DEFAULT FALSE)
-RETURNS void AS $$
+RETURNS BOOLEAN AS $$
 BEGIN
     EXECUTE FORMAT(
         $QUERY$
@@ -140,6 +139,8 @@ BEGIN
           queue_name
         );
      END IF;
+
+    RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
 
