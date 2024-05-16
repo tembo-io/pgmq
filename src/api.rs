@@ -177,9 +177,9 @@ pub fn readit(
 }
 
 // reads and deletes at same time
-#[pg_extern(name = "pop")]
+#[pg_extern(name = "_pop_old_removed")]
 fn pgmq_pop(
-    queue_name: &str,
+    _queue_name: &str,
 ) -> Result<
     TableIterator<
         'static,
@@ -193,46 +193,7 @@ fn pgmq_pop(
     >,
     PgmqExtError,
 > {
-    let results = popit(queue_name)?;
-    Ok(TableIterator::new(results))
-}
-
-fn popit(
-    queue_name: &str,
-) -> Result<
-    Vec<(
-        i64,
-        i32,
-        TimestampWithTimeZone,
-        TimestampWithTimeZone,
-        pgrx::JsonB,
-    )>,
-    PgmqExtError,
-> {
-    let mut results: Vec<(
-        i64,
-        i32,
-        TimestampWithTimeZone,
-        TimestampWithTimeZone,
-        pgrx::JsonB,
-    )> = Vec::new();
-    let _: Result<(), PgmqExtError> = Spi::connect(|mut client| {
-        let query = pgmq_core::query::pop(queue_name)?;
-        let tup_table: SpiTupleTable = client.update(&query, None, None)?;
-        results.reserve_exact(tup_table.len());
-        for row in tup_table {
-            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
-            let read_ct = row["read_ct"].value::<i32>()?.expect("no read_ct");
-            let vt = row["vt"].value::<TimestampWithTimeZone>()?.expect("no vt");
-            let enqueued_at = row["enqueued_at"]
-                .value::<TimestampWithTimeZone>()?
-                .expect("no enqueue time");
-            let message = row["message"].value::<pgrx::JsonB>()?.expect("no message");
-            results.push((msg_id, read_ct, enqueued_at, vt, message));
-        }
-        Ok(())
-    });
-    Ok(results)
+    todo!()
 }
 
 /// change the visibility time on an existing message

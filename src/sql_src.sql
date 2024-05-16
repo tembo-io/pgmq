@@ -372,3 +372,32 @@ BEGIN
   EXECUTE format('ALTER EXTENSION pgmq DROP TABLE pgmq.a_%s', queue_name);
 END
 $$ LANGUAGE plpgsql;
+
+-- pop a single message
+CREATE FUNCTION pgmq.pop(queue_name TEXT)
+RETURNS pgmq.message_record AS $$
+DECLARE
+    sql TEXT;
+    result pgmq.message_record;
+BEGIN
+    sql := FORMAT(
+        $QUERY$
+        WITH cte AS
+            (
+                SELECT msg_id
+                FROM pgmq.q_%s
+                WHERE vt <= now()
+                ORDER BY msg_id ASC
+                LIMIT 1
+                FOR UPDATE SKIP LOCKED
+            )
+        DELETE from pgmq.q_%s
+        WHERE msg_id = (select msg_id from cte)
+        RETURNING *;
+        $QUERY$,
+        queue_name, queue_name
+    );
+    EXECUTE sql INTO result;
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
