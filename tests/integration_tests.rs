@@ -434,6 +434,34 @@ async fn test_read_read_with_poll() {
 // Integration tests are ignored by default
 #[ignore]
 #[tokio::test]
+async fn test_purge_queue() {
+    let conn = init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(0..100000);
+
+    let queue_name = format!("test_purge_{test_num}");
+    create_queue(&queue_name.to_string(), &conn).await;
+
+    send_sample_message(&queue_name, &conn).await;
+    send_sample_message(&queue_name, &conn).await;
+    send_sample_message(&queue_name, &conn).await;
+    send_sample_message(&queue_name, &conn).await;
+    send_sample_message(&queue_name, &conn).await;
+
+    let deleted_count = sqlx::query(&format!(
+        "SELECT * FROM {PGMQ_SCHEMA}.purge_queue('{queue_name}')"
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed get deleted_count")
+    .get::<i64, usize>(0);
+
+    assert_eq!(deleted_count, 5);
+    assert_eq!(get_queue_size(&queue_name, &conn).await, 0);
+}
+// Integration tests are ignored by default
+#[ignore]
+#[tokio::test]
 async fn test_partitioned_delete() {
     let conn = init_database().await;
     let mut rng = rand::thread_rng();
@@ -528,6 +556,7 @@ async fn test_partitioned_delete() {
     assert_eq!(deleted_batch[0].get::<i64, usize>(0), 1);
     assert_eq!(deleted_batch[1].get::<i64, usize>(0), 2);
 }
+
 // Integration tests are ignored by default
 #[ignore]
 #[tokio::test]
