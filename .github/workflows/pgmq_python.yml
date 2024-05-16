@@ -11,13 +11,15 @@ on:
      - main
     paths:
       - '.github/workflows/pgmq-python.yml'
-      - 'tembo-pgmq-python/**'
+      - 'tembo-pgmq-python/tembo_pgmq_python/**'
+      - 'tembo-pgmq-python/tests/**'
   push:
     branches:
       - main
     paths:
       - '.github/workflows/pgmq-python.yml'
-      - 'tembo-pgmq-python/**'
+      - 'tembo-pgmq-python/tembo_pgmq_python/**'
+      - 'tembo-pgmq-python/tests/**'
 
 jobs:
   lints:
