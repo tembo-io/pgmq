@@ -6,6 +6,8 @@ CREATE TYPE pgmq.queue_record AS (
 );
 
 -- list queues
+DROP FUNCTION pgmq."list_queues"();
+
 CREATE OR REPLACE FUNCTION pgmq."list_queues"()
 RETURNS SETOF pgmq.queue_record AS $$
 BEGIN
