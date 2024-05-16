@@ -45,7 +45,7 @@ msg_id: int = queue.send("my_queue", {"hello": "world"})
 Read a message, set it invisible for 30 seconds.
 
 ```python
-read_message: Message = queue.read("my_queue", vt=10)
+read_message: Message = queue.read("my_queue", vt=30)
 print(read_message)
 ```
 
