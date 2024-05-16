@@ -1,6 +1,5 @@
 use pgrx::prelude::*;
 use pgrx::spi;
-use pgrx::spi::SpiTupleTable;
 use pgrx::warning;
 
 use crate::errors::PgmqExtError;
@@ -106,48 +105,6 @@ pub fn validate_same_type(a: &str, b: &str) -> Result<(), PgmqExtError> {
         (Err(_), Err(_)) => Ok(()),
         _ => Err(PgmqExtError::TypeErrorError("".to_owned())),
     }
-}
-
-pub fn readit(
-    queue_name: &str,
-    vt: i32,
-    limit: i32,
-) -> Result<
-    Vec<(
-        i64,
-        i32,
-        TimestampWithTimeZone,
-        TimestampWithTimeZone,
-        pgrx::JsonB,
-    )>,
-    spi::Error,
-> {
-    let mut results: Vec<(
-        i64,
-        i32,
-        TimestampWithTimeZone,
-        TimestampWithTimeZone,
-        pgrx::JsonB,
-    )> = Vec::new();
-
-    let _: Result<(), PgmqExtError> = Spi::connect(|mut client| {
-        let query = pgmq_core::query::read(queue_name, vt, limit)?;
-        let tup_table: SpiTupleTable = client.update(&query, None, None)?;
-        results.reserve_exact(tup_table.len());
-
-        for row in tup_table {
-            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
-            let read_ct = row["read_ct"].value::<i32>()?.expect("no read_ct");
-            let vt = row["vt"].value::<TimestampWithTimeZone>()?.expect("no vt");
-            let enqueued_at = row["enqueued_at"]
-                .value::<TimestampWithTimeZone>()?
-                .expect("no enqueue time");
-            let message = row["message"].value::<pgrx::JsonB>()?.expect("no message");
-            results.push((msg_id, read_ct, enqueued_at, vt, message));
-        }
-        Ok(())
-    });
-    Ok(results)
 }
 
 // reads and deletes at same time

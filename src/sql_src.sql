@@ -425,9 +425,6 @@ $$ LANGUAGE plpgsql;
 
 CREATE FUNCTION pgmq.drop_queue(queue_name TEXT, is_partitioned BOOLEAN DEFAULT FALSE)
 RETURNS void AS $$
-DECLARE
-    sql TEXT;
-    result pgmq.message_record;
 BEGIN
     EXECUTE FORMAT(
         $QUERY$
