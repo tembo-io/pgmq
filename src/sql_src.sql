@@ -539,7 +539,6 @@ BEGIN
     queue_name
   );
 
-  -- Check if the table is not yet associated with the extension
   IF NOT pgmq._belongs_to_pgmq(FORMAT('q_%s', queue_name)) THEN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.q_%s', queue_name);
   END IF;
@@ -566,6 +565,72 @@ BEGIN
     $QUERY$
         INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
         VALUES ('%s', false, false)
+        ON CONFLICT
+        DO NOTHING;
+    $QUERY$,
+    queue_name
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE FUNCTION pgmq.create_unlogged(queue_name TEXT)
+RETURNS void AS $$
+BEGIN
+  PERFORM pgmq.validate_queue_name(queue_name);
+
+  EXECUTE FORMAT(
+    $QUERY$
+        CREATE UNLOGGED TABLE IF NOT EXISTS pgmq.q_%s (
+            msg_id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+            read_ct INT DEFAULT 0 NOT NULL,
+            enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+            vt TIMESTAMP WITH TIME ZONE NOT NULL,
+            message JSONB
+        )
+    $QUERY$,
+    queue_name
+  );
+
+  EXECUTE FORMAT(
+    $QUERY$
+        CREATE TABLE IF NOT EXISTS pgmq.a_%s (
+          msg_id BIGINT PRIMARY KEY,
+          read_ct INT DEFAULT 0 NOT NULL,
+          enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+          archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+          vt TIMESTAMP WITH TIME ZONE NOT NULL,
+          message JSONB
+        );
+    $QUERY$,
+    queue_name
+  );
+
+  IF NOT pgmq._belongs_to_pgmq(FORMAT('q_%s', queue_name)) THEN
+      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.q_%s', queue_name);
+  END IF;
+
+  IF NOT pgmq._belongs_to_pgmq(FORMAT('a_%s', queue_name)) THEN
+      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.a_%s', queue_name);
+  END IF;
+
+  EXECUTE FORMAT(
+    $QUERY$
+      CREATE INDEX IF NOT EXISTS q_%s_vt_idx ON pgmq.q_%s (vt ASC);
+    $QUERY$,
+    queue_name, queue_name
+  );
+
+  EXECUTE FORMAT(
+    $QUERY$
+    CREATE INDEX IF NOT EXISTS archived_at_idx_%s ON pgmq.a_%s (archived_at);
+    $QUERY$,
+    queue_name, queue_name
+  );
+
+  EXECUTE FORMAT(
+    $QUERY$
+        INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
+        VALUES ('%s', false, true)
         ON CONFLICT
         DO NOTHING;
     $QUERY$,

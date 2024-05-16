@@ -46,16 +46,9 @@ fn pgmq_create_non_partitioned(_queue_name: &str) -> Result<(), PgmqExtError> {
     todo!()
 }
 
-#[pg_extern(name = "create_unlogged")]
+#[pg_extern(name = "_create_unlogged_old")]
 fn pgmq_create_unlogged(queue_name: &str) -> Result<(), PgmqExtError> {
-    let setup = init_queue(queue_name, true)?;
-    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        for q in setup {
-            let _ = c.update(&q, None, None)?;
-        }
-        Ok(())
-    });
-    Ok(ran?)
+    todo!()
 }
 
 #[pg_extern(name = "create_partitioned")]
