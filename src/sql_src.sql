@@ -423,7 +423,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.drop_queue(queue_name TEXT, is_partitioned BOOLEAN DEFAULT FALSE)
+CREATE FUNCTION pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN DEFAULT FALSE)
 RETURNS BOOLEAN AS $$
 BEGIN
     EXECUTE FORMAT(
@@ -467,7 +467,7 @@ BEGIN
         );
      END IF;
 
-     IF is_partitioned THEN
+     IF partitioned THEN
         EXECUTE FORMAT(
           $QUERY$
           DELETE FROM public.part_config where parent_table = '%s'
