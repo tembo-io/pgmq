@@ -293,7 +293,7 @@ CREATE TYPE pgmq.metrics_result AS (
 );
 
 -- get metrics for a single queue
-CREATE OR REPLACE FUNCTION pgmq.metrics(queue_name TEXT)
+CREATE FUNCTION pgmq.metrics(queue_name TEXT)
 RETURNS pgmq.metrics_result AS $$
 DECLARE
     result_row pgmq.metrics_result;
@@ -332,7 +332,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- get metrics for all queues
-CREATE OR REPLACE FUNCTION pgmq."metrics_all"()
+CREATE FUNCTION pgmq."metrics_all"()
 RETURNS SETOF pgmq.metrics_result AS $$
 DECLARE
     row_name RECORD;
@@ -346,7 +346,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- list queues
-CREATE OR REPLACE FUNCTION pgmq."list_queues"()
+CREATE FUNCTION pgmq."list_queues"()
 RETURNS SETOF pgmq.queue_record AS $$
 BEGIN
   RETURN QUERY SELECT * FROM pgmq.meta;
@@ -354,7 +354,7 @@ END
 $$ LANGUAGE plpgsql;
 
 -- purge queue, deleting all entries in it.
-CREATE OR REPLACE FUNCTION pgmq."purge_queue"(queue_name TEXT)
+CREATE FUNCTION pgmq."purge_queue"(queue_name TEXT)
 RETURNS BIGINT AS $$
 DECLARE
   deleted_count INTEGER;
@@ -366,7 +366,7 @@ END
 $$ LANGUAGE plpgsql;
 
 -- unassign archive, so it can be kept when a queue is deleted
-CREATE OR REPLACE FUNCTION pgmq."detach_archive"(queue_name TEXT)
+CREATE FUNCTION pgmq."detach_archive"(queue_name TEXT)
 RETURNS VOID AS $$
 BEGIN
   EXECUTE format('ALTER EXTENSION pgmq DROP TABLE pgmq.a_%s', queue_name);

@@ -36,7 +36,7 @@ END
 $$ LANGUAGE plpgsql;
 
 -- pop a single message
-CREATE FUNCTION pgmq.pop(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.pop(queue_name TEXT)
 RETURNS pgmq.message_record AS $$
 DECLARE
     sql TEXT;
@@ -65,7 +65,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Sets vt of a message, returns it
-CREATE FUNCTION pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt INTEGER)
+CREATE OR REPLACE FUNCTION pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt INTEGER)
 RETURNS pgmq.message_record AS $$
 DECLARE
     sql TEXT;
@@ -85,7 +85,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.drop_queue(queue_name TEXT, is_partitioned BOOLEAN DEFAULT FALSE)
+CREATE OR REPLACE FUNCTION pgmq.drop_queue(queue_name TEXT, is_partitioned BOOLEAN DEFAULT FALSE)
 RETURNS void AS $$
 BEGIN
     EXECUTE FORMAT(
@@ -140,7 +140,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.validate_queue_name(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.validate_queue_name(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
   IF length(queue_name) >= 48 THEN
@@ -149,7 +149,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq._belongs_to_pgmq(table_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq._belongs_to_pgmq(table_name TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
     sql TEXT;
@@ -169,7 +169,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.create_non_partitioned(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.create_non_partitioned(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
@@ -235,7 +235,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.create_unlogged(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.create_unlogged(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
@@ -301,7 +301,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq._get_partition_col(partition_interval TEXT)
+CREATE OR REPLACE FUNCTION pgmq._get_partition_col(partition_interval TEXT)
 RETURNS TEXT AS $$
 DECLARE
   num INTEGER;
@@ -316,7 +316,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.ensure_pg_partman_installed()
+CREATE OR REPLACE FUNCTION pgmq.ensure_pg_partman_installed()
 RETURNS void AS $$
 DECLARE
   extension_exists BOOLEAN;
@@ -333,7 +333,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.create_partitioned(
+CREATE OR REPLACE FUNCTION pgmq.create_partitioned(
   queue_name TEXT,
   partition_interval TEXT DEFAULT '10000',
   retention_interval TEXT DEFAULT '100000'
@@ -428,7 +428,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE FUNCTION pgmq.create(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.create(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
     PERFORM pgmq.create_non_partitioned(queue_name);
