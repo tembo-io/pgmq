@@ -10,7 +10,6 @@ use crate::partition::PARTMAN_SCHEMA;
 use pgmq_core::{
     query::{destroy_queue, init_queue},
     types::{PGMQ_SCHEMA, QUEUE_PREFIX},
-    util::check_input,
 };
 
 #[pg_extern(name = "drop_queue")]
@@ -199,11 +198,11 @@ fn pgmq_pop(
 /// change the visibility time on an existing message
 /// vt_offset is a time relative to now that the message will be visible
 /// accepts positive or negative integers
-#[pg_extern(name = "set_vt")]
+#[pg_extern(name = "_set_vt_old")]
 fn pgmq_set_vt(
-    queue_name: &str,
-    msg_id: i64,
-    vt_offset: i32,
+    _queue_name: &str,
+    _msg_id: i64,
+    _vt_offset: i32,
 ) -> Result<
     TableIterator<
         'static,
@@ -217,40 +216,7 @@ fn pgmq_set_vt(
     >,
     PgmqExtError,
 > {
-    check_input(queue_name)?;
-    let mut results: Vec<(
-        i64,
-        i32,
-        TimestampWithTimeZone,
-        TimestampWithTimeZone,
-        pgrx::JsonB,
-    )> = Vec::new();
-
-    let query = format!(
-        "
-        UPDATE {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{queue_name}
-        SET vt = (now() + interval '{vt_offset} seconds')
-        WHERE msg_id = $1
-        RETURNING *;
-        "
-    );
-    let args = vec![(PgBuiltInOids::INT8OID.oid(), msg_id.into_datum())];
-    let res: Result<(), spi::Error> = Spi::connect(|mut client| {
-        let tup_table: SpiTupleTable = client.update(&query, None, Some(args))?;
-        for row in tup_table {
-            let msg_id = row["msg_id"].value::<i64>()?.expect("no msg_id");
-            let read_ct = row["read_ct"].value::<i32>()?.expect("no read_ct");
-            let vt = row["vt"].value::<TimestampWithTimeZone>()?.expect("no vt");
-            let enqueued_at = row["enqueued_at"]
-                .value::<TimestampWithTimeZone>()?
-                .expect("no enqueue time");
-            let message = row["message"].value::<pgrx::JsonB>()?.expect("no message");
-            results.push((msg_id, read_ct, enqueued_at, vt, message));
-        }
-        Ok(())
-    });
-    res?;
-    Ok(TableIterator::new(results))
+    todo!();
 }
 
 #[cfg(any(test, feature = "pg_test"))]

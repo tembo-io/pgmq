@@ -401,3 +401,24 @@ BEGIN
     RETURN result;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Sets vt of a message, returns it
+CREATE FUNCTION pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt INTEGER)
+RETURNS pgmq.message_record AS $$
+DECLARE
+    sql TEXT;
+    result pgmq.message_record;
+BEGIN
+    sql := FORMAT(
+        $QUERY$
+        UPDATE pgmq.q_%s
+        SET vt = (now() + interval '%s seconds')
+        WHERE msg_id = %s
+        RETURNING *;
+        $QUERY$,
+        queue_name, vt, msg_id
+    );
+    EXECUTE sql INTO result;
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
