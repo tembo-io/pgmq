@@ -41,16 +41,9 @@ fn pgmq_purge_queue(_queue_name: String) -> Result<i64, PgmqExtError> {
     todo!()
 }
 
-#[pg_extern(name = "create_non_partitioned")]
-fn pgmq_create_non_partitioned(queue_name: &str) -> Result<(), PgmqExtError> {
-    let setup = init_queue(queue_name, false)?;
-    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        for q in setup {
-            let _ = c.update(&q, None, None)?;
-        }
-        Ok(())
-    });
-    Ok(ran?)
+#[pg_extern(name = "_old_create_non_partitioned")]
+fn pgmq_create_non_partitioned(_queue_name: &str) -> Result<(), PgmqExtError> {
+    todo!()
 }
 
 #[pg_extern(name = "create_unlogged")]
@@ -93,9 +86,9 @@ fn pgmq_create_partitioned(
     Ok(ran?)
 }
 
-#[pg_extern(name = "create")]
-fn pgmq_create(queue_name: &str) -> Result<(), PgmqExtError> {
-    pgmq_create_non_partitioned(queue_name)
+#[pg_extern(name = "create_old")]
+fn pgmq_create(_queue_name: &str) -> Result<(), PgmqExtError> {
+    todo!()
 }
 
 pub fn validate_same_type(a: &str, b: &str) -> Result<(), PgmqExtError> {
