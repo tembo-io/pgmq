@@ -656,7 +656,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.ensure_pg_partman_installed()
+CREATE FUNCTION pgmq._ensure_pg_partman_installed()
 RETURNS void AS $$
 DECLARE
   extension_exists BOOLEAN;
@@ -683,7 +683,7 @@ DECLARE
   partition_col TEXT;
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
-  PERFORM pgmq.ensure_pg_partman_installed();
+  PERFORM pgmq._ensure_pg_partman_installed();
   SELECT pgmq._get_partition_col(partition_interval) INTO partition_col;
 
   EXECUTE FORMAT(
