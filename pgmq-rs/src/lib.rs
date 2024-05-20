@@ -170,9 +170,9 @@ pub struct PGMQueue {
 }
 
 impl PGMQueue {
-    pub async fn new(url: String) -> Result<PGMQueue, PgmqError> {
+    pub async fn new(url: String) -> Result<Self, PgmqError> {
         let con = util::connect(&url, 5).await?;
-        Ok(PGMQueue {
+        Ok(Self {
             url,
             connection: con,
         })
@@ -180,11 +180,11 @@ impl PGMQueue {
 
     /// BYOP  - bring your own pool
     /// initialize a PGMQ connection with your own SQLx Postgres connection pool
-    pub async fn new_with_pool(pool: Pool<Postgres>) -> Result<PGMQueue, PgmqError> {
-        Ok(PGMQueue {
+    pub async fn new_with_pool(pool: Pool<Postgres>) -> Self {
+        Self {
             url: "".to_owned(),
             connection: pool,
-        })
+        }
     }
 
     /// Create a queue. This sets up the queue's tables, indexes, and metadata.

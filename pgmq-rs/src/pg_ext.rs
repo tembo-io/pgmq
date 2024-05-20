@@ -26,8 +26,8 @@ pub struct PGMQueueMeta {
 }
 impl PGMQueueExt {
     /// Initialize a connection to PGMQ/Postgres
-    pub async fn new(url: String, max_connections: u32) -> Result<PGMQueueExt, PgmqError> {
-        Ok(PGMQueueExt {
+    pub async fn new(url: String, max_connections: u32) -> Result<Self, PgmqError> {
+        Ok(Self {
             connection: connect(&url, max_connections).await?,
             url,
         })
@@ -35,11 +35,11 @@ impl PGMQueueExt {
 
     /// BYOP  - bring your own pool
     /// initialize a PGMQ connection with your own SQLx Postgres connection pool
-    pub async fn new_with_pool(pool: Pool<Postgres>) -> Result<PGMQueueExt, PgmqError> {
-        Ok(PGMQueueExt {
+    pub async fn new_with_pool(pool: Pool<Postgres>) -> Self {
+        Self {
             url: "".to_owned(),
             connection: pool,
-        })
+        }
     }
 
     pub async fn init(&self) -> Result<bool, PgmqError> {
