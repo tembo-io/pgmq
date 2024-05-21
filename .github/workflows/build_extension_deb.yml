@@ -6,9 +6,6 @@ defaults:
     working-directory: ./
 
 on:
-  push:
-    branches:
-      - fix-deb-build
   release:
     types:
       - created
@@ -17,7 +14,7 @@ jobs:
   build-deb:
     # source: https://github.com/supabase/pg_jsonschema/blob/29fcd5b23abe3dd6a78a490082f34113de7813a1/.github/workflows/release.yml
     name: release .deb
-    # if: github.event_name == 'release'
+    if: github.event_name == 'release'
     strategy:
       matrix:
         extension_name:
@@ -31,7 +28,7 @@ jobs:
             - 15
             - 16
         box:
-          # - { runner: large-8x8, arch: amd64 }
+          - { runner: large-8x8, arch: amd64 }
           - { runner: arm64, arch: arm64 }
     runs-on: 
       - "dind"
