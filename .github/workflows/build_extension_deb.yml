@@ -6,6 +6,9 @@ defaults:
     working-directory: ./
 
 on:
+  push:
+    branches:
+      - fix-deb-build
   release:
     types:
       - created
