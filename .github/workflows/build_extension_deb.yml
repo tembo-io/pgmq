@@ -31,7 +31,7 @@ jobs:
             - 15
             - 16
         box:
-          - { runner: ubuntu-20.04, arch: amd64 }
+          - { runner: large-8x8, arch: amd64 }
           - { runner: arm64, arch: arm64 }
     runs-on: 
       - "dind"
