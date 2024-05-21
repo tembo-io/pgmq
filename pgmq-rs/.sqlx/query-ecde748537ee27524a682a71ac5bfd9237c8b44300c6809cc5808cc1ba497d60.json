@@ -6,22 +6,22 @@
       {
         "ordinal": 0,
         "name": "queue_name",
-        "type_info": "Text"
+        "type_info": "Varchar"
       },
       {
         "ordinal": 1,
-        "name": "created_at",
-        "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 2,
         "name": "is_partitioned",
         "type_info": "Bool"
       },
       {
-        "ordinal": 3,
+        "ordinal": 2,
         "name": "is_unlogged",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
