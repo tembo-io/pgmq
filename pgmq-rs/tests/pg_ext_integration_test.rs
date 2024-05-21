@@ -356,9 +356,7 @@ async fn test_byop() {
     let _queue = init_queue_ext(&test_queue).await;
     let pool = _queue.connection;
 
-    let queue = pgmq::PGMQueueExt::new_with_pool(pool)
-        .await
-        .expect("failed to connect to postgres");
+    let queue = pgmq::PGMQueueExt::new_with_pool(pool).await;
 
     let init = queue.init().await.expect("failed to create extension");
     assert!(init, "failed to create extension");
