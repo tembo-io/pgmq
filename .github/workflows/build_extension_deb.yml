@@ -17,7 +17,7 @@ jobs:
   build-deb:
     # source: https://github.com/supabase/pg_jsonschema/blob/29fcd5b23abe3dd6a78a490082f34113de7813a1/.github/workflows/release.yml
     name: release .deb
-    if: github.event_name == 'release'
+    # if: github.event_name == 'release'
     strategy:
       matrix:
         extension_name:
@@ -36,7 +36,7 @@ jobs:
     runs-on: 
       - "dind"
       - "self-hosted"
-      - ${{ matrix.box.arch }}
+      - ${{ matrix.box.runner }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
