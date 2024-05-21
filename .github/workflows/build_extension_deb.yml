@@ -6,6 +6,9 @@ defaults:
     working-directory: ./
 
 on:
+  push:
+    branches:
+      - fix-deb-build
   release:
     types:
       - created
@@ -29,8 +32,11 @@ jobs:
             - 16
         box:
           - { runner: ubuntu-20.04, arch: amd64 }
-          - { runner: arm-runner, arch: arm64 }
-    runs-on: ${{ matrix.box.runner }}
+          - { runner: arm64, arch: arm64 }
+    runs-on: 
+      - "dind"
+      - "self-hosted"
+      - ${{ matrix.box.arch }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -98,12 +104,12 @@ jobs:
           echo UPLOAD_URL=$(curl --silent https://api.github.com/repos/${{ github.repository }}/releases/tags/v${deb_version} | jq .upload_url --raw-output) >> $GITHUB_ENV
           echo ASSET_NAME=${{ matrix.extension_name }}-${deb_version}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu.deb >> $GITHUB_ENV
 
-      - name: Upload deb to github release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: ./${{ env.ASSET_NAME }}
-          asset_name: ${{ env.ASSET_NAME }}
-          asset_content_type: application/vnd.debian.binary-package
+      # - name: Upload deb to github release
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ env.UPLOAD_URL }}
+      #     asset_path: ./${{ env.ASSET_NAME }}
+      #     asset_name: ${{ env.ASSET_NAME }}
+      #     asset_content_type: application/vnd.debian.binary-package
