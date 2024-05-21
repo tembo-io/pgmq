@@ -28,11 +28,11 @@ jobs:
           - 0.11.3
         postgres: 
             - 14
-            - 15
-            - 16
+            # - 15
+            # - 16
         box:
           - { runner: ubuntu-20.04, arch: amd64 }
-          - { runner: arm-runner, arch: arm64 }
+          # - { runner: arm-runner, arch: arm64 }
     runs-on: ${{ matrix.box.runner }}
     timeout-minutes: 90
     steps:
@@ -100,6 +100,7 @@ jobs:
           deb_version=$(grep '^version' Cargo.toml | head -1 | awk -F '"' '{print $2}')
           echo UPLOAD_URL=$(curl --silent https://api.github.com/repos/${{ github.repository }}/releases/tags/v${deb_version} | jq .upload_url --raw-output) >> $GITHUB_ENV
           echo ASSET_NAME=${{ matrix.extension_name }}-${deb_version}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu.deb >> $GITHUB_ENV
+          ls -alh
 
       - name: Upload deb to github release
         uses: actions/upload-release-asset@v1
