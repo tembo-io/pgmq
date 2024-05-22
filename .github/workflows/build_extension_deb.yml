@@ -28,9 +28,12 @@ jobs:
             - 15
             - 16
         box:
-          - { runner: ubuntu-20.04, arch: amd64 }
-          - { runner: arm-runner, arch: arm64 }
-    runs-on: ${{ matrix.box.runner }}
+          - { runner: large-8x8, arch: amd64 }
+          - { runner: arm64, arch: arm64 }
+    runs-on: 
+      - "dind"
+      - "self-hosted"
+      - ${{ matrix.box.runner }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -67,8 +70,10 @@ jobs:
           mkdir archive
           cp `find target/release -type f -name "${{ matrix.extension_name }}*"` archive
 
+          deb_version=$(grep '^version' Cargo.toml | head -1 | awk -F '"' '{print $2}')
+
           # name of the package directory before packaging
-          package_dir=${{ matrix.extension_name }}-${{ github.ref_name }}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu
+          package_dir=${{ matrix.extension_name }}-${deb_version}-pg${{ matrix.postgres }}-${{ matrix.box.arch }}-linux-gnu
 
           # Copy files into directory structure
           mkdir -p ${package_dir}/usr/lib/postgresql/lib
@@ -76,8 +81,6 @@ jobs:
           cp archive/*.so ${package_dir}/usr/lib/postgresql/lib
           cp archive/*.control ${package_dir}/var/lib/postgresql/extension
           cp archive/*.sql ${package_dir}/var/lib/postgresql/extension
-
-          deb_version=$(grep '^version' Cargo.toml | head -1 | awk -F '"' '{print $2}')
 
           mkdir -p ${package_dir}/DEBIAN
           touch ${package_dir}/DEBIAN/control
