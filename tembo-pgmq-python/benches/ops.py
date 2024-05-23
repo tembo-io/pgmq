@@ -3,7 +3,6 @@ import logging
 import multiprocessing
 import os
 import time
-
 import psycopg
 
 logging.basicConfig(level=logging.INFO)
@@ -84,9 +83,13 @@ def produce(
             # log every 5 seconds
             if time.time() - last_print_time >= 5:
                 last_print_time = time.time()
-                logging.debug(f"pid: {pid}, total_sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
+                logging.debug(
+                    f"pid: {pid}, total_sent: {num_msg}, {running_duration} / {duration_seconds} seconds"
+                )
 
-        logging.debug(f"pid: {pid}, total_sent: {num_msg}, {running_duration} / {duration_seconds} seconds")
+        logging.debug(
+            f"pid: {pid}, total_sent: {num_msg}, {running_duration} / {duration_seconds} seconds"
+        )
 
         with cur.copy(f"COPY bench_results_{queue_name} FROM STDIN") as copy:
             for record in all_results:
@@ -94,7 +97,9 @@ def produce(
     logging.info(f"producer complete, pid: {pid}")
 
 
-def consume(queue_name: str, connection_info: dict, pattern: str = "delete", batch_size: int = 1):
+def consume(
+    queue_name: str, connection_info: dict, pattern: str = "delete", batch_size: int = 1
+):
     """Consumes messages from a queue. Times and writes results to csv.
 
     Halts consumption after 5 seconds of no messages.
@@ -121,7 +126,9 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
             if len(message) == 0:
                 no_message_timeout += 1
                 if no_message_timeout > 2:
-                    logging.debug(f"No messages for {no_message_timeout} consecutive reads")
+                    logging.debug(
+                        f"No messages for {no_message_timeout} consecutive reads"
+                    )
                 time.sleep(0.500)
                 continue
             else:
@@ -143,7 +150,9 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
 
             archive_start = time.perf_counter()
             if pattern == "archive":
-                cur.execute("select * from pgmq.archive(%s, %s);", [queue_name, msg_ids])
+                cur.execute(
+                    "select * from pgmq.archive(%s, %s);", [queue_name, msg_ids]
+                )
             else:
                 cur.execute("select * from pgmq.delete(%s, %s);", [queue_name, msg_ids])
 
@@ -171,7 +180,12 @@ def consume(queue_name: str, connection_info: dict, pattern: str = "delete", bat
     logging.info(f"pid: {pid}, read {num_consumed} messages")
 
 
-def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessing.Value, duration_seconds: int):
+def queue_depth(
+    queue_name: str,
+    connection_info: dict,
+    kill_flag: multiprocessing.Value,
+    duration_seconds: int,
+):
     username = connection_info["username"]
     password = connection_info["password"]
     host = connection_info["host"]
@@ -227,7 +241,9 @@ def queue_depth(queue_name: str, connection_info: dict, kill_flag: multiprocessi
             logging.info(log)
             time.sleep(5)
 
-        with cur.copy(f"COPY bench_results_{queue_name}_queue_depth FROM STDIN") as copy:
+        with cur.copy(
+            f"COPY bench_results_{queue_name}_queue_depth FROM STDIN"
+        ) as copy:
             for record in all_metrics:
                 copy.write_row(record)
 

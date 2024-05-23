@@ -4,16 +4,11 @@ import multiprocessing
 import time
 from multiprocessing import Process
 from typing import Optional
-
 import pandas as pd
 from sqlalchemy import create_engine, text
-
 from tembo_pgmq_python import PGMQueue
-
 from urllib.parse import urlparse
-
 import typer
-
 from benches.ops import consume, produce, queue_depth
 from benches.stats import plot_rolling, stack_events, summarize
 
