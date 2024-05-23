@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Optional, List
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
-from dotenv import load_dotenv
 import os
 
 
@@ -20,22 +19,27 @@ class Message:
 class PGMQueue:
     """Base class for interacting with a queue"""
 
-    host: str = "localhost"
-    port: str = "5432"
-    database: str = "postgres"
+    host: str = field(default_factory=lambda: os.getenv("PG_HOST", "localhost"))
+    port: str = field(default_factory=lambda: os.getenv("PG_PORT", "5432"))
+    database: str = field(default_factory=lambda: os.getenv("PG_DATABASE", "postgres"))
+    username: str = field(default_factory=lambda: os.getenv("PG_USERNAME", "postgres"))
+    password: str = field(default_factory=lambda: os.getenv("PG_PASSWORD", "postgres"))
     delay: int = 0
     vt: int = 30
-
-    username: str = "postgres"
-    password: str = "postgres"
-
     pool_size: int = 10
-
     kwargs: dict = field(default_factory=dict)
-
     pool: ConnectionPool = field(init=False)
 
     def __post_init__(self) -> None:
+        self.host = self.host or "localhost"
+        self.port = self.port or "5432"
+        self.database = self.database or "postgres"
+        self.username = self.username or "postgres"
+        self.password = self.password or "postgres"
+
+        if not all([self.host, self.port, self.database, self.username, self.password]):
+            raise ValueError("Incomplete database connection information provided.")
+
         conninfo = f"""
         host={self.host}
         port={self.port}
@@ -47,25 +51,6 @@ class PGMQueue:
 
         with self.pool.connection() as conn:
             conn.execute("create extension if not exists pgmq cascade;")
-
-    @classmethod
-    def from_env(cls, env_file=".env"):
-        """Load environment variables from a .env file and create a PGMQueue instance."""
-        load_dotenv(env_file)
-
-        # Verify that the .env file is loaded correctly
-        if not os.path.exists(env_file):
-            print(f".env file not found at path: {env_file}")
-        else:
-            print(f".env file found at path: {env_file}")
-
-        return cls(
-            host=os.getenv("PG_HOST", "localhost"),
-            port=os.getenv("PG_PORT", "5432"),
-            username=os.getenv("PG_USERNAME", "postgres"),
-            password=os.getenv("PG_PASSWORD", "postgres"),
-            database=os.getenv("PG_DATABASE", "postgres"),
-        )
 
     def create_partitioned_queue(
         self,
@@ -104,7 +89,9 @@ class PGMQueue:
     def send(self, queue: str, message: dict, delay: int = 0) -> int:
         """Send a message to a queue."""
         with self.pool.connection() as conn:
-            result = conn.execute("select * from pgmq.send(%s, %s, %s);", [queue, Jsonb(message), delay]).fetchall()
+            result = conn.execute(
+                "select * from pgmq.send(%s, %s, %s);", [queue, Jsonb(message), delay]
+            ).fetchall()
         return result[0][0]
 
     def send_batch(self, queue: str, messages: List[dict], delay: int = 0) -> List[int]:
@@ -119,12 +106,19 @@ class PGMQueue:
     def read(self, queue: str, vt: Optional[int] = None) -> Optional[Message]:
         """Read a message from a queue."""
         with self.pool.connection() as conn:
-            rows = conn.execute("select * from pgmq.read(%s, %s, %s);", [queue, vt or self.vt, 1]).fetchall()
+            rows = conn.execute(
+                "select * from pgmq.read(%s, %s, %s);", [queue, vt or self.vt, 1]
+            ).fetchall()
 
-        messages = [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
+        messages = [
+            Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4])
+            for x in rows
+        ]
         return messages[0] if len(messages) == 1 else None
 
-    def read_batch(self, queue: str, vt: Optional[int] = None, batch_size=1) -> Optional[List[Message]]:
+    def read_batch(
+        self, queue: str, vt: Optional[int] = None, batch_size=1
+    ) -> Optional[List[Message]]:
         """Read a batch of messages from a queue."""
         with self.pool.connection() as conn:
             rows = conn.execute(
@@ -132,27 +126,37 @@ class PGMQueue:
                 [queue, vt or self.vt, batch_size],
             ).fetchall()
 
-        return [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
+        return [
+            Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4])
+            for x in rows
+        ]
 
     def pop(self, queue: str) -> Message:
         """Pop a message from a queue."""
         with self.pool.connection() as conn:
             rows = conn.execute("select * from pgmq.pop(%s);", [queue]).fetchall()
 
-        messages = [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
+        messages = [
+            Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4])
+            for x in rows
+        ]
         return messages[0]
 
     def delete(self, queue: str, msg_id: int) -> bool:
         """Delete a message from a queue."""
         with self.pool.connection() as conn:
-            row = conn.execute("select pgmq.delete(%s, %s);", [queue, msg_id]).fetchall()
+            row = conn.execute(
+                "select pgmq.delete(%s, %s);", [queue, msg_id]
+            ).fetchall()
 
         return row[0][0]
 
     def archive(self, queue: str, msg_id: int) -> bool:
         """Archive a message from a queue."""
         with self.pool.connection() as conn:
-            row = conn.execute("select pgmq.archive(%s, %s);", [queue, msg_id]).fetchall()
+            row = conn.execute(
+                "select pgmq.archive(%s, %s);", [queue, msg_id]
+            ).fetchall()
 
         return row[0][0]
 
