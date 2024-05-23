@@ -15,7 +15,9 @@ on:
   push:
     branches:
       - main
-
+    paths:
+      - '.github/workflows/crate_ci.yml'
+      - 'core/**'
 jobs:
   lint:
     name: Run linters
