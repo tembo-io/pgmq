@@ -471,6 +471,12 @@ async fn test_pop() {
     let queue_name = format!("test_pop_{test_num}");
     create_queue(&queue_name.to_string(), &conn).await;
 
+    let none_popped = sqlx::query(&format!("SELECT * FROM {PGMQ_SCHEMA}.pop('{queue_name}')"))
+        .fetch_optional(&conn)
+        .await
+        .expect("failed to get pop result");
+    assert!(none_popped.is_none());
+
     let first_msg_id = send_sample_message(&queue_name, &conn).await;
     send_sample_message(&queue_name, &conn).await;
     send_sample_message(&queue_name, &conn).await;
@@ -483,6 +489,61 @@ async fn test_pop() {
 
     assert_eq!(popped_id, first_msg_id);
     assert_eq!(get_queue_size(&queue_name, &conn).await, 2);
+}
+
+// Integration tests are ignored by default
+#[ignore]
+#[tokio::test]
+async fn test_set_vt() {
+    let conn = init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(0..100000);
+
+    let queue_name = format!("test_set_vt_{test_num}");
+    create_queue(&queue_name.to_string(), &conn).await;
+
+    // set a non-existing message must return no records
+    let none_set = sqlx::query(&format!(
+        "SELECT * FROM {PGMQ_SCHEMA}.set_vt('{queue_name}', 9999, 0)"
+    ))
+    .fetch_optional(&conn)
+    .await
+    .expect("failed to execute set command");
+    assert!(none_set.is_none());
+
+    let first_msg_id = send_sample_message(&queue_name, &conn).await;
+
+    // set message invisible for 100 seconds
+    let set_first_id = sqlx::query(&format!(
+        "SELECT * FROM {PGMQ_SCHEMA}.set_vt('{queue_name}', {first_msg_id}, 100)"
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to execute set command");
+    let set_first_id = set_first_id.get::<i64, usize>(0);
+    assert_eq!(set_first_id, first_msg_id);
+
+    // read message, it should not be visible
+    let query = &format!("SELECT * from {PGMQ_SCHEMA}.read('{queue_name}', 1, 1);");
+    let none_message = fetch_one_message::<serde_json::Value>(query, &conn)
+        .await
+        .expect("failed reading message");
+    assert!(none_message.is_none());
+
+    // make it visible
+    let _set_first_id = sqlx::query(&format!(
+        "SELECT * FROM {PGMQ_SCHEMA}.set_vt('{queue_name}', {first_msg_id}, 0)"
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to execute set command");
+
+    // set vt works if message is readable
+    let some_message = fetch_one_message::<serde_json::Value>(query, &conn)
+        .await
+        .expect("failed reading message")
+        .expect("no messages returned");
+    assert_eq!(some_message.msg_id, first_msg_id);
 }
 
 // Integration tests are ignored by default
