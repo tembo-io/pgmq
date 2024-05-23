@@ -51,14 +51,11 @@ class PGMQueue:
     @classmethod
     def from_env(cls, env_file=".env"):
         """Load environment variables from a .env file and create a PGMQueue instance."""
-        env_path = os.path.join(os.path.dirname(__file__), env_file)
-        load_dotenv(env_path)
+        load_dotenv(env_file)
 
         # Verify that the .env file is loaded correctly
-        if not os.path.exists(env_path):
-            print(f".env file not found at path: {env_path}")
-        else:
-            print(f".env file found at path: {env_path}")
+        if not os.path.exists(env_file):
+            print(f".env file not found at path: {env_file}")
 
         return cls(
             host=os.getenv("PG_HOST", "localhost"),
