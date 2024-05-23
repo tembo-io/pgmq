@@ -112,6 +112,26 @@ class BaseTestPGMQueue(unittest.TestCase):
         purged = self.queue.purge(self.test_queue)
         self.assertEqual(purged, len(messages))
 
+    def test_get_queue_stats(self):
+        """Test getting queue stats."""
+        self.queue.create_queue(self.test_queue)
+        self.queue.send(self.test_queue, self.test_message)
+        stats = self.queue.get_queue_stats(self.test_queue)
+        self.assertEqual(stats.queue_name, self.test_queue)
+        self.assertGreaterEqual(stats.queue_length, 1)
+        self.assertGreaterEqual(stats.total_messages, 1)
+        self.assertIsNotNone(stats.scrape_time)
+
+    def test_metrics_property(self):
+        """Test accessing metrics via the metrics property."""
+        self.queue.create_queue("my_queue")
+        self.queue.send("my_queue", self.test_message)
+        stats = self.queue.metrics("my_queue")
+        self.assertEqual(stats.queue_name, "my_queue")
+        self.assertGreaterEqual(stats.queue_length, 1)
+        self.assertGreaterEqual(stats.total_messages, 1)
+        self.assertIsNotNone(stats.scrape_time)
+
 
 class TestPGMQueueWithEnv(BaseTestPGMQueue):
     @classmethod
