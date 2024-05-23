@@ -375,7 +375,7 @@ $$ LANGUAGE plpgsql;
 
 -- pop a single message
 CREATE FUNCTION pgmq.pop(queue_name TEXT)
-RETURNS pgmq.message_record AS $$
+RETURNS SETOF pgmq.message_record AS $$
 DECLARE
     sql TEXT;
     result pgmq.message_record;
@@ -397,14 +397,13 @@ BEGIN
         $QUERY$,
         queue_name, queue_name
     );
-    EXECUTE sql INTO result;
-    RETURN result;
+    RETURN QUERY EXECUTE sql;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Sets vt of a message, returns it
 CREATE FUNCTION pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt INTEGER)
-RETURNS pgmq.message_record AS $$
+RETURNS SETOF pgmq.message_record AS $$
 DECLARE
     sql TEXT;
     result pgmq.message_record;
@@ -418,8 +417,7 @@ BEGIN
         $QUERY$,
         queue_name, vt, msg_id
     );
-    EXECUTE sql INTO result;
-    RETURN result;
+    RETURN QUERY EXECUTE sql;
 END;
 $$ LANGUAGE plpgsql;
 
