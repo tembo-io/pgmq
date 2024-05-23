@@ -16,4 +16,4 @@ run-pgmq-postgres:
 	docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest || true
 
 test: run-pgmq-postgres
-	poetry run pytest
+	poetry run python -m unittest discover tests

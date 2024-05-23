@@ -1,4 +1,8 @@
 from sqlalchemy import text
+import logging
+import os
+import subprocess
+import pandas as pd
 
 
 def setup_bench_results(eng, bench_name: str):
@@ -31,7 +35,7 @@ def setup_bench_results(eng, bench_name: str):
     with eng.connect() as con:
         con.execute(
             text(
-                f"""
+                """
             CREATE TABLE IF NOT EXISTS "pgmq_bench_results" (
                 bench_name text NOT NULL UNIQUE,
                 datetime timestamp with time zone NOT NULL DEFAULT now(),
@@ -75,18 +79,12 @@ def setup_bench_results(eng, bench_name: str):
         con.commit()
 
 
-import logging
-import os
-import subprocess
-
-import pandas as pd
-from sqlalchemy.engine import Engine
-
-
 def write_event_log(db_url: str, event_log: pd.DataFrame, bench_name: str):
     csv_name = f"/tmp/event_log_{bench_name}.csv"
     event_log.to_csv(csv_name, index=None)
-    copy_command = f"\COPY event_log_{bench_name} FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa
+    copy_command = (
+        f"\COPY event_log_{bench_name} FROM '{csv_name}' DELIMITER ',' CSV HEADER;"  # noqa
+    )
     psql_command = ["psql", db_url, "-c", copy_command]
     subprocess.run(psql_command)
     os.remove(csv_name)

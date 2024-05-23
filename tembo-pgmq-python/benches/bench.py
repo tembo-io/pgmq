@@ -4,19 +4,15 @@ import multiprocessing
 import time
 from multiprocessing import Process
 from typing import Optional
-
 import pandas as pd
 from sqlalchemy import create_engine, text
-
 from tembo_pgmq_python import PGMQueue
-
-logging.basicConfig(level=logging.INFO)
 from urllib.parse import urlparse
-
 import typer
-
 from benches.ops import consume, produce, queue_depth
 from benches.stats import plot_rolling, stack_events, summarize
+
+logging.basicConfig(level=logging.INFO)
 
 
 def bench(
@@ -90,7 +86,9 @@ def bench(
     if partitioned_queue:
         logging.info(f"Creating partitioned queue: {bench_name}")
         queue.create_partitioned_queue(
-            bench_name, partition_interval=partition_interval, retention_interval=retention_interval
+            bench_name,
+            partition_interval=partition_interval,
+            retention_interval=retention_interval,
         )
     else:
         logging.info(f"Creating queue: {bench_name}, unlogged: {unlogged_queue}")
@@ -112,7 +110,10 @@ def bench(
 
     # start a proc to poll for queue depth
     kill_flag = multiprocessing.Value("b", False)
-    queue_depth_proc = Process(target=queue_depth, args=(bench_name, connection_info, kill_flag, duration_seconds))
+    queue_depth_proc = Process(
+        target=queue_depth,
+        args=(bench_name, connection_info, kill_flag, duration_seconds),
+    )
     queue_depth_proc.start()
 
     consume_procs = {}
@@ -179,8 +180,14 @@ def bench(
             {
                 "write": {"mean": writes["mean"], "stddev": writes["stddev"]},
                 "read": {"mean": reads["mean"], "stddev": reads["stddev"]},
-                "archive": {"mean": archives.get("mean"), "stddev": archives.get("stddev")},
-                "delete": {"mean": deletes.get("mean"), "stddev": deletes.get("stddev")},
+                "archive": {
+                    "mean": archives.get("mean"),
+                    "stddev": archives.get("stddev"),
+                },
+                "delete": {
+                    "mean": deletes.get("mean"),
+                    "stddev": deletes.get("stddev"),
+                },
             }
         ),
         "throughput": json.dumps(

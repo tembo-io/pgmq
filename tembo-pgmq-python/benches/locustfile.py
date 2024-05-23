@@ -1,12 +1,9 @@
 import time
-
 from tembo_pgmq_python import PGMQueue
-
 from locust import task, User
 
 
 class MyClient(PGMQueue):
-
     def __init__(self, *args, request_event, **kwargs):
         super().__init__(*args, **kwargs)
         self._request_event = request_event
@@ -55,8 +52,13 @@ class BaseActor(User):
     def __init__(self, environment):
         super().__init__(environment)
         self.environment = environment
-        self.client = MyClient(host="0.0.0.0", port="28815", database="pgmq",
-                               username="guru", request_event=environment)
+        self.client = MyClient(
+            host="0.0.0.0",
+            port="28815",
+            database="pgmq",
+            username="guru",
+            request_event=environment,
+        )
         # just to make sure
         self.client.create_queue("locust")
         self.small_batch = [self.small_data for i in range(50)]

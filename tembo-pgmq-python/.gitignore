@@ -6,3 +6,4 @@ dist
 *.jpg
 *.png
 pgbench/**
+*.env
