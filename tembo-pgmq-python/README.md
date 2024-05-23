@@ -38,6 +38,7 @@ Initialize a connection to Postgres using environment variables:
 from tembo_pgmq_python import PGMQueue, Message
 
 queue = PGMQueue()
+
 ```
 
 ### Initialize a connection to Postgres without environment variables
