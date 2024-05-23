@@ -1,24 +1,44 @@
 import unittest
 import time
 from tembo_pgmq_python import Message, PGMQueue
+from dotenv import load_dotenv
+import os
 
 
-class TestPGMQueueLifecycle(unittest.TestCase):
+# Function to load environment variables
+def load_environment_variables(env_file=".env"):
+    if os.path.exists(env_file):
+        load_dotenv(env_file)
+        print(f".env file found and loaded at path: {env_file}")
+    else:
+        env_path = os.path.join(os.path.dirname(__file__), ".env")
+        if os.path.exists(env_path):
+            load_dotenv(env_path)
+            print(f".env file found and loaded at path: {env_path}")
+        else:
+            print(f".env file not found at path: {env_file} or {env_path}")
+
+
+class BaseTestPGMQueue(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        """Set up a connection to the PGMQueue and create a test queue."""
-        # Initialize the PGMQueue from environment variables
-        cls.queue = PGMQueue.from_env()  # Change to the appropriate .env file if needed
+        """Set up a connection to the PGMQueue without using environment variables and create a test queue."""
+        cls.queue = PGMQueue(
+            host="localhost",
+            port="5432",
+            username="postgres",
+            password="postgres",
+            database="postgres",
+        )
 
         # Test database connection first
         try:
             pool = cls.queue.pool
             with pool.connection() as conn:
-                if conn is None:
-                    raise Exception("Database connection failed")
-                print("Connection successful")
+                conn.execute("SELECT 1")
+                print("Connection successful (without env)")
         except Exception as e:
-            raise unittest.SkipTest(f"Database connection failed: {e}")
+            raise Exception(f"Database connection failed: {e}")
 
         cls.test_queue = "test_queue"
         cls.test_message = {"hello": "world"}
@@ -104,6 +124,28 @@ class TestPGMQueueLifecycle(unittest.TestCase):
         self.queue.send_batch(self.test_queue, messages)
         purged = self.queue.purge(self.test_queue)
         self.assertEqual(purged, len(messages))
+
+
+class TestPGMQueueWithEnv(BaseTestPGMQueue):
+    @classmethod
+    def setUpClass(cls):
+        """Set up a connection to the PGMQueue using environment variables and create a test queue."""
+        load_environment_variables(".env")
+
+        cls.queue = PGMQueue()
+
+        # Test database connection first
+        try:
+            pool = cls.queue.pool
+            with pool.connection() as conn:
+                conn.execute("SELECT 1")
+                print("Connection successful (with env)")
+        except Exception as e:
+            raise Exception(f"Database connection failed: {e}")
+
+        cls.test_queue = "test_queue"
+        cls.test_message = {"hello": "world"}
+        cls.queue.create_queue(cls.test_queue)
 
 
 if __name__ == "__main__":
