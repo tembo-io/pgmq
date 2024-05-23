@@ -20,12 +20,38 @@ Postgres running the [Tembo PGMQ extension](https://github.com/tembo-io/tembo/tr
 docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest
 ```
 
-### Initialize a connection to Postgres
+### Using Environment Variables
+
+Create a `.env` file in your project root with the following content:
+
+```
+PG_HOST=127.0.0.1
+PG_PORT=5432
+PG_USERNAME=postgres
+PG_PASSWORD=postgres
+PG_DATABASE=test_db
+```
+
+Initialize a connection to Postgres using environment variables:
 
 ```python
 from tembo_pgmq_python import PGMQueue, Message
 
-queue = PGMQueue(host="0.0.0.0")
+queue = PGMQueue.from_env(".env")
+```
+
+### Initialize a connection to Postgres without environment variables
+
+```python
+from tembo_pgmq_python import PGMQueue, Message
+
+queue = PGMQueue(
+    host="0.0.0.0",
+    port="5432",
+    username="postgres",
+    password="postgres",
+    database="postgres"
+)
 ```
 
 ### Create a queue 
@@ -33,10 +59,13 @@ queue = PGMQueue(host="0.0.0.0")
 ```python
 queue.create_queue("my_queue")
 ```
+
 ### or a partitioned queue
+
 ```python
 queue.create_partitioned_queue("my_partitioned_queue", partition_size=10000)
 ```
+
 ### Send a message
 
 ```python
