@@ -1,22 +1,9 @@
 import unittest
 import time
 from tembo_pgmq_python import Message, PGMQueue
-from dotenv import load_dotenv
-import os
 
 
 # Function to load environment variables
-def load_environment_variables(env_file=".env"):
-    if os.path.exists(env_file):
-        load_dotenv(env_file)
-        print(f".env file found and loaded at path: {env_file}")
-    else:
-        env_path = os.path.join(os.path.dirname(__file__), ".env")
-        if os.path.exists(env_path):
-            load_dotenv(env_path)
-            print(f".env file found and loaded at path: {env_path}")
-        else:
-            print(f".env file not found at path: {env_file} or {env_path}")
 
 
 class BaseTestPGMQueue(unittest.TestCase):
@@ -130,7 +117,6 @@ class TestPGMQueueWithEnv(BaseTestPGMQueue):
     @classmethod
     def setUpClass(cls):
         """Set up a connection to the PGMQueue using environment variables and create a test queue."""
-        load_environment_variables(".env")
 
         cls.queue = PGMQueue()
 

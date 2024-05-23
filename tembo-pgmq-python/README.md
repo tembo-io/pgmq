@@ -22,24 +22,22 @@ docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io
 
 ### Using Environment Variables
 
-Create a `.env` file in your project root with the following content:
+Set environment variables:
 
-```
-PG_HOST=127.0.0.1
-PG_PORT=5432
-PG_USERNAME=postgres
-PG_PASSWORD=postgres
-PG_DATABASE=test_db
+```bash
+export PG_HOST=127.0.0.1
+export PG_PORT=5432
+export PG_USERNAME=postgres
+export PG_PASSWORD=postgres
+export PG_DATABASE=test_db
 ```
 
 Initialize a connection to Postgres using environment variables:
 
 ```python
 from tembo_pgmq_python import PGMQueue, Message
-from dotenv import load_dotenv
 
-load_dotenv(env_path)
-queue = PGMQueue(".env")
+queue = PGMQueue()
 ```
 
 ### Initialize a connection to Postgres without environment variables
