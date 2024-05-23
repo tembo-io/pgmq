@@ -5,7 +5,7 @@ import pandas as pd
 from matplotlib import pyplot as plt  # type: ignore
 from scipy.ndimage import gaussian_filter1d
 from sqlalchemy import create_engine, text
-
+import numpy as np
 from benches.log import write_event_log
 from tembo_pgmq_python import PGMQueue
 
@@ -48,7 +48,9 @@ def stack_events(
         inplace=True,
     )
 
-    events_df = pd.concat([df, sel1_df, queue_depth[["operation", "queue_length", "epoch"]]])
+    events_df = pd.concat(
+        [df, sel1_df, queue_depth[["operation", "queue_length", "epoch"]]]
+    )
 
     # write event log back to postgres table
     write_event_log(db_url=db_url, event_log=events_df, bench_name=bench_name)
@@ -61,14 +63,27 @@ def stack_events(
     return events_df
 
 
-def plot_rolling(event_log: pd.DataFrame, summary_df: pd.DataFrame, bench_name: str, duration_sec: int, params: dict):
+def plot_rolling(
+    event_log: pd.DataFrame,
+    summary_df: pd.DataFrame,
+    bench_name: str,
+    duration_sec: int,
+    params: dict,
+):
     def int_to_comma_string(n):
         return "{:,}".format(n)
 
     # Plotting
     fig, ax1 = plt.subplots(figsize=(20, 10))
     plt.suptitle("PGMQ Concurrent Produce/Consumer Benchmark")
-    ax1.text(0.25, -0.05, json.dumps(params, indent=2), transform=ax1.transAxes, va="top", ha="left")
+    ax1.text(
+        0.25,
+        -0.05,
+        json.dumps(params, indent=2),
+        transform=ax1.transAxes,
+        va="top",
+        ha="left",
+    )
 
     # Prepare the throughput table
     columns = ["Operation", "Duration (s)", "Total Messages", "msg/s"]
@@ -90,7 +105,13 @@ def plot_rolling(event_log: pd.DataFrame, summary_df: pd.DataFrame, bench_name: 
     fig.subplots_adjust(top=0.8)
 
     # plot the operations
-    color_map = {"read": "orange", "write": "blue", "archive": "green", "delete": "green", "select1": "red"}
+    color_map = {
+        "read": "orange",
+        "write": "blue",
+        "archive": "green",
+        "delete": "green",
+        "select1": "red",
+    }
     sigma = 1000  # Adjust as needed for the desired smoothing level
     for op in ["read", "write", "archive", "delete", "select1"]:
         _df = event_log[event_log["operation"] == op].sort_values("time")
@@ -116,7 +137,12 @@ def plot_rolling(event_log: pd.DataFrame, summary_df: pd.DataFrame, bench_name: 
     # Create a second y-axis for 'queue_length'
     ax2 = ax1.twinx()
     queue_depth_data = event_log[event_log["operation"] == "queue_depth"]
-    ax2.plot(queue_depth_data["time"], queue_depth_data["queue_length"], color="gray", label="queue_depth")
+    ax2.plot(
+        queue_depth_data["time"],
+        queue_depth_data["queue_length"],
+        color="gray",
+        label="queue_depth",
+    )
     ax2.set_ylabel("queue_depth", color="gray")
     ax2.tick_params("y", colors="gray")
 
@@ -128,9 +154,6 @@ def plot_rolling(event_log: pd.DataFrame, summary_df: pd.DataFrame, bench_name: 
     output_plot = f"{bench_name}_{duration_sec}.png"
     plt.savefig(output_plot)
     logging.info(f"Saved plot to: {output_plot}")
-
-
-import numpy as np
 
 
 def summarize(event_log: pd.DataFrame) -> pd.DataFrame:
@@ -151,7 +174,8 @@ def summarize(event_log: pd.DataFrame) -> pd.DataFrame:
         event_log.groupby("operation")
         .agg(
             {
-                "time": lambda x: x.max() - x.min(),  # total duration of eacah operation
+                "time": lambda x: x.max()
+                - x.min(),  # total duration of eacah operation
                 "duration_ms": [np.mean, np.std],
                 "batch_size": "sum",  # sum the total number of messages read in each operation
             }
@@ -160,6 +184,10 @@ def summarize(event_log: pd.DataFrame) -> pd.DataFrame:
     )
     result.columns = ["operation", "range", "mean", "stddev", "num_messages"]
 
-    result["total_duration_seconds"] = result["range"].apply(lambda x: x.total_seconds())
-    result["messages_per_second"] = result["num_messages"] / result["total_duration_seconds"]
+    result["total_duration_seconds"] = result["range"].apply(
+        lambda x: x.total_seconds()
+    )
+    result["messages_per_second"] = (
+        result["num_messages"] / result["total_duration_seconds"]
+    )
     return result.drop("range", axis=1)
