@@ -16,6 +16,16 @@ class Message:
 
 
 @dataclass
+class QueueMetrics:
+    queue_name: str
+    queue_length: int
+    newest_msg_age_sec: int
+    oldest_msg_age_sec: int
+    total_messages: int
+    scrape_time: datetime
+
+
+@dataclass
 class PGMQueue:
     """Base class for interacting with a queue"""
 
@@ -147,3 +157,30 @@ class PGMQueue:
             row = conn.execute("select pgmq.purge_queue(%s);", [queue]).fetchall()
 
         return row[0][0]
+
+    def metrics(self, queue: str) -> QueueMetrics:
+        with self.pool.connection() as conn:
+            result = conn.execute("SELECT * FROM pgmq.metrics(%s);", [queue]).fetchone()
+        return QueueMetrics(
+            queue_name=result[0],
+            queue_length=result[1],
+            newest_msg_age_sec=result[2],
+            oldest_msg_age_sec=result[3],
+            total_messages=result[4],
+            scrape_time=result[5],
+        )
+
+    def metrics_all(self) -> List[QueueMetrics]:
+        with self.pool.connection() as conn:
+            results = conn.execute("SELECT * FROM pgmq.metrics_all();").fetchall()
+        return [
+            QueueMetrics(
+                queue_name=row[0],
+                queue_length=row[1],
+                newest_msg_age_sec=row[2],
+                oldest_msg_age_sec=row[3],
+                total_messages=row[4],
+                scrape_time=row[5],
+            )
+            for row in results
+        ]
