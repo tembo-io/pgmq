@@ -11,37 +11,3 @@ use pgrx::prelude::*;
 // For this reason, we need to keep `pgmq_archive` in the dynamic library forever
 // to keep update compatibility.
 //
-
-#[pg_extern(sql = "")]
-fn pgmq_drop_queue() {}
-
-#[pg_extern(sql = "")]
-fn pgmq_detach_archive() {}
-
-#[pg_extern(sql = "")]
-fn pgmq_list_queues() {}
-
-#[pg_extern(sql = "")]
-fn pgmq_purge_queue() {}
-
-#[pg_extern(sql = "")]
-fn pgmq_create_non_partitioned() {}
-
-#[pg_extern(sql = "")]
-fn pgmq_create_unlogged() {}
-
-#[pg_extern(sql = "")]
-fn pgmq_create_partitioned() {}
-
-#[pg_extern(sql = "")]
-fn pgmq_create() {}
-
-// reads and deletes at same time
-#[pg_extern(sql = "")]
-fn pgmq_pop() {}
-
-/// change the visibility time on an existing message
-/// vt_offset is a time relative to now that the message will be visible
-/// accepts positive or negative integers
-#[pg_extern(sql = "")]
-fn pgmq_set_vt() {}
