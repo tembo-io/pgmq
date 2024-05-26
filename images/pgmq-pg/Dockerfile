@@ -41,7 +41,7 @@ COPY --from=builder /usr/lib/postgresql/${PG_VERSION#pg}/lib /usr/lib/postgresql
 RUN apt-get update \
 	&& apt-get install -y ca-certificates
 
-COPY ./images/pgmq-${PG_VERSION}/postgresql.conf /usr/share/postgresql/${PG_VERSION#pg}/postgresql.conf.sample
+COPY ./images/pgmq-pg/postgresql.conf /usr/share/postgresql/${PG_VERSION#pg}/postgresql.conf.sample
 
 USER postgres
 CMD ["postgres"]
