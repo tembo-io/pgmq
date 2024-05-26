@@ -152,7 +152,10 @@ jobs:
           trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
     name: Build and push images
-    runs-on: ubuntu-22.04
+    runs-on:
+      - self-hosted
+      - dind
+      - large-8x8
     strategy:
       matrix:
         pg_version: [pg14, pg15, pg16]
@@ -193,7 +196,7 @@ jobs:
         if: github.event_name != 'release'
         uses: docker/build-push-action@v5
         with:
-          file: ./images/pgmq-${{ matrix.pg_version }}/Dockerfile
+          file: ./images/pgmq-pg/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64
           push: true
@@ -204,7 +207,7 @@ jobs:
         if: github.event_name == 'release'
         uses: docker/build-push-action@v5
         with:
-          file: ./images/pgmq-${{ matrix.pg_version }}/Dockerfile
+          file: ./images/pgmq-pg/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64
           push: true
