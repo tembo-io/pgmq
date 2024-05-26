@@ -10,14 +10,14 @@ on:
     branches:
       - main
     paths-ignore:
-      - 'pgmq-rs/**'
-      - 'tembo-pgmq-python/**'
+      - "pgmq-rs/**"
+      - "tembo-pgmq-python/**"
   push:
     branches:
       - main
     paths-ignore:
-      - 'pgmq-rs/**'
-      - 'tembo-pgmq-python/**'
+      - "pgmq-rs/**"
+      - "tembo-pgmq-python/**"
   release:
     types:
       - created
@@ -56,13 +56,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pg: [
-          {version: "12.19", pgrx_version: "pg12"},
-          {version: "13.15", pgrx_version: "pg13"},
-          {version: "14.12", pgrx_version: "pg14"},
-          {version: "15.7", pgrx_version: "pg15"},
-          {version: "16.3", pgrx_version: "pg16"}
-        ]
+        pg:
+          [
+            { version: "12.19", pgrx_version: "pg12" },
+            { version: "13.15", pgrx_version: "pg13" },
+            { version: "14.12", pgrx_version: "pg14" },
+            { version: "15.7", pgrx_version: "pg15" },
+            { version: "16.3", pgrx_version: "pg16" },
+          ]
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust stable toolchain
@@ -99,7 +100,7 @@ jobs:
           git checkout v4.7.4 && \
           sed -i 's|PG_CONFIG = pg_config|PG_CONFIG = ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/bin/pg_config|' Makefile && \
           make && \
-          make install 
+          make install
       - name: Run tests
         run: |
           rm -rf ./target/pgrx-test-data-* || true
@@ -122,19 +123,19 @@ jobs:
         with:
           prefix-key: "pgmq-extension-test"
           workspaces: |
-              pgmq/extension
+            pgmq/extension
           # Additional directories to cache
           cache-directories: |
             /home/runner/.pgrx
       - name: Install stoml and pg-trunk
         shell: bash
         run: |
-         set -xe
-         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
-         mv stoml_linux_amd64 stoml
-         chmod +x stoml
-         sudo mv stoml /usr/local/bin/
-         cargo install pg-trunk
+          set -xe
+          wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+          mv stoml_linux_amd64 stoml
+          chmod +x stoml
+          sudo mv stoml /usr/local/bin/
+          cargo install pg-trunk
       - name: trunk build
         working-directory: ./
         run: trunk build --pg-version ${{ matrix.pg-version }}
@@ -151,25 +152,24 @@ jobs:
           trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
     name: Build and push images
-    # needs:
-    #   - publish
-    runs-on:
-      - self-hosted
-      - dind
-      - large-8x8
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        pg_version: [pg14, pg15, pg16]
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
+
       - name: Install stoml and pg-trunk
         shell: bash
         run: |
-         set -xe
-         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
-         mv stoml_linux_amd64 stoml
-         chmod +x stoml
-         sudo mv stoml /usr/local/bin/
+          set -xe
+          wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+          mv stoml_linux_amd64 stoml
+          chmod +x stoml
+          sudo mv stoml /usr/local/bin/
 
       - name: Set version strings
         id: versions
@@ -181,7 +181,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-  
+
       - name: Login to Quay
         uses: docker/login-action@v2
         with:
@@ -190,26 +190,24 @@ jobs:
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
       - name: Build and push -- Commit
-        # push commit build when not a release
         if: github.event_name != 'release'
         uses: docker/build-push-action@v5
         with:
-          file: ./images/pgmq-pg/Dockerfile
+          file: ./images/pgmq-${{ matrix.pg_version }}/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.SHORT_SHA }}
+            quay.io/tembo/${{ matrix.pg_version }}-pgmq:${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Build and push -- Releases
-        # only publish release events
         if: github.event_name == 'release'
         uses: docker/build-push-action@v5
         with:
-          file: ./images/pgmq-pg/Dockerfile
+          file: ./images/pgmq-${{ matrix.pg_version }}/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }}
-            quay.io/tembo/pgmq-pg:latest
+            quay.io/tembo/${{ matrix.pg_version }}-pgmq:v${{ steps.versions.outputs.TAG_VER }}
+            quay.io/tembo/${{ matrix.pg_version }}-pgmq:latest
