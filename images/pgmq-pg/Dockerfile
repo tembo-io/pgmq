@@ -22,7 +22,7 @@ RUN $HOME/.cargo/bin/rustup default stable
 
 # init pgrx
 RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.11.0 --locked
-RUN $HOME/.cargo/bin/cargo pgrx init --pg$${PG_DOCKER_VERSION} $(which pg_config)
+RUN $HOME/.cargo/bin/cargo pgrx init --pg${PG_DOCKER_VERSION} $(which pg_config)
 
 # install pgmq
 COPY . .
