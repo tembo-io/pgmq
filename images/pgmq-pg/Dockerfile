@@ -2,6 +2,7 @@
 
 ARG PG_DOCKER_VERSION
 FROM postgres:${PG_DOCKER_VERSION}-bookworm as builder
+ARG PG_DOCKER_VERSION
 
 RUN apt-get update \
 	&& apt-get install -y \
@@ -34,6 +35,7 @@ RUN git clone https://github.com/pgpartman/pg_partman.git && \
 	git checkout v4.7.4 && make && make install
 
 FROM postgres:${PG_DOCKER_VERSION}-bookworm
+ARG PG_DOCKER_VERSION
 
 COPY --from=builder /usr/share/postgresql/${PG_DOCKER_VERSION}/extension /usr/share/postgresql/${PG_DOCKER_VERSION}/extension
 COPY --from=builder /usr/lib/postgresql/${PG_DOCKER_VERSION}/lib /usr/lib/postgresql/${PG_DOCKER_VERSION}/lib
