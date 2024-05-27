@@ -34,6 +34,7 @@ RUN git clone https://github.com/pgpartman/pg_partman.git && \
 	cd pg_partman && \
 	git checkout v4.7.4 && make && make install
 
+ARG PG_DOCKER_VERSION=$PG_DOCKER_VERSION
 FROM postgres:${PG_DOCKER_VERSION}-bookworm
 ARG PG_DOCKER_VERSION
 
