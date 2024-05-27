@@ -215,4 +215,4 @@ jobs:
           tags: |
             quay.io/tembo/pg${{ matrix.pg_version }}-pgmq:v${{ steps.versions.outputs.TAG_VER }}
             quay.io/tembo/pg${{ matrix.pg_version }}-pgmq:latest
-          build-args: PG_VERSION=${{ matrix.pg_version }}
+          build-args: PG_DOCKER_VERSION=${{ matrix.pg_version }}
