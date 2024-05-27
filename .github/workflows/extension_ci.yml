@@ -157,6 +157,7 @@ jobs:
       - dind
       - large-8x8
     strategy:
+      fail-fast: false
       matrix:
         pg_version: [14, 15, 16]
     outputs:
