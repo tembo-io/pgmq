@@ -202,6 +202,7 @@ jobs:
           push: true
           tags: |
             quay.io/tembo/pg${{ matrix.pg_version }}-pgmq:${{ steps.versions.outputs.SHORT_SHA }}
+          build-args: PG_VERSION=${{ matrix.pg_version }}
 
       - name: Build and push -- Releases
         if: github.event_name == 'release'
@@ -214,3 +215,4 @@ jobs:
           tags: |
             quay.io/tembo/pg${{ matrix.pg_version }}-pgmq:v${{ steps.versions.outputs.TAG_VER }}
             quay.io/tembo/pg${{ matrix.pg_version }}-pgmq:latest
+          build-args: PG_VERSION=${{ matrix.pg_version }}
