@@ -158,7 +158,7 @@ jobs:
       - large-8x8
     strategy:
       matrix:
-        pg_version: [pg14, pg15, pg16]
+        pg_version: [14, 15, 16]
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
@@ -201,7 +201,7 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/${{ matrix.pg_version }}-pgmq:${{ steps.versions.outputs.SHORT_SHA }}
+            quay.io/tembo/pg${{ matrix.pg_version }}-pgmq:${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Build and push -- Releases
         if: github.event_name == 'release'
@@ -212,5 +212,5 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/${{ matrix.pg_version }}-pgmq:v${{ steps.versions.outputs.TAG_VER }}
-            quay.io/tembo/${{ matrix.pg_version }}-pgmq:latest
+            quay.io/tembo/pg${{ matrix.pg_version }}-pgmq:v${{ steps.versions.outputs.TAG_VER }}
+            quay.io/tembo/pg${{ matrix.pg_version }}-pgmq:latest
