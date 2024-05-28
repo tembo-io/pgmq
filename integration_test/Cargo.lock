@@ -890,6 +890,7 @@ dependencies = [
  "sqlx",
  "thiserror",
  "tokio",
+ "url",
  "whoami",
 ]
 
