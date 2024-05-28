@@ -9,4 +9,6 @@ docker/**
 *.deb
 poetry.lock
 site
-META.json
+*.zip
+sql/pgmq--*.sql
+!sql/pgmq--*--*.sql

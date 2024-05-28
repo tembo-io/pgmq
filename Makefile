@@ -1,27 +1,33 @@
-PGRX_POSTGRES ?= pg16
-DISTNAME = $(shell grep -m 1 '^name' Cargo.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
-DISTVERSION  = $(shell grep -m 1 '^version' Cargo.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
-PG_VERSION:=16
-PGRX_PG_CONFIG =$(shell cargo pgrx info pg-config ${PGRX_POSTGRES})
+EXTENSION    = $(shell grep -m 1 '"name":' META.json | \
+               sed -e 's/[[:space:]]*"name":[[:space:]]*"\([^"]*\)",/\1/')
+EXTVERSION   = $(shell grep -m 1 '[[:space:]]\{8\}"version":' META.json | \
+               sed -e 's/[[:space:]]*"version":[[:space:]]*"\([^"]*\)",\{0,1\}/\1/')
+DISTVERSION  = $(shell grep -m 1 '[[:space:]]\{3\}"version":' META.json | \
+               sed -e 's/[[:space:]]*"version":[[:space:]]*"\([^"]*\)",\{0,1\}/\1/')
+
+DATA 		     = $(wildcard sql/*--*.sql)
+TEST_POSTGRES ?= pg16
+PG_CONFIG   ?= pg_config
+PGXS := $(shell $(PG_CONFIG) --pgxs)
+include $(PGXS)
+
+all: sql/$(EXTENSION)--$(EXTVERSION).sql
+
+sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
+	cp $< $@
+
+dist:
+	git archive --format zip --prefix=$(EXTENSION)-$(DISTVERSION)/ -o $(EXTENSION)-$(DISTVERSION).zip HEAD sql META.json pgmq.control README.md UPDATING.md
 
 test:
-	cargo pgrx test $(PGRX_POSTGRES)
-	cargo test --no-default-features --features ${PGRX_POSTGRES} -- --test-threads=1 --ignored
-
-format:
-	cargo +nightly fmt --all
-	cargo +nightly clippy
+	cargo pgrx test $(TEST_POSTGRES)
+	cargo test --no-default-features --features ${TEST_POSTGRES} -- --test-threads=1 --ignored
 
 run.postgres:
 	docker run -d --name pgmq-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest
 
-META.json: META.json.in Cargo.toml
-	@sed "s/@CARGO_VERSION@/$(DISTVERSION)/g" $< > $@
-
-$(DISTNAME)-$(DISTVERSION).zip: META.json
-	git archive --format zip --prefix $(DISTNAME)-$(DISTVERSION)/ --add-file $< -o $(DISTNAME)-$(DISTVERSION).zip HEAD
-
-pgxn-zip: $(DISTNAME)-$(DISTVERSION).zip
+pgxn-zip: dist.zip
 
 clean:
-	@rm -rf META.json $(DISTNAME)-$(DISTVERSION).zip
+	@rm -rf "$(EXTENSION)-$(DISTVERSION).zip"
+	@rm -rf "sql/$(EXTENSION)-$(DISTVERSION).sql"
