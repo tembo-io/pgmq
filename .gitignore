@@ -1,6 +1,6 @@
 .DS_Store
 .idea/
-/target
+target
 *.iml
 **/*.rs.bk
 Dockerfile

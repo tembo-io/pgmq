@@ -6,7 +6,6 @@ DISTVERSION  = $(shell grep -m 1 '[[:space:]]\{3\}"version":' META.json | \
                sed -e 's/[[:space:]]*"version":[[:space:]]*"\([^"]*\)",\{0,1\}/\1/')
 
 DATA 		     = $(wildcard sql/*--*.sql)
-TEST_POSTGRES ?= pg16
 PG_CONFIG   ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
@@ -17,11 +16,12 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
 
 dist:
-	git archive --format zip --prefix=$(EXTENSION)-$(DISTVERSION)/ -o $(EXTENSION)-$(DISTVERSION).zip HEAD sql META.json pgmq.control README.md UPDATING.md
+	git archive --format zip --prefix=$(EXTENSION)-$(DISTVERSION)/ -o $(EXTENSION)-$(DISTVERSION).zip HEAD sql META.json Trunk.toml pgmq.control README.md UPDATING.md
 
 test:
-	cargo pgrx test $(TEST_POSTGRES)
-	cargo test --no-default-features --features ${TEST_POSTGRES} -- --test-threads=1 --ignored
+	cargo test --manifest-path integration_test/Cargo.toml --no-default-features -- --test-threads=1
+
+installcheck: test
 
 run.postgres:
 	docker run -d --name pgmq-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest

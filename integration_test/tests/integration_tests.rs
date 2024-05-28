@@ -39,11 +39,10 @@ async fn connect(url: &str) -> Pool<Postgres> {
 }
 
 async fn init_database() -> Pool<Postgres> {
-    let username = whoami::username();
     let database_port = database_port();
 
     let conn00 = connect(&format!(
-        "postgres://{username}:postgres@localhost:{database_port}/pgmq"
+        "postgres://postgres:postgres@localhost:{database_port}/postgres"
     ))
     .await;
     // ignore the error if the db already exists!
@@ -76,8 +75,6 @@ async fn init_database() -> Pool<Postgres> {
     conn
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_unlogged() {
     let conn = init_database().await;
@@ -111,8 +108,6 @@ async fn test_unlogged() {
     assert_eq!(message.msg_id, msg_id);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_max_queue_name_size() {
     let conn = init_database().await;
@@ -133,8 +128,6 @@ async fn test_max_queue_name_size() {
     assert!(result2.is_ok());
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_lifecycle() {
     let conn = init_database().await;
@@ -312,8 +305,6 @@ async fn test_lifecycle() {
     assert!(queues.is_empty());
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_archive() {
     let conn = init_database().await;
@@ -374,8 +365,6 @@ async fn test_archive() {
     assert_eq!(get_archive_size(&queue_name, &conn).await, 3);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_read_read_with_poll() {
     let conn = init_database().await;
@@ -431,8 +420,6 @@ async fn test_read_read_with_poll() {
     assert_eq!(read_batch3[0].get::<i64, usize>(0), msg_id1);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_purge_queue() {
     let conn = init_database().await;
@@ -460,8 +447,6 @@ async fn test_purge_queue() {
     assert_eq!(get_queue_size(&queue_name, &conn).await, 0);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_pop() {
     let conn = init_database().await;
@@ -491,8 +476,6 @@ async fn test_pop() {
     assert_eq!(get_queue_size(&queue_name, &conn).await, 2);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_set_vt() {
     let conn = init_database().await;
@@ -546,8 +529,6 @@ async fn test_set_vt() {
     assert_eq!(some_message.msg_id, first_msg_id);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_partitioned_delete() {
     let conn = init_database().await;
@@ -644,8 +625,6 @@ async fn test_partitioned_delete() {
     assert_eq!(deleted_batch[1].get::<i64, usize>(0), 2);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_transaction_create() {
     // Queue creation is reverted if transaction is rolled back
@@ -671,8 +650,6 @@ async fn test_transaction_create() {
     assert!(table_exists.is_none());
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_transaction_send() {
     // This aims to test that a message won't be visible for other transactions
@@ -716,8 +693,6 @@ async fn test_transaction_send() {
     assert!(read_msg2.is_some());
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_transaction_read() {
     // A message read by one transaction can't be read by other concurrent transaction,
@@ -770,8 +745,7 @@ async fn test_transaction_read() {
 
     assert!(read_msg3.is_some());
 }
-// Integration tests are ignored by default
-#[ignore]
+
 #[tokio::test]
 async fn test_detach_archive() {
     let conn = init_database().await;
@@ -858,23 +832,10 @@ async fn send_sample_message(queue_name: &String, conn: &Pool<Postgres>) -> i64 
 }
 
 fn database_name() -> String {
-    let username = whoami::username();
     let database_port = database_port();
-    format!("postgres://{username}:postgres@localhost:{database_port}/pgmq_test")
+    format!("postgres://postgres:postgres@localhost:{database_port}/pgmq_test")
 }
 
-fn database_port() -> usize {
-    if cfg!(feature = "pg16") {
-        28816
-    } else if cfg!(feature = "pg15") {
-        28815
-    } else if cfg!(feature = "pg14") {
-        28814
-    } else if cfg!(feature = "pg13") {
-        28813
-    } else if cfg!(feature = "pg12") {
-        28812
-    } else {
-        5432
-    }
+fn database_port() -> u32 {
+    5432
 }
