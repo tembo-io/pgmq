@@ -152,10 +152,7 @@ jobs:
           trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
     name: Build and push images
-    runs-on:
-      - self-hosted
-      - dind
-      - large-8x8
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
