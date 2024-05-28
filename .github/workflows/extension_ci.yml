@@ -131,6 +131,9 @@ jobs:
       - self-hosted
       - dind
       - large-8x8
+    strategy:
+      matrix:
+        pg: [14, 15, 16]
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
@@ -163,6 +166,9 @@ jobs:
           username: ${{ secrets.QUAY_USER_TEMBO }}
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
+      - name: Generate dockerfile from template file
+        run: ./images/pgmq-pg/replace-pg-version.sh ${{ matrix.pg }} ./images/pgmq-pg/Dockerfile.in ./images/pgmq-pg/Dockerfile
+
       - name: Build and push -- Commit
         # push commit build when not a release
         if: github.event_name != 'release'
@@ -173,7 +179,7 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.SHORT_SHA }}
+            quay.io/tembo/pg${{matrix.pg}}-pgmq:v${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Build and push -- Releases
         # only publish release events
@@ -185,5 +191,5 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }}
-            quay.io/tembo/pgmq-pg:latest
+            quay.io/tembo/pg${{matrix.pg}}-pgmq:v${{ steps.versions.outputs.TAG_VER }}
+            quay.io/tembo/pg${{matrix.pg}}-pgmq:latest

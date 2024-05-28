@@ -12,3 +12,4 @@ site
 *.zip
 sql/pgmq--*.sql
 !sql/pgmq--*--*.sql
+images/pgmq-pg/Dockerfile
