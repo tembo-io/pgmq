@@ -32,6 +32,6 @@ Trunk.toml:
 
 clean:
 	@rm -rf "$(EXTENSION)-$(EXTVERSION).zip"
-	@rm -rf "sql/$(EXTENSION)-$(EXTVERSION).sql"
+	@rm -rf "sql/$(EXTENSION)--$(EXTVERSION).sql"
 	@rm -rf META.json
 	@rm -rf Trunk.toml
