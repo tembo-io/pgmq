@@ -1,21 +1,18 @@
-EXTENSION    = $(shell grep -m 1 '"name":' META.json | \
-               sed -e 's/[[:space:]]*"name":[[:space:]]*"\([^"]*\)",/\1/')
-EXTVERSION   = $(shell grep -m 1 '[[:space:]]\{8\}"version":' META.json | \
-               sed -e 's/[[:space:]]*"version":[[:space:]]*"\([^"]*\)",\{0,1\}/\1/')
-DISTVERSION  = $(shell grep -m 1 '[[:space:]]\{3\}"version":' META.json | \
-               sed -e 's/[[:space:]]*"version":[[:space:]]*"\([^"]*\)",\{0,1\}/\1/')
+EXTENSION    = pgmq
+EXTVERSION   = $(shell grep -oP "^default_version\s*=\s\K.*" pgmq.control | tr -d "'")
+DISTVERSION  = $(EXTVERSION)
 
 DATA 		     = $(wildcard sql/*--*.sql)
 PG_CONFIG   ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
-all: sql/$(EXTENSION)--$(EXTVERSION).sql
+all: sql/$(EXTENSION)--$(EXTVERSION).sql META.json Trunk.toml
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
 
-dist:
+dist: Trunk.toml META.json
 	git archive --format zip --prefix=$(EXTENSION)-$(DISTVERSION)/ -o $(EXTENSION)-$(DISTVERSION).zip HEAD sql META.json Trunk.toml pgmq.control README.md UPDATING.md
 
 test:
@@ -28,6 +25,14 @@ run.postgres:
 
 pgxn-zip: dist
 
+META.json:
+	sed 's/@@VERSION@@/$(EXTVERSION)/g' META.json.in > META.json
+
+Trunk.toml:
+	sed 's/@@VERSION@@/$(EXTVERSION)/g' Trunk.toml.in > Trunk.toml
+
 clean:
 	@rm -rf "$(EXTENSION)-$(DISTVERSION).zip"
 	@rm -rf "sql/$(EXTENSION)-$(DISTVERSION).sql"
+	@rm -rf META.json
+	@rm -rf Trunk.toml
