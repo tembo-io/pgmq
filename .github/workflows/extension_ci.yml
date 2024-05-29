@@ -39,12 +39,6 @@ jobs:
           prefix-key: "pgmq-extension-lint"
           workspaces: |
             pgmq/
-          # Additional directories to cache
-          cache-directories: |
-            /home/runner/.pgrx
-      - uses: ./.github/actions/pgx-init
-        with:
-          working-directory: ./integration_test
       - name: Cargo format
         run: cargo +nightly fmt --manifest-path integration_test/Cargo.toml --all --check
       - name: Clippy
@@ -97,9 +91,6 @@ jobs:
           prefix-key: "pgmq-extension-test"
           workspaces: |
               pgmq/extension
-          # Additional directories to cache
-          cache-directories: |
-            /home/runner/.pgrx
       - name: Install stoml and pg-trunk
         shell: bash
         run: |
