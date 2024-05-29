@@ -12,7 +12,7 @@
          "abstract": "A lightweight message queue like AWS SQS or RSMQ, but on Postgres",
          "file": "src/sql_src.sql",
          "docfile": "README.md",
-         "version": "1.3.0"
+         "version": "@@VERSION@@"
       }
    },
    "prereqs": {
