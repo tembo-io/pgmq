@@ -8,10 +8,10 @@ defaults:
 on:
   pull_request:
     branches:
-     - main
+      - main
     paths:
-      - '.github/workflows/crate_ci.yml'
-      - 'pgmq-rs/**'
+      - ".github/workflows/crate_ci.yml"
+      - "pgmq-rs/**"
   push:
     branches:
       - main

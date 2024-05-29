@@ -7,8 +7,8 @@ on:
       - "release/[0-9]+.[0-9]+"
   push:
     branches:
-      - 'main'
-      - 'release/[0-9]+.[0-9]+'
+      - "main"
+      - "release/[0-9]+.[0-9]+"
 
 jobs:
   find_directories:
@@ -30,7 +30,6 @@ jobs:
           # in a pull request, and using all directories on the release
           # or main branches.
           changed_relative_to_ref: origin/${{ github.base_ref || 'not-a-branch' }}
-
 
   cargo_publish:
     # On a pull request, this is validating that the version

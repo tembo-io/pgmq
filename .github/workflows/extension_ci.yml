@@ -10,14 +10,14 @@ on:
     branches:
       - main
     paths-ignore:
-      - 'pgmq-rs/**'
-      - 'tembo-pgmq-python/**'
+      - "pgmq-rs/**"
+      - "tembo-pgmq-python/**"
   push:
     branches:
       - main
     paths-ignore:
-      - 'pgmq-rs/**'
-      - 'tembo-pgmq-python/**'
+      - "pgmq-rs/**"
+      - "tembo-pgmq-python/**"
   release:
     types:
       - created
@@ -90,16 +90,16 @@ jobs:
         with:
           prefix-key: "pgmq-extension-test"
           workspaces: |
-              pgmq/extension
+            pgmq/extension
       - name: Install stoml and pg-trunk
         shell: bash
         run: |
-         set -xe
-         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
-         mv stoml_linux_amd64 stoml
-         chmod +x stoml
-         sudo mv stoml /usr/local/bin/
-         cargo install pg-trunk
+          set -xe
+          wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+          mv stoml_linux_amd64 stoml
+          chmod +x stoml
+          sudo mv stoml /usr/local/bin/
+          cargo install pg-trunk
       - name: Make trunk
         run: make Trunk.toml
       - name: trunk build
@@ -135,11 +135,11 @@ jobs:
       - name: Install stoml and pg-trunk
         shell: bash
         run: |
-         set -xe
-         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
-         mv stoml_linux_amd64 stoml
-         chmod +x stoml
-         sudo mv stoml /usr/local/bin/
+          set -xe
+          wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+          mv stoml_linux_amd64 stoml
+          chmod +x stoml
+          sudo mv stoml /usr/local/bin/
 
       - name: Set version strings
         id: versions

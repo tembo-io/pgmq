@@ -8,16 +8,16 @@ defaults:
 on:
   pull_request:
     branches:
-     - main
+      - main
     paths:
-      - '.github/workflows/crate_ci.yml'
-      - 'core/**'
+      - ".github/workflows/crate_ci.yml"
+      - "core/**"
   push:
     branches:
       - main
     paths:
-      - '.github/workflows/crate_ci.yml'
-      - 'core/**'
+      - ".github/workflows/crate_ci.yml"
+      - "core/**"
 jobs:
   lint:
     name: Run linters
