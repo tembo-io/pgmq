@@ -41,7 +41,7 @@ CREATE EXTENSION pgmq cascade;
 Once you have a postgres instance with the extension installed, run:
 
 ```bash
-DB_URL=postgres:postgres@localhost:5432/postgres make test
+DATABASE_URL=postgres:postgres@localhost:5432/postgres make test
 ```
 
 # Releases
