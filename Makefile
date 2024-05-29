@@ -1,6 +1,5 @@
 EXTENSION    = pgmq
 EXTVERSION   = $(shell grep -oP "^default_version\s*=\s\K.*" pgmq.control | tr -d "'")
-DISTVERSION  = $(EXTVERSION)
 
 DATA 		     = $(wildcard sql/*--*.sql)
 PG_CONFIG   ?= pg_config
@@ -13,7 +12,7 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
 
 dist: Trunk.toml META.json
-	git archive --format zip --prefix=$(EXTENSION)-$(DISTVERSION)/ -o $(EXTENSION)-$(DISTVERSION).zip HEAD sql META.json Trunk.toml pgmq.control README.md UPDATING.md
+	git archive --format zip --prefix=$(EXTENSION)-$(EXTVERSION)/ -o $(EXTENSION)-$(EXTVERSION).zip HEAD sql META.json Trunk.toml pgmq.control README.md UPDATING.md
 
 test:
 	cargo test --manifest-path integration_test/Cargo.toml --no-default-features -- --test-threads=1
@@ -32,7 +31,7 @@ Trunk.toml:
 	sed 's/@@VERSION@@/$(EXTVERSION)/g' Trunk.toml.in > Trunk.toml
 
 clean:
-	@rm -rf "$(EXTENSION)-$(DISTVERSION).zip"
-	@rm -rf "sql/$(EXTENSION)-$(DISTVERSION).sql"
+	@rm -rf "$(EXTENSION)-$(EXTVERSION).zip"
+	@rm -rf "sql/$(EXTENSION)-$(EXTVERSION).sql"
 	@rm -rf META.json
 	@rm -rf Trunk.toml
