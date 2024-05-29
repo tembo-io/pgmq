@@ -12,8 +12,7 @@ jobs:
     - name: Check out the repo
       uses: actions/checkout@v4
     - name: Bundle the Release
-      env: { GIT_BUNDLE_OPTS: --add-file META.json }
-      run: make META.json && pgxn-bundle
+      run: make dist
     - name: Release on PGXN
       env:
         PGXN_USERNAME: ${{ secrets.PGXN_USERNAME }}

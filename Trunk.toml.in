@@ -1,0 +1,16 @@
+[extension]
+name = "pgmq"
+repository = "https://github.com/tembo-io/pgmq"
+license = "PostgreSQL"
+description = "A lightweight message queue for PostgreSQL, like AWS SQS or RSMQ, but entirely in the database."
+homepage = "https://github.com/tembo-io/pgmq"
+documentation = "https://github.com/tembo-io/pgmq"
+categories = [
+      "featured",
+      "orchestration"
+]
+version = "@@VERSION@@"
+
+[build]
+postgres_version = "15"
+platform = "linux/amd64"

@@ -3,6 +3,7 @@ use pgmq_core::util::{conn_options, fetch_one_message};
 use rand::Rng;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{FromRow, Pool, Postgres, Row};
+use url::Url;
 
 #[allow(dead_code)]
 #[derive(FromRow)]
@@ -27,9 +28,7 @@ struct ResultSet {
     num_partmans: i64,
 }
 
-async fn connect(url: &str) -> Pool<Postgres> {
-    let options = conn_options(url).expect("failed to parse url");
-    println!("URL: {}", url);
+async fn do_connect(options: sqlx::postgres::PgConnectOptions) -> Pool<Postgres> {
     PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(10))
         .max_connections(5)
@@ -38,21 +37,30 @@ async fn connect(url: &str) -> Pool<Postgres> {
         .expect("failed to connect to pg")
 }
 
-async fn init_database() -> Pool<Postgres> {
-    let username = whoami::username();
-    let database_port = database_port();
+async fn connect(url: &str) -> Pool<Postgres> {
+    let options = conn_options(url).expect("failed to parse url");
+    do_connect(options).await
+}
 
-    let conn00 = connect(&format!(
-        "postgres://{username}:postgres@localhost:{database_port}/pgmq"
-    ))
-    .await;
+async fn connect_with_db(url: &str, db_name: &str) -> Pool<Postgres> {
+    let options = conn_options(url)
+        .expect("failed to parse url")
+        .database(db_name);
+    do_connect(options).await
+}
+
+async fn init_database() -> Pool<Postgres> {
+    let database_url = database_url();
+    let conn00 = connect_with_db(&database_url, "postgres").await;
+    let database_name = database_name(&database_url);
+
     // ignore the error if the db already exists!
-    let _ = sqlx::query("CREATE DATABASE pgmq_test;")
+    let _ = sqlx::query(&format!("CREATE DATABASE {database_name};"))
         .execute(&conn00)
         .await;
     conn00.close().await;
 
-    let conn = connect(&database_name()).await;
+    let conn = connect(&database_url).await;
 
     // DROP EXTENSION
     // requires pg_partman to already be installed in the instance
@@ -76,8 +84,6 @@ async fn init_database() -> Pool<Postgres> {
     conn
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_unlogged() {
     let conn = init_database().await;
@@ -111,8 +117,6 @@ async fn test_unlogged() {
     assert_eq!(message.msg_id, msg_id);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_max_queue_name_size() {
     let conn = init_database().await;
@@ -133,8 +137,6 @@ async fn test_max_queue_name_size() {
     assert!(result2.is_ok());
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_lifecycle() {
     let conn = init_database().await;
@@ -312,8 +314,6 @@ async fn test_lifecycle() {
     assert!(queues.is_empty());
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_archive() {
     let conn = init_database().await;
@@ -374,8 +374,6 @@ async fn test_archive() {
     assert_eq!(get_archive_size(&queue_name, &conn).await, 3);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_read_read_with_poll() {
     let conn = init_database().await;
@@ -431,8 +429,6 @@ async fn test_read_read_with_poll() {
     assert_eq!(read_batch3[0].get::<i64, usize>(0), msg_id1);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_purge_queue() {
     let conn = init_database().await;
@@ -460,8 +456,6 @@ async fn test_purge_queue() {
     assert_eq!(get_queue_size(&queue_name, &conn).await, 0);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_pop() {
     let conn = init_database().await;
@@ -491,8 +485,6 @@ async fn test_pop() {
     assert_eq!(get_queue_size(&queue_name, &conn).await, 2);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_set_vt() {
     let conn = init_database().await;
@@ -546,8 +538,6 @@ async fn test_set_vt() {
     assert_eq!(some_message.msg_id, first_msg_id);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_partitioned_delete() {
     let conn = init_database().await;
@@ -644,14 +634,12 @@ async fn test_partitioned_delete() {
     assert_eq!(deleted_batch[1].get::<i64, usize>(0), 2);
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_transaction_create() {
     // Queue creation is reverted if transaction is rolled back
     let _ = init_database().await;
     let queue_name = "transaction_test_queue";
-    let conn1 = connect(&database_name()).await;
+    let conn1 = connect(&database_url()).await;
     let mut tx1 = conn1.begin().await.unwrap();
 
     sqlx::query(&format!("select from {PGMQ_SCHEMA}.create('{queue_name}')"))
@@ -671,16 +659,14 @@ async fn test_transaction_create() {
     assert!(table_exists.is_none());
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_transaction_send() {
     // This aims to test that a message won't be visible for other transactions
     // until the transaction that published it commits
     let _ = init_database().await;
     let queue_name = "transaction_send_test_queue";
-    let conn1 = connect(&database_name()).await;
-    let conn2 = connect(&database_name()).await;
+    let conn1 = connect(&database_url()).await;
+    let conn2 = connect(&database_url()).await;
 
     create_queue(&queue_name.to_string(), &conn1).await;
 
@@ -716,16 +702,14 @@ async fn test_transaction_send() {
     assert!(read_msg2.is_some());
 }
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_transaction_read() {
     // A message read by one transaction can't be read by other concurrent transaction,
     // even if VT expired, until the other transaction is committed or rolled back.
     let _ = init_database().await;
     let queue_name = "transaction_read_test_queue";
-    let conn1 = connect(&database_name()).await;
-    let conn2 = connect(&database_name()).await;
+    let conn1 = connect(&database_url()).await;
+    let conn2 = connect(&database_url()).await;
 
     create_queue(&queue_name.to_string(), &conn1).await;
 
@@ -770,8 +754,7 @@ async fn test_transaction_read() {
 
     assert!(read_msg3.is_some());
 }
-// Integration tests are ignored by default
-#[ignore]
+
 #[tokio::test]
 async fn test_detach_archive() {
     let conn = init_database().await;
@@ -857,24 +840,14 @@ async fn send_sample_message(queue_name: &String, conn: &Pool<Postgres>) -> i64 
     .get::<i64, usize>(0)
 }
 
-fn database_name() -> String {
-    let username = whoami::username();
-    let database_port = database_port();
-    format!("postgres://{username}:postgres@localhost:{database_port}/pgmq_test")
+fn database_url() -> String {
+    match std::env::var("DATABASE_URL") {
+        Ok(val) => val,
+        Err(_) => "postgres://postgres:postgres@localhost:5432/pgmq_test".to_string(),
+    }
 }
 
-fn database_port() -> usize {
-    if cfg!(feature = "pg16") {
-        28816
-    } else if cfg!(feature = "pg15") {
-        28815
-    } else if cfg!(feature = "pg14") {
-        28814
-    } else if cfg!(feature = "pg13") {
-        28813
-    } else if cfg!(feature = "pg12") {
-        28812
-    } else {
-        5432
-    }
+fn database_name(url: &str) -> String {
+    let parsed = Url::parse(url).unwrap();
+    parsed.path().trim_start_matches('/').to_string()
 }

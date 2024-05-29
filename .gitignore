@@ -1,6 +1,6 @@
 .DS_Store
 .idea/
-/target
+target
 *.iml
 **/*.rs.bk
 Dockerfile
@@ -9,4 +9,9 @@ docker/**
 *.deb
 poetry.lock
 site
+*.zip
+sql/pgmq--*.sql
+!sql/pgmq--*--*.sql
+images/pgmq-pg/Dockerfile
 META.json
+Trunk.toml

@@ -2,7 +2,7 @@
    "name": "pgmq",
    "abstract": "A lightweight message queue like AWS SQS or RSMQ, but on Postgres",
    "description": "A lightweight message queue for PostgreSQL, like AWS SQS or RSMQ, but entirely in the database.",
-   "version": "@CARGO_VERSION@",
+   "version": "@@VERSION@@",
    "maintainer": [
       "Tembo <admin+pgxn@tembo.io>"
    ],
@@ -12,7 +12,7 @@
          "abstract": "A lightweight message queue like AWS SQS or RSMQ, but on Postgres",
          "file": "src/sql_src.sql",
          "docfile": "README.md",
-         "version": "@CARGO_VERSION@"
+         "version": "@@VERSION@@"
       }
    },
    "prereqs": {

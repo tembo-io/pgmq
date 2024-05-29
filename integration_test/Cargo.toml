@@ -1,37 +1,23 @@
 [package]
-name = "pgmq"
-version = "1.2.1"
+name = "pgmq-integration-tests"
+version = "0.1.0"
 edition = "2021"
 authors = ["Tembo.io"]
-description = "Postgres extension for PGMQ"
+description = "Integration tests for PGMQ"
 homepage = "https://www.tembo.io"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/tembo-io/pgmq/"
 publish = false
 
-[lib]
-crate-type = ["cdylib"]
-
-[features]
-default = ["pg16"]
-pg11 = ["pgrx/pg11", "pgrx-tests/pg11"]
-pg12 = ["pgrx/pg12", "pgrx-tests/pg12"]
-pg13 = ["pgrx/pg13", "pgrx-tests/pg13"]
-pg14 = ["pgrx/pg14", "pgrx-tests/pg14"]
-pg15 = ["pgrx/pg15", "pgrx-tests/pg15"]
-pg16 = ["pgrx/pg16", "pgrx-tests/pg16"]
-pg_test = []
-
 [dependencies]
-pgrx = "0.11.3"
 serde = "1.0.152"
-pgmq_core = { package = "pgmq-core", path = "./core" }
+pgmq_core = { package = "pgmq-core", path = "../core" }
 serde_json = "1.0.91"
 thiserror = "1.0.38"
+url = "2.3.1"
 
 [dev-dependencies]
-pgrx-tests = "0.11.3"
 chrono = { version = "0.4.23", features = ["serde"] }
 rand = "0.8.5"
 sqlx = { version = "0.7.2", features = [

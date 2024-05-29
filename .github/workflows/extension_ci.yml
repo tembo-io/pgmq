@@ -24,7 +24,7 @@ on:
 
 jobs:
   lint:
-    name: Run linters
+    name: Run linters for integration tests
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
@@ -39,16 +39,10 @@ jobs:
           prefix-key: "pgmq-extension-lint"
           workspaces: |
             pgmq/
-          # Additional directories to cache
-          cache-directories: |
-            /home/runner/.pgrx
-      - uses: ./.github/actions/pgx-init
-        with:
-          working-directory: ./
       - name: Cargo format
-        run: cargo +nightly fmt --all --check
+        run: cargo +nightly fmt --manifest-path integration_test/Cargo.toml --all --check
       - name: Clippy
-        run: cargo clippy
+        run: cargo clippy --manifest-path integration_test/Cargo.toml
 
   test:
     name: Run tests
@@ -56,55 +50,29 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pg: [
-          {version: "12.19", pgrx_version: "pg12"},
-          {version: "13.15", pgrx_version: "pg13"},
-          {version: "14.12", pgrx_version: "pg14"},
-          {version: "15.7", pgrx_version: "pg15"},
-          {version: "16.3", pgrx_version: "pg16"}
-        ]
+        pg: [12, 13, 14, 15, 16]
+    container: pgxn/pgxn-tools
     steps:
+      - run: pg-start ${{ matrix.pg }}
       - uses: actions/checkout@v2
+      - run: apt install -y pkg-config
       - name: Install Rust stable toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "pgmq-extension-test-${{ matrix.pg.pgrx_version }}"
+          prefix-key: "pgmq-extension-test-${{ matrix.pg }}"
           workspaces: |
             pgmq
-          # Additional directories to cache
-          cache-directories: |
-            /home/runner/.pgrx
-      - uses: ./.github/actions/pgx-init
-        with:
-          working-directory: ./
-          pgrx_pg_version: ${{ matrix.pg.pgrx_version }}
-          pg_version: ${{ matrix.pg.version }}
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --allow-downgrades postgresql-client-common=238
-          sudo apt-get install -y --allow-downgrades postgresql-common=238 postgresql-server-dev-14
-          sudo apt-get install -y --allow-downgrades postgresql-server-dev-all
-          # We need to make sure that only clang 14 is installed in the host before
-          # it tries to compile pgrx, as having multiple versions cause issues
-          # per https://github.com/pgcentralfoundation/pgrx/issues/1298
-          sudo apt-get autoremove -y clang-13 lldb-13 lld-13 clang-15 lldb-15 lld-15
       - name: Install pg_partman
         run: |
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
           git checkout v4.7.4 && \
-          sed -i 's|PG_CONFIG = pg_config|PG_CONFIG = ~/.pgrx/${{ matrix.pg.version }}/pgrx-install/bin/pg_config|' Makefile && \
           make && \
-          make install 
-      - name: Run tests
-        run: |
-          rm -rf ./target/pgrx-test-data-* || true
-          cargo pgrx run ${{ matrix.pg.pgrx_version }} --pgcli || true
-          PGRX_POSTGRES=${{ matrix.pg.pgrx_version }} make test
+          make install
+      - run: pg-build-test
 
   publish:
     name: trunk publish
@@ -123,9 +91,6 @@ jobs:
           prefix-key: "pgmq-extension-test"
           workspaces: |
               pgmq/extension
-          # Additional directories to cache
-          cache-directories: |
-            /home/runner/.pgrx
       - name: Install stoml and pg-trunk
         shell: bash
         run: |
@@ -135,6 +100,8 @@ jobs:
          chmod +x stoml
          sudo mv stoml /usr/local/bin/
          cargo install pg-trunk
+      - name: Make trunk
+        run: make Trunk.toml
       - name: trunk build
         working-directory: ./
         run: trunk build --pg-version ${{ matrix.pg-version }}
@@ -157,6 +124,9 @@ jobs:
       - self-hosted
       - dind
       - large-8x8
+    strategy:
+      matrix:
+        pg: [14, 15, 16]
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
@@ -181,13 +151,16 @@ jobs:
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-  
+
       - name: Login to Quay
         uses: docker/login-action@v2
         with:
           registry: quay.io/tembo
           username: ${{ secrets.QUAY_USER_TEMBO }}
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
+
+      - name: Generate dockerfile from template file
+        run: ./images/pgmq-pg/replace-pg-version.sh ${{ matrix.pg }} ./images/pgmq-pg/Dockerfile.in ./images/pgmq-pg/Dockerfile
 
       - name: Build and push -- Commit
         # push commit build when not a release
@@ -199,7 +172,7 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.SHORT_SHA }}
+            quay.io/tembo/pg${{matrix.pg}}-pgmq:v${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Build and push -- Releases
         # only publish release events
@@ -211,5 +184,5 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/pgmq-pg:v${{ steps.versions.outputs.TAG_VER }}
-            quay.io/tembo/pgmq-pg:latest
+            quay.io/tembo/pg${{matrix.pg}}-pgmq:v${{ steps.versions.outputs.TAG_VER }}
+            quay.io/tembo/pg${{matrix.pg}}-pgmq:latest
