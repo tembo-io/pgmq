@@ -13,3 +13,5 @@ site
 sql/pgmq--*.sql
 !sql/pgmq--*--*.sql
 images/pgmq-pg/Dockerfile
+META.json
+Trunk.toml
