@@ -12,7 +12,7 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
 
 dist: Trunk.toml META.json
-	git archive --format zip --prefix=$(EXTENSION)-$(EXTVERSION)/ -o $(EXTENSION)-$(EXTVERSION).zip HEAD sql META.json Trunk.toml pgmq.control README.md UPDATING.md
+	git archive --format zip --prefix=$(EXTENSION)-$(EXTVERSION)/ -o $(EXTENSION)-$(EXTVERSION).zip HEAD sql META.json Trunk.toml pgmq.control README.md UPDATING.md Makefile
 
 test:
 	cargo test --manifest-path integration_test/Cargo.toml --no-default-features -- --test-threads=1
