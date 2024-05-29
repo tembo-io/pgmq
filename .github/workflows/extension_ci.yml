@@ -100,6 +100,8 @@ jobs:
          chmod +x stoml
          sudo mv stoml /usr/local/bin/
          cargo install pg-trunk
+      - name: Make trunk
+        run: make Trunk.toml
       - name: trunk build
         working-directory: ./
         run: trunk build --pg-version ${{ matrix.pg-version }}
