@@ -1,5 +1,5 @@
 EXTENSION    = pgmq
-EXTVERSION   = $(shell grep -oP "^default_version\s*=\s\K.*" pgmq.control | tr -d "'")
+EXTVERSION   = $(shell grep "^default_version" pgmq.control | sed -E "s/^default_version[[:space:]]*=[[:space:]]*'(.*)'/\1/" | tr -d "'")
 
 DATA 		     = $(wildcard sql/*--*.sql)
 PG_CONFIG   ?= pg_config
