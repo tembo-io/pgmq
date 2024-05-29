@@ -8,22 +8,22 @@ defaults:
 on:
   pull_request:
     branches:
-     - main
+      - main
     paths:
-      - '.github/workflows/crate_ci.yml'
-      - 'core/**'
+      - ".github/workflows/crate_ci.yml"
+      - "core/**"
   push:
     branches:
       - main
     paths:
-      - '.github/workflows/crate_ci.yml'
-      - 'core/**'
+      - ".github/workflows/crate_ci.yml"
+      - "core/**"
 jobs:
   lint:
     name: Run linters
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install minimal nightly with clippy and rustfmt
         uses: actions-rs/toolchain@v1
         with:

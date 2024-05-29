@@ -7,8 +7,8 @@ on:
       - "release/[0-9]+.[0-9]+"
   push:
     branches:
-      - 'main'
-      - 'release/[0-9]+.[0-9]+'
+      - "main"
+      - "release/[0-9]+.[0-9]+"
 
 jobs:
   find_directories:
@@ -18,7 +18,7 @@ jobs:
       changed_crates: ${{ steps.find_directories.outputs.build_matrix }}
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Find directories including Cargo.toml that changed
         id: find_directories
         uses: ./.github/actions/find-changed-directories
@@ -30,7 +30,6 @@ jobs:
           # in a pull request, and using all directories on the release
           # or main branches.
           changed_relative_to_ref: origin/${{ github.base_ref || 'not-a-branch' }}
-
 
   cargo_publish:
     # On a pull request, this is validating that the version
@@ -47,7 +46,7 @@ jobs:
       matrix: ${{ fromJson(needs.find_directories.outputs.changed_crates) }}
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Determine which flags to use on cargo publish
         id: cargo_flags
         run: |
