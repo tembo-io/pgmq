@@ -6,13 +6,8 @@ description = "A lightweight message queue for PostgreSQL, like AWS SQS or RSMQ,
 homepage = "https://github.com/tembo-io/pgmq"
 documentation = "https://github.com/tembo-io/pgmq"
 categories = [
-      "mq",
-      "message queue",
-      "messaging",
-      "queues",
-      "fifo",
-      "sqs",
-      "rsmq"
+      "featured",
+      "orchestration"
 ]
 version = "@@VERSION@@"
 
