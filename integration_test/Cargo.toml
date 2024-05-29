@@ -10,11 +10,6 @@ readme = "README.md"
 repository = "https://github.com/tembo-io/pgmq/"
 publish = false
 
-[lib]
-crate-type = ["cdylib"]
-
-[features]
-
 [dependencies]
 serde = "1.0.152"
 pgmq_core = { package = "pgmq-core", path = "../core" }
