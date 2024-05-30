@@ -10,14 +10,14 @@ on:
     branches:
       - main
     paths-ignore:
-      - 'pgmq-rs/**'
-      - 'tembo-pgmq-python/**'
+      - "pgmq-rs/**"
+      - "tembo-pgmq-python/**"
   push:
     branches:
       - main
     paths-ignore:
-      - 'pgmq-rs/**'
-      - 'tembo-pgmq-python/**'
+      - "pgmq-rs/**"
+      - "tembo-pgmq-python/**"
   release:
     types:
       - created
@@ -27,7 +27,7 @@ jobs:
     name: Upgrade Test
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Rust stable toolchain
         uses: actions-rs/toolchain@v1
         with:

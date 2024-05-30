@@ -8,66 +8,66 @@ defaults:
 on:
   pull_request:
     branches:
-     - main
+      - main
     paths:
-      - '.github/workflows/pgmq-python.yml'
-      - 'tembo-pgmq-python/tembo_pgmq_python/**'
-      - 'tembo-pgmq-python/tests/**'
+      - ".github/workflows/pgmq-python.yml"
+      - "tembo-pgmq-python/tembo_pgmq_python/**"
+      - "tembo-pgmq-python/tests/**"
   push:
     branches:
       - main
     paths:
-      - '.github/workflows/pgmq-python.yml'
-      - 'tembo-pgmq-python/tembo_pgmq_python/**'
-      - 'tembo-pgmq-python/tests/**'
+      - ".github/workflows/pgmq-python.yml"
+      - "tembo-pgmq-python/tembo_pgmq_python/**"
+      - "tembo-pgmq-python/tests/**"
 
 jobs:
   lints:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.11.0
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.11.0
-    - name: Install dependencies
-      run: |
-        curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
-        poetry install
-    - name: Lints / Type Checking
-      run: make lints
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11.0
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11.0
+      - name: Install dependencies
+        run: |
+          curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
+          poetry install
+      - name: Lints / Type Checking
+        run: make lints
 
   tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.11.0
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.11.0
-    - name: Install dependencies
-      run: |
-        curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
-        poetry install
-    - name: Unit and Integration Tests
-      run: make test
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11.0
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11.0
+      - name: Install dependencies
+        run: |
+          curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
+          poetry install
+      - name: Unit and Integration Tests
+        run: make test
 
   publish:
     runs-on: ubuntu-latest
     # only publish off main branch
     if: github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.11.0
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.11.0
-    - name: Install dependencies
-      run: |
-        curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
-        poetry install
-    - name: Publish
-      env:
-        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
-      run: |
-        poetry publish --build --skip-existing
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11.0
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11.0
+      - name: Install dependencies
+        run: |
+          curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
+          poetry install
+      - name: Publish
+        env:
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          poetry publish --build --skip-existing
