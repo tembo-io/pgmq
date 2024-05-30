@@ -41,7 +41,7 @@ jobs:
     env:
       DATABASE_URL: "postgresql://postgres:postgres@0.0.0.0:5432/postgres"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Rust stable toolchain
         uses: actions-rs/toolchain@v1
         with:
