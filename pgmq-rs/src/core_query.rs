@@ -416,9 +416,9 @@ $$ LANGUAGE plpgsql;
         let vt: i32 = 20;
         let limit: i32 = 1;
 
-        let query = read(&qname, vt, limit).unwrap();
+        let query = read(qname, vt, limit).unwrap();
 
-        assert!(query.contains(&qname));
+        assert!(query.contains(qname));
         assert!(query.contains(&vt.to_string()));
     }
 
@@ -433,12 +433,12 @@ $$ LANGUAGE plpgsql;
 
     #[test]
     fn test_check_input() {
-        let invalids = vec!["bad;queue_name", "bad name", "bad--name"];
+        let invalids = ["bad;queue_name", "bad name", "bad--name"];
         for i in invalids.iter() {
             let is_valid = check_input(i);
             assert!(is_valid.is_err())
         }
-        let valids = vec!["good_queue", "greatqueue", "my_great_queue"];
+        let valids = ["good_queue", "greatqueue", "my_great_queue"];
         for i in valids.iter() {
             let is_valid = check_input(i);
             assert!(is_valid.is_ok())

@@ -97,7 +97,7 @@ async fn test_ext_create_list_drop() {
 
     assert!(q_names.contains(&test_queue));
 
-    let _ = queue
+    queue
         .drop_queue(&test_queue)
         .await
         .expect("error dropping queue");
