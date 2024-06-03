@@ -147,17 +147,20 @@
 
 #![doc(html_root_url = "https://docs.rs/pgmq/")]
 
-use pgmq_core::{query as core_query, types, util};
 use serde::{Deserialize, Serialize};
 use sqlx::error::Error;
 use sqlx::postgres::PgRow;
 use sqlx::types::chrono::Utc;
 use sqlx::{Pool, Postgres, Row};
 
-pub use pgmq_core::{errors::PgmqError, types::Message};
+pub mod core_errors;
+pub mod core_query;
+pub mod core_types;
+pub mod core_util;
 pub mod pg_ext;
 pub mod query;
 
+pub use core_errors::PgmqError;
 pub use pg_ext::PGMQueueExt;
 
 use std::time::Duration;
@@ -171,7 +174,7 @@ pub struct PGMQueue {
 
 impl PGMQueue {
     pub async fn new(url: String) -> Result<Self, PgmqError> {
-        let con = util::connect(&url, 5).await?;
+        let con = core_util::connect(&url, 5).await?;
         Ok(Self {
             url,
             connection: con,
@@ -519,15 +522,15 @@ impl PGMQueue {
         &self,
         queue_name: &str,
         vt: Option<i32>,
-    ) -> Result<Option<types::Message<T>>, PgmqError> {
+    ) -> Result<Option<core_types::Message<T>>, PgmqError> {
         // map vt or default VT
         let vt_ = match vt {
             Some(t) => t,
-            None => types::VT_DEFAULT,
+            None => core_types::VT_DEFAULT,
         };
-        let limit = types::READ_LIMIT_DEFAULT;
+        let limit = core_types::READ_LIMIT_DEFAULT;
         let query = &core_query::read(queue_name, vt_, limit)?;
-        let message = util::fetch_one_message::<T>(query, &self.connection).await?;
+        let message = core_util::fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
     }
 
@@ -601,11 +604,11 @@ impl PGMQueue {
         queue_name: &str,
         vt: Option<i32>,
         num_msgs: i32,
-    ) -> Result<Option<Vec<types::Message<T>>>, PgmqError> {
+    ) -> Result<Option<Vec<core_types::Message<T>>>, PgmqError> {
         // map vt or default VT
         let vt_ = match vt {
             Some(t) => t,
-            None => types::VT_DEFAULT,
+            None => core_types::VT_DEFAULT,
         };
         let query = &core_query::read(queue_name, vt_, num_msgs)?;
         let messages = fetch_messages::<T>(query, &self.connection).await?;
@@ -627,10 +630,10 @@ impl PGMQueue {
         max_batch_size: i32,
         poll_timeout: Option<Duration>,
         poll_interval: Option<Duration>,
-    ) -> Result<Option<Vec<types::Message<T>>>, PgmqError> {
-        let vt_ = vt.unwrap_or(types::VT_DEFAULT);
-        let poll_timeout_ = poll_timeout.unwrap_or(types::POLL_TIMEOUT_DEFAULT);
-        let poll_interval_ = poll_interval.unwrap_or(types::POLL_INTERVAL_DEFAULT);
+    ) -> Result<Option<Vec<core_types::Message<T>>>, PgmqError> {
+        let vt_ = vt.unwrap_or(core_types::VT_DEFAULT);
+        let poll_timeout_ = poll_timeout.unwrap_or(core_types::POLL_TIMEOUT_DEFAULT);
+        let poll_interval_ = poll_interval.unwrap_or(core_types::POLL_INTERVAL_DEFAULT);
         let start_time = std::time::Instant::now();
         loop {
             let query = &core_query::read(queue_name, vt_, max_batch_size)?;
@@ -900,9 +903,9 @@ impl PGMQueue {
     pub async fn pop<T: for<'de> Deserialize<'de>>(
         &self,
         queue_name: &str,
-    ) -> Result<Option<types::Message<T>>, PgmqError> {
+    ) -> Result<Option<core_types::Message<T>>, PgmqError> {
         let query = &core_query::pop(queue_name)?;
-        let message = util::fetch_one_message::<T>(query, &self.connection).await?;
+        let message = core_util::fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
     }
 
@@ -956,9 +959,9 @@ impl PGMQueue {
         queue_name: &str,
         msg_id: i64,
         vt: chrono::DateTime<Utc>,
-    ) -> Result<Option<types::Message<T>>, PgmqError> {
+    ) -> Result<Option<core_types::Message<T>>, PgmqError> {
         let query = &core_query::set_vt(queue_name, msg_id, vt)?;
-        let updated_message = util::fetch_one_message::<T>(query, &self.connection).await?;
+        let updated_message = core_util::fetch_one_message::<T>(query, &self.connection).await?;
         Ok(updated_message)
     }
 }
@@ -969,8 +972,8 @@ impl PGMQueue {
 async fn fetch_messages<T: for<'de> Deserialize<'de>>(
     query: &str,
     connection: &Pool<Postgres>,
-) -> Result<Option<Vec<types::Message<T>>>, PgmqError> {
-    let mut messages: Vec<types::Message<T>> = Vec::new();
+) -> Result<Option<Vec<core_types::Message<T>>>, PgmqError> {
+    let mut messages: Vec<core_types::Message<T>> = Vec::new();
     let result: Result<Vec<PgRow>, Error> = sqlx::query(query).fetch_all(connection).await;
     match result {
         Ok(rows) => {
@@ -984,7 +987,7 @@ async fn fetch_messages<T: for<'de> Deserialize<'de>>(
                     if let Err(e) = parsed_msg {
                         return Err(PgmqError::JsonParsingError(e));
                     } else if let Ok(parsed_msg) = parsed_msg {
-                        messages.push(types::Message {
+                        messages.push(core_types::Message {
                             msg_id: row.get("msg_id"),
                             vt: row.get("vt"),
                             read_ct: row.get("read_ct"),

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{errors::PgmqError, types::Message};
+use crate::{core_errors::PgmqError, core_types::Message};
 use log::LevelFilter;
 use serde::Deserialize;
 use sqlx::error::Error;

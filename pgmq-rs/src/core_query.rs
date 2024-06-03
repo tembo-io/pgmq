@@ -1,10 +1,10 @@
 //! Query constructors
 
 use crate::{
-    errors::PgmqError,
-    types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX},
-    util::check_input,
-    util::CheckedName,
+    core_errors::PgmqError,
+    core_types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX},
+    core_util::check_input,
+    core_util::CheckedName,
 };
 
 use sqlx::types::chrono::Utc;

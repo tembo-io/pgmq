@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
-use pgmq_core::{
-    errors::PgmqError,
-    types::{Message, ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX},
+use pgmq::{
+    core_errors::PgmqError,
+    core_types::{Message, ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX},
 };
 use rand::Rng;
 use serde::{Deserialize, Serialize};
