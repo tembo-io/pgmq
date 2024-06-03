@@ -9,30 +9,6 @@ use crate::{
 
 use sqlx::types::chrono::Utc;
 
-pub fn init_queue(name: &str, is_unlogged: bool) -> Result<Vec<String>, PgmqError> {
-    let name = CheckedName::new(name)?;
-    Ok(vec![
-        create_queue(name, is_unlogged)?,
-        assign_queue(name)?,
-        create_index(name)?,
-        create_archive(name)?,
-        assign_archive(name)?,
-        create_archive_index(name)?,
-        insert_meta(name, false, is_unlogged)?,
-    ])
-}
-
-pub fn destroy_queue(name: &str) -> Result<Vec<String>, PgmqError> {
-    let name = CheckedName::new(name)?;
-    Ok(vec![
-        unassign_queue(name)?,
-        unassign_archive(name)?,
-        drop_queue(name)?,
-        drop_queue_archive(name)?,
-        delete_queue_metadata(name)?,
-    ])
-}
-
 pub fn create_queue(name: CheckedName<'_>, is_unlogged: bool) -> Result<String, PgmqError> {
     let maybe_unlogged = if is_unlogged { "UNLOGGED" } else { "" };
 
@@ -261,50 +237,6 @@ pub fn pop(name: &str) -> Result<String, PgmqError> {
     ))
 }
 
-pub fn assign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(assign(&format!("{QUEUE_PREFIX}_{name}")))
-}
-
-pub fn assign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(assign(&format!("{ARCHIVE_PREFIX}_{name}")))
-}
-
-pub fn unassign_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(format!(
-        "ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}; "
-    ))
-}
-
-pub fn unassign_archive(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    Ok(format!(
-        "ALTER EXTENSION pgmq DROP TABLE {PGMQ_SCHEMA}.{ARCHIVE_PREFIX}_{name}; "
-    ))
-}
-
-// assign a table to pgmq extension, only if its not already assigned
-pub fn assign(table_name: &str) -> String {
-    format!(
-        "
-    DO $$
-        BEGIN
-        -- Check if the table is not yet associated with the extension
-        IF NOT EXISTS (
-            SELECT 1
-            FROM pg_depend
-            WHERE refobjid = (SELECT oid FROM pg_extension WHERE extname = 'pgmq')
-            AND objid = (
-                SELECT oid
-                FROM pg_class
-                WHERE relname = '{table_name}'
-            )
-        ) THEN
-            EXECUTE 'ALTER EXTENSION pgmq ADD TABLE {PGMQ_SCHEMA}.{table_name}';
-        END IF;
-    END $$;
-    "
-    )
-}
-
 fn grant_stmt(table: &str) -> String {
     let grant_seq = match &table.contains("meta") {
         true => "".to_string(),
@@ -337,11 +269,6 @@ pub fn grant_pgmon_meta() -> String {
 // pg_monitor needs to query queue tables
 pub fn grant_pgmon_queue(name: CheckedName<'_>) -> Result<String, PgmqError> {
     let table = format!("{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}");
-    Ok(grant_stmt(&table))
-}
-
-pub fn grant_pgmon_queue_seq(name: CheckedName<'_>) -> Result<String, PgmqError> {
-    let table = format!("{PGMQ_SCHEMA}.{QUEUE_PREFIX}_{name}_msg_id_seq");
     Ok(grant_stmt(&table))
 }
 
@@ -381,12 +308,6 @@ END;
 $$ LANGUAGE plpgsql;
 ";
         assert_eq!(q, expected)
-    }
-
-    #[test]
-    fn test_assign() {
-        let query = assign("a_my_queue_archive");
-        assert!(query.contains("WHERE relname = 'a_my_queue_archive'"));
     }
 
     #[test]

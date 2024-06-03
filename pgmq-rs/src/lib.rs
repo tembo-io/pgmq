@@ -154,9 +154,9 @@ use sqlx::types::chrono::Utc;
 use sqlx::{Pool, Postgres, Row};
 
 pub mod core_errors;
-pub mod core_query;
+mod core_query;
 pub mod core_types;
-pub mod core_util;
+mod core_util;
 pub mod pg_ext;
 pub mod query;
 
