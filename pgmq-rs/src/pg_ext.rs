@@ -1,9 +1,7 @@
+use crate::errors::PgmqError;
+use crate::types::{Message, QUEUE_PREFIX};
+use crate::util::{check_input, connect};
 use log::info;
-use pgmq_core::{
-    errors::PgmqError,
-    types::{Message, QUEUE_PREFIX},
-    util::{check_input, connect},
-};
 use serde::{Deserialize, Serialize};
 use sqlx::types::chrono::Utc;
 use sqlx::{Executor, Pool, Postgres};

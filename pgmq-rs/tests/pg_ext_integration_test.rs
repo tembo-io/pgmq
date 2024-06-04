@@ -1,4 +1,4 @@
-use pgmq_core::types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX};
+use pgmq::types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres, Row};
@@ -97,7 +97,7 @@ async fn test_ext_create_list_drop() {
 
     assert!(q_names.contains(&test_queue));
 
-    let _ = queue
+    queue
         .drop_queue(&test_queue)
         .await
         .expect("error dropping queue");
@@ -106,7 +106,7 @@ async fn test_ext_create_list_drop() {
         .list_queues()
         .await
         .expect("error listing queues")
-        .expect("test queue was not created")
+        .unwrap_or(vec![])
         .iter()
         .map(|q| q.queue_name.clone())
         .collect::<Vec<String>>();

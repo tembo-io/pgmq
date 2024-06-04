@@ -865,8 +865,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b2a4787296e9989611394c33f193f676704af1686e70b8f8033ab5ba9a35a94"
 
 [[package]]
-name = "pgmq-core"
-version = "0.8.5"
+name = "pgmq"
+version = "0.28.0"
 dependencies = [
  "chrono",
  "log",
@@ -883,7 +883,8 @@ name = "pgmq-integration-tests"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "pgmq-core",
+ "log",
+ "pgmq",
  "rand",
  "serde",
  "serde_json",

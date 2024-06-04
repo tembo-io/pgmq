@@ -1,5 +1,5 @@
 use chrono::{Duration, Utc};
-use pgmq_core::{
+use pgmq::{
     errors::PgmqError,
     types::{Message, ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX},
 };
@@ -16,7 +16,7 @@ async fn init_queue(qname: &str) -> pgmq::PGMQueue {
         .await
         .expect("failed to connect to postgres");
     // make sure queue doesn't exist before the test
-    let _ = queue.destroy(qname).await.unwrap();
+    queue.destroy(qname).await.unwrap();
     // CREATE QUEUE
     // jiggle to mitigate race condition in concurrent `create if not exists` statements
     let random_sleep_ms = rand::thread_rng().gen_range(0..1000);
@@ -741,7 +741,7 @@ async fn test_destroy() {
     assert_eq!(read.msg_id, msg2);
 
     // must not panic
-    let _ = queue.destroy(&test_queue).await.unwrap();
+    queue.destroy(&test_queue).await.unwrap();
 
     // the queue and the queue archive should no longer exist
     let queue_table = fallible_rowcount(&test_queue, &queue.connection).await;

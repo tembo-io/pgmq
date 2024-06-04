@@ -56,7 +56,7 @@
 //! ## Minimal example at a glance
 //!
 //! ```rust
-//! use pgmq::{PgmqError, Message, PGMQueue};
+//! use pgmq::{PgmqError, types::Message, PGMQueue};
 //! use serde::{Deserialize, Serialize};
 //! use serde_json::Value;
 //!
@@ -147,17 +147,20 @@
 
 #![doc(html_root_url = "https://docs.rs/pgmq/")]
 
-use pgmq_core::{query as core_query, types, util};
 use serde::{Deserialize, Serialize};
 use sqlx::error::Error;
 use sqlx::postgres::PgRow;
 use sqlx::types::chrono::Utc;
 use sqlx::{Pool, Postgres, Row};
 
-pub use pgmq_core::{errors::PgmqError, types::Message};
+pub mod errors;
 pub mod pg_ext;
-pub mod query;
+pub mod types;
+pub mod util;
 
+mod query;
+
+pub use errors::PgmqError;
 pub use pg_ext::PGMQueueExt;
 
 use std::time::Duration;
@@ -320,7 +323,7 @@ impl PGMQueue {
         message: &T,
     ) -> Result<i64, PgmqError> {
         let msg = serde_json::json!(&message);
-        let row: PgRow = sqlx::query(&core_query::enqueue(queue_name, 1, &0)?)
+        let row: PgRow = sqlx::query(&query::enqueue(queue_name, 1, &0)?)
             .bind(msg)
             .fetch_one(&self.connection)
             .await?;
@@ -386,7 +389,7 @@ impl PGMQueue {
         delay: u64,
     ) -> Result<i64, PgmqError> {
         let msg = serde_json::json!(&message);
-        let row: PgRow = sqlx::query(&core_query::enqueue(queue_name, 1, &delay)?)
+        let row: PgRow = sqlx::query(&query::enqueue(queue_name, 1, &delay)?)
             .bind(msg)
             .fetch_one(&self.connection)
             .await?;
@@ -440,7 +443,7 @@ impl PGMQueue {
         messages: &[T],
     ) -> Result<Vec<i64>, PgmqError> {
         let mut msg_ids: Vec<i64> = Vec::new();
-        let query = core_query::enqueue(queue_name, messages.len(), &0)?;
+        let query = query::enqueue(queue_name, messages.len(), &0)?;
         let mut q = sqlx::query(&query);
         for msg in messages.iter() {
             q = q.bind(serde_json::json!(msg));
@@ -470,7 +473,7 @@ impl PGMQueue {
     /// Example:
     ///
     /// ```rust
-    /// use pgmq::{Message, PgmqError, PGMQueue};
+    /// use pgmq::{types::Message, PgmqError, PGMQueue};
     /// use serde::{Deserialize, Serialize};
     /// use serde_json::Value;
     ///
@@ -526,7 +529,7 @@ impl PGMQueue {
             None => types::VT_DEFAULT,
         };
         let limit = types::READ_LIMIT_DEFAULT;
-        let query = &core_query::read(queue_name, vt_, limit)?;
+        let query = &query::read(queue_name, vt_, limit)?;
         let message = util::fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
     }
@@ -548,7 +551,7 @@ impl PGMQueue {
     /// Example:
     ///
     /// ```rust
-    /// use pgmq::{Message, PgmqError, PGMQueue};
+    /// use pgmq::{types::Message, PgmqError, PGMQueue};
     /// use serde::{Deserialize, Serialize};
     /// use serde_json::Value;
     ///
@@ -607,7 +610,7 @@ impl PGMQueue {
             Some(t) => t,
             None => types::VT_DEFAULT,
         };
-        let query = &core_query::read(queue_name, vt_, num_msgs)?;
+        let query = &query::read(queue_name, vt_, num_msgs)?;
         let messages = fetch_messages::<T>(query, &self.connection).await?;
         Ok(messages)
     }
@@ -633,7 +636,7 @@ impl PGMQueue {
         let poll_interval_ = poll_interval.unwrap_or(types::POLL_INTERVAL_DEFAULT);
         let start_time = std::time::Instant::now();
         loop {
-            let query = &core_query::read(queue_name, vt_, max_batch_size)?;
+            let query = &query::read(queue_name, vt_, max_batch_size)?;
             let messages = fetch_messages::<T>(query, &self.connection).await?;
             match messages {
                 Some(m) => {
@@ -696,7 +699,7 @@ impl PGMQueue {
     ///     Ok(())
     /// }
     pub async fn delete(&self, queue_name: &str, msg_id: i64) -> Result<u64, PgmqError> {
-        let query = &core_query::delete_batch(queue_name)?;
+        let query = &query::delete_batch(queue_name)?;
         let row = sqlx::query(query)
             .bind(vec![msg_id])
             .execute(&self.connection)
@@ -748,7 +751,7 @@ impl PGMQueue {
     ///     Ok(())
     /// }
     pub async fn delete_batch(&self, queue_name: &str, msg_ids: &[i64]) -> Result<u64, PgmqError> {
-        let query = &core_query::delete_batch(queue_name)?;
+        let query = &query::delete_batch(queue_name)?;
         let row = sqlx::query(query)
             .bind(msg_ids)
             .execute(&self.connection)
@@ -758,7 +761,7 @@ impl PGMQueue {
     }
 
     pub async fn purge(&self, queue_name: &str) -> Result<u64, PgmqError> {
-        let query = &core_query::purge_queue(queue_name)?;
+        let query = &query::purge_queue(queue_name)?;
         let row = sqlx::query(query).execute(&self.connection).await?;
         let num_deleted = row.rows_affected();
         Ok(num_deleted)
@@ -845,7 +848,7 @@ impl PGMQueue {
     ///     Ok(())
     /// }
     pub async fn archive_batch(&self, queue_name: &str, msg_ids: &[i64]) -> Result<u64, PgmqError> {
-        let query = core_query::archive_batch(queue_name)?;
+        let query = query::archive_batch(queue_name)?;
         let row = sqlx::query(&query)
             .bind(msg_ids)
             .execute(&self.connection)
@@ -863,7 +866,7 @@ impl PGMQueue {
     /// Example:
     ///
     /// ```rust
-    /// use pgmq::{Message, PgmqError, PGMQueue};
+    /// use pgmq::{types::Message, PgmqError, PGMQueue};
     /// use serde::{Deserialize, Serialize};
     /// use serde_json::Value;
     ///
@@ -901,7 +904,7 @@ impl PGMQueue {
         &self,
         queue_name: &str,
     ) -> Result<Option<types::Message<T>>, PgmqError> {
-        let query = &core_query::pop(queue_name)?;
+        let query = &query::pop(queue_name)?;
         let message = util::fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
     }
@@ -957,7 +960,7 @@ impl PGMQueue {
         msg_id: i64,
         vt: chrono::DateTime<Utc>,
     ) -> Result<Option<types::Message<T>>, PgmqError> {
-        let query = &core_query::set_vt(queue_name, msg_id, vt)?;
+        let query = &query::set_vt(queue_name, msg_id, vt)?;
         let updated_message = util::fetch_one_message::<T>(query, &self.connection).await?;
         Ok(updated_message)
     }
