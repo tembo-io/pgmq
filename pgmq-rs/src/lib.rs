@@ -56,7 +56,7 @@
 //! ## Minimal example at a glance
 //!
 //! ```rust
-//! use pgmq::{PgmqError, Message, PGMQueue};
+//! use pgmq::{PgmqError, types::Message, PGMQueue};
 //! use serde::{Deserialize, Serialize};
 //! use serde_json::Value;
 //!
@@ -473,7 +473,7 @@ impl PGMQueue {
     /// Example:
     ///
     /// ```rust
-    /// use pgmq::{Message, PgmqError, PGMQueue};
+    /// use pgmq::{types::Message, PgmqError, PGMQueue};
     /// use serde::{Deserialize, Serialize};
     /// use serde_json::Value;
     ///
@@ -551,7 +551,7 @@ impl PGMQueue {
     /// Example:
     ///
     /// ```rust
-    /// use pgmq::{Message, PgmqError, PGMQueue};
+    /// use pgmq::{types::Message, PgmqError, PGMQueue};
     /// use serde::{Deserialize, Serialize};
     /// use serde_json::Value;
     ///
@@ -866,7 +866,7 @@ impl PGMQueue {
     /// Example:
     ///
     /// ```rust
-    /// use pgmq::{Message, PgmqError, PGMQueue};
+    /// use pgmq::{types::Message, PgmqError, PGMQueue};
     /// use serde::{Deserialize, Serialize};
     /// use serde_json::Value;
     ///
