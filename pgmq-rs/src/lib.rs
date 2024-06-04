@@ -156,9 +156,9 @@ use sqlx::{Pool, Postgres, Row};
 pub mod errors;
 pub mod pg_ext;
 pub mod types;
+pub mod util;
 
 mod query;
-mod util;
 
 pub use errors::PgmqError;
 pub use pg_ext::PGMQueueExt;

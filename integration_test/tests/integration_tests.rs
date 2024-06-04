@@ -1,8 +1,13 @@
-use pgmq_core::types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX};
-use pgmq_core::util::{conn_options, fetch_one_message};
+use pgmq::{
+    types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX},
+    util::{conn_options, fetch_one_message},
+};
 use rand::Rng;
+
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{FromRow, Pool, Postgres, Row};
+use sqlx::FromRow;
+use sqlx::Row;
+use sqlx::{Pool, Postgres};
 use url::Url;
 
 #[allow(dead_code)]
