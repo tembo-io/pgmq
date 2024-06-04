@@ -145,7 +145,8 @@ jobs:
         id: versions
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "TAG_VER=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "TAG_VER=$(grep 'default_version' pgmq.control | cut -d "'" -f 2)" >> $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
