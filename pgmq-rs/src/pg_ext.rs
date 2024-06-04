@@ -1,6 +1,6 @@
-use crate::core_util::{check_input, connect};
 use crate::errors::PgmqError;
 use crate::types::{Message, QUEUE_PREFIX};
+use crate::util::{check_input, connect};
 use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::types::chrono::Utc;

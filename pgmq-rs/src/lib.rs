@@ -153,11 +153,11 @@ use sqlx::postgres::PgRow;
 use sqlx::types::chrono::Utc;
 use sqlx::{Pool, Postgres, Row};
 
-mod core_util;
 pub mod errors;
 pub mod pg_ext;
 mod query;
 pub mod types;
+mod util;
 
 pub use errors::PgmqError;
 pub use pg_ext::PGMQueueExt;
@@ -173,7 +173,7 @@ pub struct PGMQueue {
 
 impl PGMQueue {
     pub async fn new(url: String) -> Result<Self, PgmqError> {
-        let con = core_util::connect(&url, 5).await?;
+        let con = util::connect(&url, 5).await?;
         Ok(Self {
             url,
             connection: con,
@@ -529,7 +529,7 @@ impl PGMQueue {
         };
         let limit = types::READ_LIMIT_DEFAULT;
         let query = &query::read(queue_name, vt_, limit)?;
-        let message = core_util::fetch_one_message::<T>(query, &self.connection).await?;
+        let message = util::fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
     }
 
@@ -904,7 +904,7 @@ impl PGMQueue {
         queue_name: &str,
     ) -> Result<Option<types::Message<T>>, PgmqError> {
         let query = &query::pop(queue_name)?;
-        let message = core_util::fetch_one_message::<T>(query, &self.connection).await?;
+        let message = util::fetch_one_message::<T>(query, &self.connection).await?;
         Ok(message)
     }
 
@@ -960,7 +960,7 @@ impl PGMQueue {
         vt: chrono::DateTime<Utc>,
     ) -> Result<Option<types::Message<T>>, PgmqError> {
         let query = &query::set_vt(queue_name, msg_id, vt)?;
-        let updated_message = core_util::fetch_one_message::<T>(query, &self.connection).await?;
+        let updated_message = util::fetch_one_message::<T>(query, &self.connection).await?;
         Ok(updated_message)
     }
 }

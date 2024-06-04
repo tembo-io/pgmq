@@ -1,8 +1,8 @@
 //! Query constructors
 
-use crate::types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX};
-use crate::core_util::{check_input, CheckedName};
 use crate::errors::PgmqError;
+use crate::types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX};
+use crate::util::{check_input, CheckedName};
 
 use sqlx::types::chrono::Utc;
 
