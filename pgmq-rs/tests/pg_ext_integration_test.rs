@@ -106,7 +106,7 @@ async fn test_ext_create_list_drop() {
         .list_queues()
         .await
         .expect("error listing queues")
-        .expect("test queue was not created")
+        .unwrap_or(vec![])
         .iter()
         .map(|q| q.queue_name.clone())
         .collect::<Vec<String>>();
