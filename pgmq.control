@@ -1,5 +1,5 @@
 comment = 'A lightweight message queue. Like AWS SQS and RSMQ but on Postgres.'
-default_version = '1.3.2'
+default_version = '1.3.3'
 module_pathname = '$libdir/pgmq'
 schema = 'pgmq'
 relocatable = false

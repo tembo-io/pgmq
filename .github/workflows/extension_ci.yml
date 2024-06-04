@@ -112,9 +112,9 @@ jobs:
         env:
           TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
         run: |
-          pgmq_ver=$(stoml Cargo.toml package.version)
-          pgmq_descr=$(stoml Cargo.toml package.description)
-          pgmq_repo=$(stoml Cargo.toml package.repository)
+          pgmq_ver=$(stoml Trunk.toml extension.version)
+          pgmq_descr=$(stoml Trunk.toml extension.description)
+          pgmq_repo=$(stoml Trunk.toml extension.repository)
           trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
     name: Build and push images
@@ -145,7 +145,7 @@ jobs:
         id: versions
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "TAG_VER=$(/usr/local/bin/stoml Cargo.toml package.version)" >> $GITHUB_OUTPUT
+          echo "TAG_VER=$(grep 'default_version' pgmq.control | cut -d "'" -f 2)" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
