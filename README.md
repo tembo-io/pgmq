@@ -272,6 +272,14 @@ pg_partman_bgw.dbname = 'postgres'
 
 pgmq guarantees exactly once delivery of a message within a visibility timeout. The visibility timeout is the amount of time a message is invisible to other consumers after it has been read by a consumer. If the message is NOT deleted or archived within the visibility timeout, it will become visible again and can be read by another consumer. The visibility timeout is set when a message is read from the queue, via `pgmq.read()`. It is recommended to set a `vt` value that is greater than the expected time it takes to process a message. After the application successfully processes the message, it should call `pgmq.delete()` to completely remove the message from the queue or `pgmq.archive()` to move it to the archive table for the queue.
 
+## Who uses pgmq?
+
+As the pgmq community grows, we'd love to see who is using it. Please send a PR with your company name and @githubhandle.
+
+Currently, officially using pgmq:
+
+1. [Tembo](https://tembo.io)
+
 ## ✨ Contributors
 
 Thanks goes to these incredible people:
