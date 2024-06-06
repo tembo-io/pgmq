@@ -8,7 +8,7 @@ A lightweight message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RS
 [![OSSRank](https://shields.io/endpoint?url=https://ossrank.com/shield/3809)](https://ossrank.com/p/3809)
 [![PGXN version](https://badge.fury.io/pg/pgmq.svg)](https://pgxn.org/dist/pgmq/)
 
-**Documentation**: https://tembo-io.github.io/pgmq/
+**Documentation**: https://tembo.io/pgmq/
 
 **Source**: https://github.com/tembo-io/pgmq
 
