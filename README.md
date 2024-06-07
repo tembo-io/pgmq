@@ -31,6 +31,7 @@ Postgres 12-16.
   - [Support](#support)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
+    - [Updating](#updating)
   - [Client Libraries](#client-libraries)
   - [SQL Examples](#sql-examples)
     - [Creating a queue](#creating-a-queue)
@@ -47,10 +48,10 @@ Postgres 12-16.
 
 ## Installation
 
-The fastest way to get started is by running the Tembo docker image, where PGMQ comes pre-installed.
+The fastest way to get started is by running the Tembo Docker image, where PGMQ comes pre-installed in Postgres.
 
 ```bash
-docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest
+docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pg16-pgmq:latest
 ```
 
 If you'd like to build from source, you can follow the instructions in [CONTRIBUTING.md](CONTRIBUTING.md).

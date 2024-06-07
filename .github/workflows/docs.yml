@@ -1,0 +1,22 @@
+name: Docs CI Workflow
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+      - run: curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.3 python3 -
+      - run: poetry install
+      - name: deploy docs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: poetry run mkdocs gh-deploy --force
