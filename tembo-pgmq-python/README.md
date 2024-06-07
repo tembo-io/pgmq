@@ -17,7 +17,7 @@ Postgres running the [Tembo PGMQ extension](https://github.com/tembo-io/tembo/tr
 ### Start a Postgres Instance with the Tembo extension installed
 
 ```bash
-docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest
+docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pg16-pgmq:latest
 ```
 
 ### Using Environment Variables
