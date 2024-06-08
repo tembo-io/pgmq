@@ -91,6 +91,12 @@ Once you have a postgres instance with the extension installed, run:
 make test
 ```
 
+If you want to run the tests on a specific Postgres instance, pass the `DATABASE_URL` environment variable along with the `make` command:
+
+```bash
+make test DATABASE_URL=postgres:postgres@myhost:5432/mydb
+```
+
 ## Releases
 
 PGMQ Postgres Extension releases are automated through two Github workflows; [Containers / Trunk packages](https://github.com/tembo-io/pgmq/blob/main/.github/workflows/extension_ci.ym), and [PGXN distribution](https://github.com/tembo-io/pgmq/blob/main/.github/workflows/pgxn-release.yml). To create a release:
