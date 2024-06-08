@@ -81,6 +81,12 @@ If you are working with partitioned queues, you will need to install `pg_partman
 make install-pg-partman
 ```
 
+Then,
+
+```sql
+CREATE EXTENSION pg_partman
+```
+
 ## Running tests
 
 Tests are written in Rust, so you will need to have the [Rust toolchain](https://www.rust-lang.org/tools/install) installed in order to run them.
