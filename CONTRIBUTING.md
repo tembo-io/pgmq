@@ -38,7 +38,7 @@ Connect to Postgres:
 psql -U postgres
 ```
 
-Fresh install will have not have PGMQ installed.
+A fresh install will have not have PGMQ installed.
 
 ```psql
 postgres=# \dx
