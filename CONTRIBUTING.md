@@ -84,7 +84,7 @@ make install-pg-partman
 Then,
 
 ```sql
-CREATE EXTENSION pg_partman
+CREATE EXTENSION pg_partman;
 ```
 
 ## Running tests

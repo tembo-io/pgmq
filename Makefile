@@ -6,8 +6,6 @@ PG_CONFIG   ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
-DATABASE_URL:=postgres://postgres:postgres@localhost:5432/postgres 
-
 all: sql/$(EXTENSION)--$(EXTVERSION).sql META.json Trunk.toml
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
@@ -17,7 +15,7 @@ dist: Trunk.toml META.json
 	git archive --format zip --prefix=$(EXTENSION)-$(EXTVERSION)/ -o $(EXTENSION)-$(EXTVERSION).zip --add-file META.json --add-file Trunk.toml HEAD sql pgmq.control README.md UPDATING.md Makefile
 
 test:
-	DATABASE_URL=${DATABASE_URL} cargo test --manifest-path integration_test/Cargo.toml --no-default-features -- --test-threads=1
+	cargo test --manifest-path integration_test/Cargo.toml --no-default-features -- --test-threads=1
 
 installcheck: test
 
