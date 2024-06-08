@@ -100,7 +100,7 @@ PGMQ Postgres Extension releases are automated through two Github workflows; [Co
 
 ### Container Images
 
-Postgres images with PGMQ and all required dependencies are built and published to `quay.io/tembo-pg{VERSION>-pgmq:{TAG}` for all supported Postgres versions and PGMQ releases.
+Postgres images with PGMQ and all required dependencies are built and published to `quay.io/tembo-pg{PG_VERSION}-pgmq:{TAG}` for all supported Postgres versions and PGMQ releases.
 
 ### Extension Packages
 
