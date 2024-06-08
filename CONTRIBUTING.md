@@ -93,7 +93,10 @@ make test
 
 ## Releases
 
-PGMQ Postgres Extension releases are automated through a [Github workflow](https://github.com/tembo-io/pgmq/blob/main/.github/workflows/extension_ci.yml). To create a release, create a new tag follow a valid [semver](https://semver.org/), then create a release with the same name. Auto-generate the release notes and/or add more relevant details as needed.
+PGMQ Postgres Extension releases are automated through two Github workflows; [Containers / Trunk packages](https://github.com/tembo-io/pgmq/blob/main/.github/workflows/extension_ci.ym), and [PGXN distribution](https://github.com/tembo-io/pgmq/blob/main/.github/workflows/pgxn-release.yml). To create a release:
+
+1. Update and commit the new valid [semver](https://semver.org/) version in [pgmq.control](https://github.com/tembo-io/pgmq/blob/main/pgmq.control).
+2. Create a [Github release](https://github.com/tembo-io/pgmq/releases) using the extension's version for the `tag` and `title`. Auto-generate the release notes and/or add more relevant details as needed.
 
 ### Container Images
 
