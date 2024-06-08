@@ -6,6 +6,8 @@ PG_CONFIG   ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
+DATABASE_URL:=postgres:postgres@localhost:5432/postgres 
+
 all: sql/$(EXTENSION)--$(EXTVERSION).sql META.json Trunk.toml
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
@@ -20,7 +22,7 @@ test:
 installcheck: test
 
 run.postgres:
-	docker run -d --name pgmq-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest
+	docker run -d --name pgmq-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pg16-pgmq:latest
 
 pgxn-zip: dist
 
@@ -35,3 +37,11 @@ clean:
 	@rm -rf "sql/$(EXTENSION)--$(EXTVERSION).sql"
 	@rm -rf META.json
 	@rm -rf Trunk.toml
+
+install-pg-partman:
+	git clone https://github.com/pgpartman/pg_partman.git && \
+	cd pg_partman && \
+	git checkout v4.7.4 && \
+	make && \
+	make install PG_CONFIG=$(PG_CONFIG) && \
+	cd ../ && rm -rf pg_partman
