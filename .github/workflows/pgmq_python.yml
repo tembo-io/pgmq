@@ -10,7 +10,7 @@ on:
     branches:
       - main
     paths:
-      - ".github/workflows/pgmq-python.yml"
+      - ".github/workflows/pgmq_python.yml"
       - "tembo-pgmq-python/tembo_pgmq_python/**"
       - "tembo-pgmq-python/tests/**"
       - "tembo-pgmq-python/pyproject.toml"
@@ -18,7 +18,7 @@ on:
     branches:
       - main
     paths:
-      - ".github/workflows/pgmq-python.yml"
+      - ".github/workflows/pgmq_python.yml"
       - "tembo-pgmq-python/tembo_pgmq_python/**"
       - "tembo-pgmq-python/tests/**"
       - "tembo-pgmq-python/pyproject.toml"
