@@ -1,8 +1,12 @@
 EXTENSION    = pgmq
-EXTVERSION   = $(shell grep "^default_version" pgmq.control | sed -E "s/^default_version[[:space:]]*=[[:space:]]*'(.*)'/\1/" | tr -d "'")
+EXTVERSION   = $(shell grep "^default_version" pgmq.control | sed -r "s/default_version[^']+'([^']+).*/\1/")
+DATA         = $(wildcard sql/*--*.sql)
+TESTS        = $(wildcard test/sql/*.sql)
+REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
+REGRESS_OPTS = --inputdir=test
 
-DATA 		     = $(wildcard sql/*--*.sql)
 PG_CONFIG   ?= pg_config
+
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 

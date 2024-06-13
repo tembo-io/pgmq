@@ -15,3 +15,6 @@ sql/pgmq--*.sql
 images/pgmq-pg/Dockerfile
 META.json
 Trunk.toml
+.vscode/
+/results/
+/regression.*
