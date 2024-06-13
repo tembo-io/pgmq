@@ -161,4 +161,4 @@ FROM pgmq_{your_queue_name}_archive;
 ```
 
 
-License: Apache-2.0
+License: [PostgreSQL](LICENSE)
