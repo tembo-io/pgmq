@@ -1,0 +1,41 @@
+name: 'pgrx initialization'
+description: 'Initialize PGRX'
+inputs:
+  working-directory:
+    description: 'The directory in which there is a pgrx extension project'
+    required: true
+  pg_version:
+    description: 'The version of postgres'
+    default: "16.3"
+  pgrx_pg_version:
+    description: 'Pgrx pg version alias'
+    default: "pg16"
+  force:
+    description: 'Force install'
+    default: 'false'
+outputs: {}
+runs:
+  using: "composite"
+  steps:
+      - name: Install TOML parser
+        shell: bash
+        run: |
+         set -xe
+         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+         mv stoml_linux_amd64 stoml
+         chmod +x stoml
+         sudo mv stoml /usr/local/bin/
+      - name: pgrx init
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          cargo install --version 0.11.4 --force cargo-pgrx
+          set -x
+          # pgrx init can take a long time, and it re-compiles postgres even when there
+          # is a cached version. So, we can just check for the directory and
+          cat /home/runner/.pgrx/config.toml || true
+          if find /home/runner/.pgrx | grep $(awk -F "=" '/${{ inputs.pg_version}}/ {print $2}' /home/runner/.pgrx/config.toml | tr -d '"'); then
+            echo "Already found pgrx is initialized. Skipping 'cargo pgrx init' command."
+          else
+            cargo pgrx init --pg16 download || true
+          fi

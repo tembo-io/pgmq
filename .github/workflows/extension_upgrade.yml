@@ -43,18 +43,7 @@ jobs:
       - name: Get current version
         id: current-version
         run: echo "CI_BRANCH=$(git name-rev --name-only HEAD)" >> $GITHUB_OUTPUT
-      - name: init pgrx
-        run: |
-          cargo install --version 0.11.4 --force cargo-pgrx
-          set -x
-          # pgrx init can take a long time, and it re-compiles postgres even when there
-          # is a cached version. So, we can just check for the directory and
-          cat /home/runner/.pgrx/config.toml || true
-          if find /home/runner/.pgrx | grep $(awk -F "=" '/${{ inputs.pg_version}}/ {print $2}' /home/runner/.pgrx/config.toml | tr -d '"'); then
-            echo "Already found pgrx is initialized. Skipping 'cargo pgrx init' command."
-          else
-            cargo pgrx init --pg16 download || true
-          fi
+      - uses: ./.github/actions/pgx-init
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
       - name: Install pg_partman
