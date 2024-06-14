@@ -44,9 +44,6 @@ jobs:
         id: current-version
         run: echo "CI_BRANCH=$(git name-rev --name-only HEAD)" >> $GITHUB_OUTPUT
       - uses: ./.github/actions/pgx-init
-        with:
-          working-directory: ./integration_test
-          force: true
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
       - name: Install pg_partman

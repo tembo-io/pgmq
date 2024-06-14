@@ -1,5 +1,5 @@
 name: 'pgrx initialization'
-description: 'Initialize PGRX if it is a dependency, otherwise do nothing.'
+description: 'Initialize PGRX'
 inputs:
   working-directory:
     description: 'The directory in which there is a pgrx extension project'
@@ -12,7 +12,7 @@ inputs:
     default: "pg16"
   force:
     description: 'Force install'
-    default: false
+    default: 'false'
 outputs: {}
 runs:
   using: "composite"
@@ -25,28 +25,11 @@ runs:
          mv stoml_linux_amd64 stoml
          chmod +x stoml
          sudo mv stoml /usr/local/bin/
-      - name: setup pgrx
-        shell: bash
-        id: pgrx_install
-        working-directory: ${{ inputs.working-directory }}
-        run: |
-          pgrx_version=$(stoml Cargo.toml dependencies.pgrx)
-          if [ -z "${pgrx_version}" ]; then
-            echo "pgrx is not a dependency: skipping"
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            if [ ${{ inputs.force }} ]; then
-              cargo install --version ${pgrx_version} --force cargo-pgrx
-            else
-              cargo install --version ${pgrx_version} cargo-pgrx
-            fi
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
       - name: pgrx init
         shell: bash
-        if: steps.pgrx_install.outputs.skip == 'false'
         working-directory: ${{ inputs.working-directory }}
         run: |
+          cargo install --version 0.11.4 --force cargo-pgrx
           set -x
           # pgrx init can take a long time, and it re-compiles postgres even when there
           # is a cached version. So, we can just check for the directory and
@@ -54,5 +37,5 @@ runs:
           if find /home/runner/.pgrx | grep $(awk -F "=" '/${{ inputs.pg_version}}/ {print $2}' /home/runner/.pgrx/config.toml | tr -d '"'); then
             echo "Already found pgrx is initialized. Skipping 'cargo pgrx init' command."
           else
-            cargo pgrx init --${{inputs.pgrx_pg_version}} download || true
+            cargo pgrx init --pg16 download || true
           fi
