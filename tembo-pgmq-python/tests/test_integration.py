@@ -1,8 +1,7 @@
 import unittest
 import time
 from tembo_pgmq_python import Message, PGMQueue
-
-
+from datetime import datetime, timezone, timedelta
 # Function to load environment variables
 
 
@@ -129,6 +128,70 @@ class BaseTestPGMQueue(unittest.TestCase):
             self.assertIsInstance(stats.queue_length, int)
             self.assertIsInstance(stats.total_messages, int)
             self.assertIsNotNone(stats.scrape_time)
+
+    def test_read_with_poll(self):
+        """Test reading messages from the queue with polling."""
+        self.queue.send(self.test_queue, self.test_message)
+        messages = self.queue.read_with_poll(
+            self.test_queue, vt=20, qty=1, max_poll_seconds=5, poll_interval_ms=100
+        )
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].message, self.test_message)
+
+    def test_archive_batch(self):
+        """Test archiving multiple messages in the queue."""
+        messages = [self.test_message, self.test_message]
+        msg_ids = self.queue.send_batch(self.test_queue, messages)
+        self.queue.archive_batch(self.test_queue, msg_ids)
+        read_messages = self.queue.read_batch(self.test_queue, vt=20, batch_size=2)
+        self.assertEqual(len(read_messages), 0)
+
+    def test_delete_batch(self):
+        """Test deleting multiple messages from the queue."""
+        messages = [self.test_message, self.test_message]
+        msg_ids = self.queue.send_batch(self.test_queue, messages)
+        self.queue.delete_batch(self.test_queue, msg_ids)
+        read_messages = self.queue.read_batch(self.test_queue, vt=20, batch_size=2)
+        self.assertEqual(len(read_messages), 0)
+
+    def test_set_vt(self):
+        """Test setting the visibility timeout for a specific message."""
+        msg_id = self.queue.send(self.test_queue, self.test_message)
+        updated_message = self.queue.set_vt(self.test_queue, msg_id, vt=60)
+        self.assertEqual(
+            updated_message.vt.second,
+            (datetime.now(timezone.utc) + timedelta(seconds=60)).second,
+        )
+
+    def test_list_queues(self):
+        """Test listing all queues."""
+        queues = self.queue.list_queues()
+        self.assertIn(self.test_queue, queues)
+
+    def test_detach_archive(self):
+        """Test detaching an archive from a queue."""
+        self.queue.send(self.test_queue, self.test_message)
+        self.queue.archive(self.test_queue, 1)
+        self.queue.detach_archive(self.test_queue)
+        # This is just a basic call to ensure the method works without exceptions.
+
+    def test_drop_queue(self):
+        """Test dropping a queue."""
+        self.queue.create_queue("test_queue_to_drop")
+        self.queue.drop_queue("test_queue_to_drop")
+        queues = self.queue.list_queues()
+        self.assertNotIn("test_queue_to_drop", queues)
+
+    def test_validate_queue_name(self):
+        """Test validating the length of a queue name."""
+        valid_queue_name = "a" * 47
+        invalid_queue_name = "a" * 49
+        # Valid queue name should not raise an exception
+        self.queue.validate_queue_name(valid_queue_name)
+        # Invalid queue name should raise an exception
+        with self.assertRaises(Exception) as context:
+            self.queue.validate_queue_name(invalid_queue_name)
+        self.assertIn("queue name is too long", str(context.exception))
 
 
 class TestPGMQueueWithEnv(BaseTestPGMQueue):
