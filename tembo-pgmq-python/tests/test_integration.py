@@ -193,6 +193,42 @@ class BaseTestPGMQueue(unittest.TestCase):
             self.queue.validate_queue_name(invalid_queue_name)
         self.assertIn("queue name is too long", str(context.exception))
 
+    def test_transaction_create_queue(self):
+        """Test creating a queue within a transaction."""
+        try:
+            self.queue.create_queue("test_queue_txn", perform_transaction=True)
+            raise Exception("Intentional failure")
+        except Exception:
+            pass
+        # Verify the queue was not created
+        queues = self.queue.list_queues()
+        self.assertNotIn("test_queue_txn", queues)
+
+    def test_transaction_send_and_read_message(self):
+        """Test sending and reading a message within a transaction."""
+        try:
+            self.queue.send(
+                self.test_queue, self.test_message, perform_transaction=True
+            )
+            raise Exception("Intentional failure")
+        except Exception:
+            pass
+        # Verify no message was sent
+        message = self.queue.read(self.test_queue)
+        self.assertIsNone(message, "No message expected in queue")
+
+    def test_transaction_purge_queue(self):
+        """Test purging a queue within a transaction."""
+        self.queue.send(self.test_queue, self.test_message)
+        try:
+            self.queue.purge(self.test_queue, perform_transaction=True)
+            raise Exception("Intentional failure")
+        except Exception:
+            pass
+        # Verify no messages were purged
+        message = self.queue.read(self.test_queue)
+        self.assertIsNotNone(message, "Message expected in queue")
+
 
 class TestPGMQueueWithEnv(BaseTestPGMQueue):
     @classmethod
