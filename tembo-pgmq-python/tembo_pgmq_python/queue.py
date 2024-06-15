@@ -57,7 +57,7 @@ class PGMQueue:
         user={self.username}
         password={self.password}
         """
-        self.pool = ConnectionPool(conninfo, **self.kwargs)
+        self.pool = ConnectionPool(conninfo, open=True, **self.kwargs)
 
         with self.pool.connection() as conn:
             conn.execute("create extension if not exists pgmq cascade;")
@@ -96,6 +96,23 @@ class PGMQueue:
             else:
                 conn.execute("select pgmq.create(%s);", [queue])
 
+    def validate_queue_name(self, queue_name: str) -> None:
+        """Validate the length of a queue name."""
+        with self.pool.connection() as conn:
+            conn.execute("select pgmq.validate_queue_name(%s);", [queue_name])
+
+    def drop_queue(self, queue: str, partitioned: bool = False) -> bool:
+        """Drop a queue."""
+        with self.pool.connection() as conn:
+            result = conn.execute("select pgmq.drop_queue(%s, %s);", [queue, partitioned]).fetchone()
+        return result[0]
+
+    def list_queues(self) -> List[str]:
+        """List all queues."""
+        with self.pool.connection() as conn:
+            rows = conn.execute("select queue_name from pgmq.list_queues();").fetchall()
+        return [row[0] for row in rows]
+
     def send(self, queue: str, message: dict, delay: int = 0) -> int:
         """Send a message to a queue."""
         with self.pool.connection() as conn:
@@ -129,6 +146,23 @@ class PGMQueue:
 
         return [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
 
+    def read_with_poll(
+        self,
+        queue: str,
+        vt: Optional[int] = None,
+        qty: int = 1,
+        max_poll_seconds: int = 5,
+        poll_interval_ms: int = 100,
+    ) -> Optional[List[Message]]:
+        """Read messages from a queue with polling."""
+        with self.pool.connection() as conn:
+            rows = conn.execute(
+                "select * from pgmq.read_with_poll(%s, %s, %s, %s, %s);",
+                [queue, vt or self.vt, qty, max_poll_seconds, poll_interval_ms],
+            ).fetchall()
+
+        return [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
+
     def pop(self, queue: str) -> Message:
         """Pop a message from a queue."""
         with self.pool.connection() as conn:
@@ -144,12 +178,24 @@ class PGMQueue:
 
         return row[0][0]
 
+    def delete_batch(self, queue: str, msg_ids: List[int]) -> List[int]:
+        """Delete multiple messages from a queue."""
+        with self.pool.connection() as conn:
+            result = conn.execute("select * from pgmq.delete(%s, %s);", [queue, msg_ids]).fetchall()
+        return [x[0] for x in result]
+
     def archive(self, queue: str, msg_id: int) -> bool:
         """Archive a message from a queue."""
         with self.pool.connection() as conn:
             row = conn.execute("select pgmq.archive(%s, %s);", [queue, msg_id]).fetchall()
 
         return row[0][0]
+
+    def archive_batch(self, queue: str, msg_ids: List[int]) -> List[int]:
+        """Archive multiple messages from a queue."""
+        with self.pool.connection() as conn:
+            result = conn.execute("select * from pgmq.archive(%s, %s);", [queue, msg_ids]).fetchall()
+        return [x[0] for x in result]
 
     def purge(self, queue: str) -> int:
         """Purge a queue."""
@@ -184,3 +230,14 @@ class PGMQueue:
             )
             for row in results
         ]
+
+    def set_vt(self, queue: str, msg_id: int, vt: int) -> Message:
+        """Set the visibility timeout for a specific message."""
+        with self.pool.connection() as conn:
+            row = conn.execute("select * from pgmq.set_vt(%s, %s, %s);", [queue, msg_id, vt]).fetchone()
+        return Message(msg_id=row[0], read_ct=row[1], enqueued_at=row[2], vt=row[3], message=row[4])
+
+    def detach_archive(self, queue: str) -> None:
+        """Detach an archive from a queue."""
+        with self.pool.connection() as conn:
+            conn.execute("select pgmq.detach_archive(%s);", [queue])
