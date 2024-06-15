@@ -38,7 +38,6 @@ Initialize a connection to Postgres using environment variables:
 from tembo_pgmq_python import PGMQueue, Message
 
 queue = PGMQueue()
-
 ```
 
 ### Initialize a connection to Postgres without environment variables
@@ -64,7 +63,14 @@ queue.create_queue("my_queue")
 ### or a partitioned queue
 
 ```python
-queue.create_partitioned_queue("my_partitioned_queue", partition_size=10000)
+queue.create_partitioned_queue("my_partitioned_queue", partition_interval=10000)
+```
+### List all queues
+
+```python
+queues = queue.list_queues()
+for q in queues:
+    print(f"Queue name: {q}")
 ```
 
 ### Send a message
@@ -94,18 +100,50 @@ for message in read_messages:
     print(message)
 ```
 
+### Read messages with polling
+
+The `read_with_poll` method allows you to repeatedly check for messages in the queue until either a message is found or the specified polling duration is exceeded. This can be useful in scenarios where you want to wait for new messages to arrive without continuously querying the queue in a tight loop.
+
+In the following example, the method will check for up to 5 messages in the queue `my_queue`, making the messages invisible for 30 seconds (`vt`), and will poll for a maximum of 5 seconds (`max_poll_seconds`) with intervals of 100 milliseconds (`poll_interval_ms`) between checks.
+
+```python
+read_messages: list[Message] = queue.read_with_poll("my_queue", vt=30, qty=5, max_poll_seconds=5, poll_interval_ms=100)
+for message in read_messages:
+    print(message)
+```
+
+This method will continue polling until it either finds the specified number of messages (`qty`) or the `max_poll_seconds` duration is reached. The `poll_interval_ms` parameter controls the interval between successive polls, allowing you to avoid hammering the database with continuous queries.
+
 ### Archive the message after we're done with it. Archived messages are moved to an archive table
 
 ```python
 archived: bool = queue.archive("my_queue", read_message.msg_id)
 ```
 
+### Archive a batch of messages
+
+```python
+archived_ids: list[int] = queue.archive_batch("my_queue", [msg_id1, msg_id2])
+```
+
 ### Delete a message completely
 
 ```python
-msg_id: int = queue.send("my_queue", {"hello": "world"})
 read_message: Message = queue.read("my_queue")
 deleted: bool = queue.delete("my_queue", read_message.msg_id)
+```
+
+### Delete a batch of messages
+
+```python
+deleted_ids: list[int] = queue.delete_batch("my_queue", [msg_id1, msg_id2])
+```
+
+### Set the visibility timeout (VT) for a specific message
+
+```python
+updated_message: Message = queue.set_vt("my_queue", msg_id, 60)
+print(updated_message)
 ```
 
 ### Pop a message, deleting it and reading it in one transaction
@@ -121,7 +159,38 @@ print(popped_message)
 purged_count: int = queue.purge("my_queue")
 print(f"Purged {purged_count} messages from the queue.")
 ```
+
+### Detach an archive from a queue
+
+```python
+queue.detach_archive("my_queue")
+```
+
+### Drop a queue
+
+```python
+dropped: bool = queue.drop_queue("my_queue")
+print(f"Queue dropped: {dropped}")
+```
+
+### Validate the length of a queue name
+
+```python
+queue.validate_queue_name("my_queue")
+```
+
 ### Get queue metrics
+
+The `metrics` method retrieves various statistics for a specific queue, such as the queue length, the age of the newest and oldest messages, the total number of messages, and the time of the metrics scrape.
+
+```python
+metrics = queue.metrics("my_queue")
+print(f"Metrics: {metrics}")
+```
+
+### Access individual metrics
+
+You can access individual metrics directly from the `metrics` method's return value:
 
 ```python
 metrics = queue.metrics("my_queue")
@@ -133,14 +202,9 @@ print(f"Total messages: {metrics.total_messages}")
 print(f"Scrape time: {metrics.scrape_time}")
 ```
 
-### Access individual metrics
-
-```python
-print(f"Queue length: {queue.metrics('my_queue').queue_length}")
-print(f"Total messages: {queue.metrics('my_queue').total_messages}")
-```
-
 ### Get metrics for all queues
+
+The `metrics_all` method retrieves metrics for all queues, allowing you to iterate through each queue's metrics.
 
 ```python
 all_metrics = queue.metrics_all()
@@ -152,3 +216,6 @@ for metrics in all_metrics:
     print(f"Total messages: {metrics.total_messages}")
     print(f"Scrape time: {metrics.scrape_time}")
 ```
+
+
+
