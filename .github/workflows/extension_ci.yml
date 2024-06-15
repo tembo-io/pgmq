@@ -3,21 +3,21 @@ name: PGMQ Extension
 defaults:
   run:
     shell: bash
-    working-directory: ./
+    working-directory: ./extension
 
 on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - "pgmq-rs/**"
-      - "tembo-pgmq-python/**"
+    paths:
+      - "extension/**"
+      - ".github/workflows/extension_ci.yml"
   push:
     branches:
       - main
-    paths-ignore:
-      - "pgmq-rs/**"
-      - "tembo-pgmq-python/**"
+    paths:
+      - "extension/**"
+      - ".github/workflows/extension_ci.yml"
   release:
     types:
       - created
@@ -118,8 +118,6 @@ jobs:
           trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
     name: Build and push images
-    # needs:
-    #   - publish
     runs-on:
       - self-hosted
       - dind
