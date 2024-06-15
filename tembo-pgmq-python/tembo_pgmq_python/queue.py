@@ -104,9 +104,7 @@ class PGMQueue:
     def drop_queue(self, queue: str, partitioned: bool = False) -> bool:
         """Drop a queue."""
         with self.pool.connection() as conn:
-            result = conn.execute(
-                "select pgmq.drop_queue(%s, %s);", [queue, partitioned]
-            ).fetchone()
+            result = conn.execute("select pgmq.drop_queue(%s, %s);", [queue, partitioned]).fetchone()
         return result[0]
 
     def list_queues(self) -> List[str]:
@@ -118,9 +116,7 @@ class PGMQueue:
     def send(self, queue: str, message: dict, delay: int = 0) -> int:
         """Send a message to a queue."""
         with self.pool.connection() as conn:
-            result = conn.execute(
-                "select * from pgmq.send(%s, %s, %s);", [queue, Jsonb(message), delay]
-            ).fetchall()
+            result = conn.execute("select * from pgmq.send(%s, %s, %s);", [queue, Jsonb(message), delay]).fetchall()
         return result[0][0]
 
     def send_batch(self, queue: str, messages: List[dict], delay: int = 0) -> List[int]:
@@ -135,19 +131,12 @@ class PGMQueue:
     def read(self, queue: str, vt: Optional[int] = None) -> Optional[Message]:
         """Read a message from a queue."""
         with self.pool.connection() as conn:
-            rows = conn.execute(
-                "select * from pgmq.read(%s, %s, %s);", [queue, vt or self.vt, 1]
-            ).fetchall()
+            rows = conn.execute("select * from pgmq.read(%s, %s, %s);", [queue, vt or self.vt, 1]).fetchall()
 
-        messages = [
-            Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4])
-            for x in rows
-        ]
+        messages = [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
         return messages[0] if len(messages) == 1 else None
 
-    def read_batch(
-        self, queue: str, vt: Optional[int] = None, batch_size=1
-    ) -> Optional[List[Message]]:
+    def read_batch(self, queue: str, vt: Optional[int] = None, batch_size=1) -> Optional[List[Message]]:
         """Read a batch of messages from a queue."""
         with self.pool.connection() as conn:
             rows = conn.execute(
@@ -155,10 +144,7 @@ class PGMQueue:
                 [queue, vt or self.vt, batch_size],
             ).fetchall()
 
-        return [
-            Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4])
-            for x in rows
-        ]
+        return [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
 
     def read_with_poll(
         self,
@@ -175,54 +161,40 @@ class PGMQueue:
                 [queue, vt or self.vt, qty, max_poll_seconds, poll_interval_ms],
             ).fetchall()
 
-        return [
-            Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4])
-            for x in rows
-        ]
+        return [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
 
     def pop(self, queue: str) -> Message:
         """Pop a message from a queue."""
         with self.pool.connection() as conn:
             rows = conn.execute("select * from pgmq.pop(%s);", [queue]).fetchall()
 
-        messages = [
-            Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4])
-            for x in rows
-        ]
+        messages = [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
         return messages[0]
 
     def delete(self, queue: str, msg_id: int) -> bool:
         """Delete a message from a queue."""
         with self.pool.connection() as conn:
-            row = conn.execute(
-                "select pgmq.delete(%s, %s);", [queue, msg_id]
-            ).fetchall()
+            row = conn.execute("select pgmq.delete(%s, %s);", [queue, msg_id]).fetchall()
 
         return row[0][0]
 
     def delete_batch(self, queue: str, msg_ids: List[int]) -> List[int]:
         """Delete multiple messages from a queue."""
         with self.pool.connection() as conn:
-            result = conn.execute(
-                "select * from pgmq.delete(%s, %s);", [queue, msg_ids]
-            ).fetchall()
+            result = conn.execute("select * from pgmq.delete(%s, %s);", [queue, msg_ids]).fetchall()
         return [x[0] for x in result]
 
     def archive(self, queue: str, msg_id: int) -> bool:
         """Archive a message from a queue."""
         with self.pool.connection() as conn:
-            row = conn.execute(
-                "select pgmq.archive(%s, %s);", [queue, msg_id]
-            ).fetchall()
+            row = conn.execute("select pgmq.archive(%s, %s);", [queue, msg_id]).fetchall()
 
         return row[0][0]
 
     def archive_batch(self, queue: str, msg_ids: List[int]) -> List[int]:
         """Archive multiple messages from a queue."""
         with self.pool.connection() as conn:
-            result = conn.execute(
-                "select * from pgmq.archive(%s, %s);", [queue, msg_ids]
-            ).fetchall()
+            result = conn.execute("select * from pgmq.archive(%s, %s);", [queue, msg_ids]).fetchall()
         return [x[0] for x in result]
 
     def purge(self, queue: str) -> int:
@@ -262,12 +234,8 @@ class PGMQueue:
     def set_vt(self, queue: str, msg_id: int, vt: int) -> Message:
         """Set the visibility timeout for a specific message."""
         with self.pool.connection() as conn:
-            row = conn.execute(
-                "select * from pgmq.set_vt(%s, %s, %s);", [queue, msg_id, vt]
-            ).fetchone()
-        return Message(
-            msg_id=row[0], read_ct=row[1], enqueued_at=row[2], vt=row[3], message=row[4]
-        )
+            row = conn.execute("select * from pgmq.set_vt(%s, %s, %s);", [queue, msg_id, vt]).fetchone()
+        return Message(msg_id=row[0], read_ct=row[1], enqueued_at=row[2], vt=row[3], message=row[4])
 
     def detach_archive(self, queue: str) -> None:
         """Detach an archive from a queue."""
