@@ -156,6 +156,7 @@ jobs:
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
       - name: Generate dockerfile from template file
+        working-directory: ./
         run: ./images/pgmq-pg/replace-pg-version.sh ${{ matrix.pg }} ./images/pgmq-pg/Dockerfile.in ./images/pgmq-pg/Dockerfile
 
       - name: Build and push -- Commit
@@ -163,6 +164,7 @@ jobs:
         if: github.event_name != 'release'
         uses: docker/build-push-action@v5
         with:
+          working-directory: ./
           file: ./images/pgmq-pg/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64
@@ -175,6 +177,7 @@ jobs:
         if: github.event_name == 'release'
         uses: docker/build-push-action@v5
         with:
+          working-directory: ./
           file: ./images/pgmq-pg/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64
