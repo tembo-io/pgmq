@@ -12,15 +12,13 @@ RUN apt-get update \
 	pkg-config \
 	postgresql-server-dev-@@PG_VERSION@@
 
+
 # Install pgmq
-COPY . pgmq
-RUN cd pgmq && make && make install
-RUN cd ..
+COPY ./extension extension
+RUN cd extension && make && make install
 
 # install pg_partman
-RUN git clone https://github.com/pgpartman/pg_partman.git && \
-    cd pg_partman && \
-    git checkout v4.7.4 && make && make install
+RUN cd extension && make install-pg-partman
 
 FROM postgres:@@PG_VERSION@@-bookworm
 
