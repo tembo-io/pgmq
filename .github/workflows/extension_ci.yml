@@ -54,6 +54,7 @@ jobs:
     container: pgxn/pgxn-tools
     steps:
       - run: pg-start ${{ matrix.pg }}
+        working-directory: ./
       - uses: actions/checkout@v4
       - run: apt install -y pkg-config
       - name: Install Rust stable toolchain
