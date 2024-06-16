@@ -14,6 +14,7 @@ class BaseTestPGMQueue(unittest.TestCase):
             username="postgres",
             password="postgres",
             database="postgres",
+            verbose=False,
         )
 
         # Test database connection first

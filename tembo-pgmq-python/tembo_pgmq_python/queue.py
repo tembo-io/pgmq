@@ -7,16 +7,6 @@ from typing import Optional, List, Callable, Union
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
 
-logger = logging.getLogger(__name__)
-log_filename = datetime.now().strftime("pgmq_debug_%Y%m%d_%H%M%S.log")
-
-# Configure logging at the start of the script
-logging.basicConfig(
-    filename=log_filename,
-    level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-
 
 @dataclass
 class Message:
@@ -37,34 +27,6 @@ class QueueMetrics:
     scrape_time: datetime
 
 
-def transaction(func: Callable) -> Callable:
-    """Decorator to run a method within a database transaction."""
-
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        perform_transaction = kwargs.pop("perform_transaction", self.perform_transaction)
-        if perform_transaction:
-            with self.pool.connection() as conn:
-                with conn.transaction() as txn:
-                    try:
-                        logger.debug(f"Transaction started with conn: {conn}")
-                        result = func(self, *args, conn=conn, **kwargs)
-                        txn.commit()
-                        logger.debug(f"Transaction committed with conn: {conn}")
-                        return result
-                    except Exception as e:
-                        logger.error(f"Transaction failed with exception: {e}, rolling back.")
-                        txn.rollback()
-                        logger.debug(f"Transaction rolled back with conn: {conn}")
-                        raise
-        else:
-            with self.pool.connection() as conn:
-                logger.debug(f"Non-transactional execution with conn: {conn}")
-                return func(self, *args, conn=conn, **kwargs)
-
-    return wrapper
-
-
 @dataclass
 class PGMQueue:
     """Base class for interacting with a queue"""
@@ -78,8 +40,11 @@ class PGMQueue:
     vt: int = 30
     pool_size: int = 10
     kwargs: dict = field(default_factory=dict)
+    verbose: bool = False
+    log_filename: Optional[str] = None
     pool: ConnectionPool = field(init=False)
     perform_transaction: bool = False
+    logger: logging.Logger = field(init=False)
 
     def __post_init__(self) -> None:
         conninfo = f"""
@@ -90,13 +55,26 @@ class PGMQueue:
         password={self.password}
         """
         self.pool = ConnectionPool(conninfo, open=True, **self.kwargs)
+        self._initialize_logging()
         self._initialize_extensions()
+
+    def _initialize_logging(self) -> None:
+        if self.verbose:
+            log_filename = self.log_filename or datetime.now().strftime("pgmq_debug_%Y%m%d_%H%M%S.log")
+            logging.basicConfig(
+                filename=os.path.join(os.getcwd(), log_filename),
+                level=logging.DEBUG,
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            )
+        else:
+            logging.basicConfig(level=logging.WARNING)
+        self.logger = logging.getLogger(__name__)
 
     def _initialize_extensions(self, conn=None) -> None:
         self._execute_query("create extension if not exists pgmq cascade;", conn=conn)
 
     def _execute_query(self, query: str, params: Optional[Union[List, tuple]] = None, conn=None) -> None:
-        logger.debug(f"Executing query: {query} with params: {params} using conn: {conn}")
+        self.logger.debug(f"Executing query: {query} with params: {params} using conn: {conn}")
         if conn:
             conn.execute(query, params)
         else:
@@ -104,12 +82,40 @@ class PGMQueue:
                 conn.execute(query, params)
 
     def _execute_query_with_result(self, query: str, params: Optional[Union[List, tuple]] = None, conn=None):
-        logger.debug(f"Executing query with result: {query} with params: {params} using conn: {conn}")
+        self.logger.debug(f"Executing query with result: {query} with params: {params} using conn: {conn}")
         if conn:
             return conn.execute(query, params).fetchall()
         else:
             with self.pool.connection() as conn:
                 return conn.execute(query, params).fetchall()
+
+    def transaction(func: Callable) -> Callable:
+        """Decorator to run a method within a database transaction."""
+
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            perform_transaction = kwargs.pop("perform_transaction", self.perform_transaction)
+            if perform_transaction:
+                with self.pool.connection() as conn:
+                    txn = conn.transaction()
+                    txn.begin()
+                    self.logger.debug(f"Transaction started with conn: {conn}")
+                    try:
+                        result = func(self, *args, conn=conn, **kwargs)
+                        txn.commit()
+                        self.logger.debug(f"Transaction committed with conn: {conn}")
+                        return result
+                    except Exception as e:
+                        txn.rollback()
+                        self.logger.error(f"Transaction failed with exception: {e}, rolling back.")
+                        self.logger.debug(f"Transaction rolled back with conn: {conn}")
+                        raise
+            else:
+                with self.pool.connection() as conn:
+                    self.logger.debug(f"Non-transactional execution with conn: {conn}")
+                    return func(self, *args, conn=conn, **kwargs)
+
+        return wrapper
 
     @transaction
     def create_partitioned_queue(
@@ -127,7 +133,7 @@ class PGMQueue:
     @transaction
     def create_queue(self, queue: str, unlogged: bool = False, conn=None) -> None:
         """Create a new queue."""
-        logger.debug(f"create_queue called with conn: {conn}")
+        self.logger.debug(f"create_queue called with conn: {conn}")
         query = "select pgmq.create_unlogged(%s);" if unlogged else "select pgmq.create(%s);"
         self._execute_query(query, [queue], conn=conn)
 
@@ -139,7 +145,7 @@ class PGMQueue:
     @transaction
     def drop_queue(self, queue: str, partitioned: bool = False, conn=None) -> bool:
         """Drop a queue."""
-        logger.debug(f"drop_queue called with conn: {conn}")
+        self.logger.debug(f"drop_queue called with conn: {conn}")
         query = "select pgmq.drop_queue(%s, %s);"
         result = self._execute_query_with_result(query, [queue, partitioned], conn=conn)
         return result[0][0]
@@ -147,7 +153,7 @@ class PGMQueue:
     @transaction
     def list_queues(self, conn=None) -> List[str]:
         """List all queues."""
-        logger.debug(f"list_queues called with conn: {conn}")
+        self.logger.debug(f"list_queues called with conn: {conn}")
         query = "select queue_name from pgmq.list_queues();"
         rows = self._execute_query_with_result(query, conn=conn)
         return [row[0] for row in rows]
@@ -155,7 +161,7 @@ class PGMQueue:
     @transaction
     def send(self, queue: str, message: dict, delay: int = 0, conn=None) -> int:
         """Send a message to a queue."""
-        logger.debug(f"send called with conn: {conn}")
+        self.logger.debug(f"send called with conn: {conn}")
         query = "select * from pgmq.send(%s, %s, %s);"
         result = self._execute_query_with_result(query, [queue, Jsonb(message), delay], conn=conn)
         return result[0][0]
@@ -163,7 +169,7 @@ class PGMQueue:
     @transaction
     def send_batch(self, queue: str, messages: List[dict], delay: int = 0, conn=None) -> List[int]:
         """Send a batch of messages to a queue."""
-        logger.debug(f"send_batch called with conn: {conn}")
+        self.logger.debug(f"send_batch called with conn: {conn}")
         query = "select * from pgmq.send_batch(%s, %s, %s);"
         params = [queue, [Jsonb(message) for message in messages], delay]
         result = self._execute_query_with_result(query, params, conn=conn)
@@ -172,7 +178,7 @@ class PGMQueue:
     @transaction
     def read(self, queue: str, vt: Optional[int] = None, conn=None) -> Optional[Message]:
         """Read a message from a queue."""
-        logger.debug(f"read called with conn: {conn}")
+        self.logger.debug(f"read called with conn: {conn}")
         query = "select * from pgmq.read(%s, %s, %s);"
         rows = self._execute_query_with_result(query, [queue, vt or self.vt, 1], conn=conn)
         messages = [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
@@ -181,7 +187,7 @@ class PGMQueue:
     @transaction
     def read_batch(self, queue: str, vt: Optional[int] = None, batch_size=1, conn=None) -> Optional[List[Message]]:
         """Read a batch of messages from a queue."""
-        logger.debug(f"read_batch called with conn: {conn}")
+        self.logger.debug(f"read_batch called with conn: {conn}")
         query = "select * from pgmq.read(%s, %s, %s);"
         rows = self._execute_query_with_result(query, [queue, vt or self.vt, batch_size], conn=conn)
         return [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
@@ -197,7 +203,7 @@ class PGMQueue:
         conn=None,
     ) -> Optional[List[Message]]:
         """Read messages from a queue with polling."""
-        logger.debug(f"read_with_poll called with conn: {conn}")
+        self.logger.debug(f"read_with_poll called with conn: {conn}")
         query = "select * from pgmq.read_with_poll(%s, %s, %s, %s, %s);"
         params = [queue, vt or self.vt, qty, max_poll_seconds, poll_interval_ms]
         rows = self._execute_query_with_result(query, params, conn=conn)
@@ -206,7 +212,7 @@ class PGMQueue:
     @transaction
     def pop(self, queue: str, conn=None) -> Message:
         """Pop a message from a queue."""
-        logger.debug(f"pop called with conn: {conn}")
+        self.logger.debug(f"pop called with conn: {conn}")
         query = "select * from pgmq.pop(%s);"
         rows = self._execute_query_with_result(query, [queue], conn=conn)
         messages = [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
@@ -215,7 +221,7 @@ class PGMQueue:
     @transaction
     def delete(self, queue: str, msg_id: int, conn=None) -> bool:
         """Delete a message from a queue."""
-        logger.debug(f"delete called with conn: {conn}")
+        self.logger.debug(f"delete called with conn: {conn}")
         query = "select pgmq.delete(%s, %s);"
         result = self._execute_query_with_result(query, [queue, msg_id], conn=conn)
         return result[0][0]
@@ -223,7 +229,7 @@ class PGMQueue:
     @transaction
     def delete_batch(self, queue: str, msg_ids: List[int], conn=None) -> List[int]:
         """Delete multiple messages from a queue."""
-        logger.debug(f"delete_batch called with conn: {conn}")
+        self.logger.debug(f"delete_batch called with conn: {conn}")
         query = "select * from pgmq.delete(%s, %s);"
         result = self._execute_query_with_result(query, [queue, msg_ids], conn=conn)
         return [x[0] for x in result]
@@ -231,7 +237,7 @@ class PGMQueue:
     @transaction
     def archive(self, queue: str, msg_id: int, conn=None) -> bool:
         """Archive a message from a queue."""
-        logger.debug(f"archive called with conn: {conn}")
+        self.logger.debug(f"archive called with conn: {conn}")
         query = "select pgmq.archive(%s, %s);"
         result = self._execute_query_with_result(query, [queue, msg_id], conn=conn)
         return result[0][0]
@@ -239,7 +245,7 @@ class PGMQueue:
     @transaction
     def archive_batch(self, queue: str, msg_ids: List[int], conn=None) -> List[int]:
         """Archive multiple messages from a queue."""
-        logger.debug(f"archive_batch called with conn: {conn}")
+        self.logger.debug(f"archive_batch called with conn: {conn}")
         query = "select * from pgmq.archive(%s, %s);"
         result = self._execute_query_with_result(query, [queue, msg_ids], conn=conn)
         return [x[0] for x in result]
@@ -247,7 +253,7 @@ class PGMQueue:
     @transaction
     def purge(self, queue: str, conn=None) -> int:
         """Purge a queue."""
-        logger.debug(f"purge called with conn: {conn}")
+        self.logger.debug(f"purge called with conn: {conn}")
         query = "select pgmq.purge_queue(%s);"
         result = self._execute_query_with_result(query, [queue], conn=conn)
         return result[0][0]
@@ -255,7 +261,7 @@ class PGMQueue:
     @transaction
     def metrics(self, queue: str, conn=None) -> QueueMetrics:
         """Get metrics for a specific queue."""
-        logger.debug(f"metrics called with conn: {conn}")
+        self.logger.debug(f"metrics called with conn: {conn}")
         query = "SELECT * FROM pgmq.metrics(%s);"
         result = self._execute_query_with_result(query, [queue], conn=conn)[0]
         return QueueMetrics(
@@ -270,7 +276,7 @@ class PGMQueue:
     @transaction
     def metrics_all(self, conn=None) -> List[QueueMetrics]:
         """Get metrics for all queues."""
-        logger.debug(f"metrics_all called with conn: {conn}")
+        self.logger.debug(f"metrics_all called with conn: {conn}")
         query = "SELECT * FROM pgmq.metrics_all();"
         results = self._execute_query_with_result(query, conn=conn)
         return [
@@ -288,7 +294,7 @@ class PGMQueue:
     @transaction
     def set_vt(self, queue: str, msg_id: int, vt: int, conn=None) -> Message:
         """Set the visibility timeout for a specific message."""
-        logger.debug(f"set_vt called with conn: {conn}")
+        self.logger.debug(f"set_vt called with conn: {conn}")
         query = "select * from pgmq.set_vt(%s, %s, %s);"
         result = self._execute_query_with_result(query, [queue, msg_id, vt], conn=conn)[0]
         return Message(
@@ -302,6 +308,6 @@ class PGMQueue:
     @transaction
     def detach_archive(self, queue: str, conn=None) -> None:
         """Detach an archive from a queue."""
-        logger.debug(f"detach_archive called with conn: {conn}")
+        self.logger.debug(f"detach_archive called with conn: {conn}")
         query = "select pgmq.detach_archive(%s);"
         self._execute_query(query, [queue], conn=conn)
