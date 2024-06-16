@@ -217,5 +217,53 @@ for metrics in all_metrics:
     print(f"Scrape time: {metrics.scrape_time}")
 ```
 
+### Using Transactions
 
+#### Class-level Transactions
 
+You can enable transactions at the class level by setting the `perform_transaction` attribute to `True`.
+
+```python
+queue.perform_transaction = True
+```
+
+#### Function-level Transactions
+
+You can also enable transactions at the function level by passing `perform_transaction=True` to the method.
+
+```python
+queue.send("my_queue", {"hello": "world"}, perform_transaction=True)
+```
+or 
+```python
+queue = PGMQueue(perform_transaction=True)
+```
+
+### Verbose Logging
+
+Enable verbose logging by setting the `verbose` attribute to `True` when initializing the `PGMQueue` object.
+
+```python
+queue = PGMQueue(
+    host="0.0.0.0",
+    port="5432",
+    username="postgres",
+    password="postgres",
+    database="postgres",
+    verbose=True
+)
+```
+
+Optionally, you can specify a custom log filename.
+
+```python
+queue = PGMQueue(
+    host="0.0.0.0",
+    port="5432",
+    username="postgres",
+    password="postgres",
+    database="postgres",
+    verbose=True,
+    log_filename="my_custom_log.log"
+)
+```
