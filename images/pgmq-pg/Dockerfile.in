@@ -14,11 +14,11 @@ RUN apt-get update \
 
 
 # Install pgmq
-COPY ./extension extension
-RUN cd extension && make && make install
+COPY ./pgmq-extension pgmq-extension
+RUN cd pgmq-extension && make && make install
 
 # install pg_partman
-RUN cd extension && make install-pg-partman
+RUN cd pgmq-extension && make install-pg-partman
 
 FROM postgres:@@PG_VERSION@@-bookworm
 

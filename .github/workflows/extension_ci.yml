@@ -3,20 +3,20 @@ name: PGMQ Extension
 defaults:
   run:
     shell: bash
-    working-directory: ./extension
+    working-directory: ./pgmq-extension
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - "extension/**"
+      - "pgmq-extension/**"
       - ".github/workflows/extension_ci.yml"
   push:
     branches:
       - main
     paths:
-      - "extension/**"
+      - "pgmq-extension/**"
       - ".github/workflows/extension_ci.yml"
   release:
     types:
@@ -91,7 +91,7 @@ jobs:
         with:
           prefix-key: "pgmq-extension-test"
           workspaces: |
-            pgmq/extension
+            pgmq/pgmq-extension
       - name: Install stoml and pg-trunk
         shell: bash
         run: |

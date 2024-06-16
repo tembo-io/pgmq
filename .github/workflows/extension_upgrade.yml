@@ -3,20 +3,20 @@ name: PGMQ Extension Upgrade
 defaults:
   run:
     shell: bash
-    working-directory: ./extension
+    working-directory: ./pgmq-extension
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - "extension/**"
+      - "pgmq-extension/**"
       - ".github/workflows/extension_upgrade.yml"
   push:
     branches:
       - main
     paths:
-      - "extension/**"
+      - "pgmq-extension/**"
       - ".github/workflows/extension_upgrade.yml"
   release:
     types:
