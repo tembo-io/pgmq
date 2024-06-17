@@ -55,23 +55,7 @@ jobs:
     steps:
       - run: pg-start ${{ matrix.pg }}
       - uses: actions/checkout@v4
-      - run: apt install -y pkg-config
-      - name: Install Rust stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "pgmq-extension-test-${{ matrix.pg }}"
-          workspaces: |
-            pgmq
-      - name: Install pg_partman
-        run: |
-          git clone https://github.com/pgpartman/pg_partman.git && \
-          cd pg_partman && \
-          git checkout v4.7.4 && \
-          make && \
-          make install
+      - run: pgxn install 'pg_partman=4.7.3'
       - run: pg-build-test
 
   publish:

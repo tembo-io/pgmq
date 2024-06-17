@@ -225,12 +225,6 @@ SELECT pgmq.create('transaction_test_queue');
 ROLLBACK;
 SELECT tablename FROM pg_tables WHERE schemaname = 'pgmq' AND tablename = 'q_transaction_test_queue';
 
--- test_transaction_send
--- TODO: Needs multiple connections.
-
--- test_transaction_read
--- TODO: Needs multiple connections.
-
 -- test_detach_archive
 SELECT pgmq.create('detach_archive_queue');
 DROP EXTENSION pgmq CASCADE;

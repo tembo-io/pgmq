@@ -4,6 +4,13 @@ DATA         = $(wildcard sql/*--*.sql)
 TESTS        = $(wildcard test/sql/*.sql)
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test
+EXTRA_CLEAN  = $(EXTENSION)-$(EXTVERSION).zip sql/$(EXTENSION)--$(EXTVERSION).sql META.json Trunk.toml
+
+# pg_isolation_regress available in v14 and higher.
+ifeq ($(shell test $$(pg_config --version | awk '{print $$2}' | awk 'BEGIN { FS = "." }; { print $$1 }') -ge 14; echo $$?),0)
+ISOLATION   = $(patsubst test/specs/%.spec,%,$(wildcard test/specs/*.spec))
+ISOLATION_OPTS = $(REGRESS_OPTS)
+endif
 
 PG_CONFIG   ?= pg_config
 
@@ -33,12 +40,6 @@ META.json:
 
 Trunk.toml:
 	sed 's/@@VERSION@@/$(EXTVERSION)/g' Trunk.toml.in > Trunk.toml
-
-clean:
-	@rm -rf "$(EXTENSION)-$(EXTVERSION).zip"
-	@rm -rf "sql/$(EXTENSION)--$(EXTVERSION).sql"
-	@rm -rf META.json
-	@rm -rf Trunk.toml
 
 install-pg-partman:
 	git clone https://github.com/pgpartman/pg_partman.git && \
