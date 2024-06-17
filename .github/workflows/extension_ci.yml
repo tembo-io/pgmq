@@ -23,27 +23,6 @@ on:
       - created
 
 jobs:
-  lint:
-    name: Run linters for integration tests
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust minimal nightly with clippy and rustfmt
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "pgmq-extension-lint"
-          workspaces: |
-            pgmq/
-      - name: Cargo format
-        run: cargo +nightly fmt --manifest-path integration_test/Cargo.toml --all --check
-      - name: Clippy
-        run: cargo clippy --manifest-path integration_test/Cargo.toml
-
   test:
     name: Run tests
     runs-on: ubuntu-22.04
@@ -116,7 +95,7 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
-      - name: Install stoml and pg-trunk
+      - name: Install stoml
         shell: bash
         run: |
           set -xe

@@ -1,6 +1,6 @@
 -- CREATE pgmq.
-CREATE EXTENSION pgmq;
-CREATE EXTENSION pg_partman;
+CREATE EXTENSION IF NOT EXISTS pgmq;
+CREATE EXTENSION IF NOT EXISTS pg_partman;
 -- test_unlogged
 -- CREATE with default retention and partition strategy
 SELECT pgmq.create_unlogged('test_unlogged_queue');

@@ -78,12 +78,22 @@ jobs:
         run: |
           git checkout $CI_BRANCH
       - name: Upgrade extension version
+        env:
+          PG_CONFIG: ~/.pgrx/16.3/pgrx-install/bin/pg_config
         run: |
-          sed -i 's|PG_CONFIG = pg_config|PG_CONFIG = ~/.pgrx/16.3/pgrx-install/bin/pg_config|' Makefile
+          make clean
           make
           make install
           ls -alh /home/runner/.pgrx/16.3/pgrx-install/share/postgresql/extension/pgmq*
           psql postgres://$USER:postgres@localhost:28816/pgmq -c "ALTER EXTENSION pgmq UPDATE;"
       - name: Run tests
+        env:
+          PGPASSWORD: postgres
+          PGHOST: localhost
+          PGPORT: 28816
+          REGRESS_OPTS: --inputdir=test --dbname=pgmq
         run: |
-          DATABASE_URL=postgres://$USER:postgres@localhost:28816/pgmq SQLX_OFFLINE=true make test
+          status=0
+          make installcheck || status=$?
+          [ $status != 0 ] && find . -name regression.diffs -exec cat {} +
+          exit $status
