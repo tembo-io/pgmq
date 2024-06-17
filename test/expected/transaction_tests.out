@@ -1,0 +1,62 @@
+Parsed test spec with 2 sessions
+
+starting permutation: c1create c1begin c1send c2read c1commit c2read c1delete
+step c1create: SELECT pgmq.create('transaction_test_queue');
+create
+------
+      
+(1 row)
+
+step c1begin: BEGIN;
+step c1send: SELECT * FROM pgmq.send('transaction_test_queue', '1');
+send
+----
+   1
+(1 row)
+
+step c2read: SELECT msg_id FROM pgmq.read('transaction_test_queue', 0, 1)
+msg_id
+------
+(0 rows)
+
+step c1commit: COMMIT;
+step c2read: SELECT msg_id FROM pgmq.read('transaction_test_queue', 0, 1)
+msg_id
+------
+     1
+(1 row)
+
+step c1delete: SELECT * FROM pgmq.delete('transaction_test_queue', 1);
+delete
+------
+t     
+(1 row)
+
+
+starting permutation: c1send c1begin c2begin c1read c2read c1rollback c2read
+step c1send: SELECT * FROM pgmq.send('transaction_test_queue', '1');
+send
+----
+   2
+(1 row)
+
+step c1begin: BEGIN;
+step c2begin: BEGIN;
+step c1read: SELECT msg_id FROM pgmq.read('transaction_test_queue', 0, 1)
+msg_id
+------
+     2
+(1 row)
+
+step c2read: SELECT msg_id FROM pgmq.read('transaction_test_queue', 0, 1)
+msg_id
+------
+(0 rows)
+
+step c1rollback: ROLLBACK;
+step c2read: SELECT msg_id FROM pgmq.read('transaction_test_queue', 0, 1)
+msg_id
+------
+     2
+(1 row)
+

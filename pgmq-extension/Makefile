@@ -1,9 +1,16 @@
-EXTENSION    = pgmq
-EXTVERSION   = $(shell grep "^default_version" pgmq.control | sed -r "s/default_version[^']+'([^']+).*/\1/")
-DATA         = $(wildcard sql/*--*.sql)
-TESTS        = $(wildcard test/sql/*.sql)
-REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
-REGRESS_OPTS = --inputdir=test
+EXTENSION     = pgmq
+EXTVERSION    = $(shell grep "^default_version" pgmq.control | sed -r "s/default_version[^']+'([^']+).*/\1/")
+DATA          = $(wildcard sql/*--*.sql)
+TESTS         = $(wildcard test/sql/*.sql)
+REGRESS       = $(patsubst test/sql/%.sql,%,$(TESTS))
+REGRESS_OPTS ?= --inputdir=test
+EXTRA_CLEAN   = $(EXTENSION)-$(EXTVERSION).zip sql/$(EXTENSION)--$(EXTVERSION).sql META.json Trunk.toml
+
+# pg_isolation_regress available in v14 and higher.
+ifeq ($(shell test $$(pg_config --version | awk '{print $$2}' | awk 'BEGIN { FS = "." }; { print $$1 }') -ge 14; echo $$?),0)
+ISOLATION   = $(patsubst test/specs/%.spec,%,$(wildcard test/specs/*.spec))
+ISOLATION_OPTS = $(REGRESS_OPTS)
+endif
 
 PG_CONFIG   ?= pg_config
 
@@ -18,11 +25,6 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 dist: Trunk.toml META.json
 	git archive --format zip --prefix=$(EXTENSION)-$(EXTVERSION)/ -o $(EXTENSION)-$(EXTVERSION).zip --add-file META.json --add-file Trunk.toml HEAD sql pgmq.control README.md UPDATING.md Makefile
 
-test:
-	cargo test --manifest-path integration_test/Cargo.toml --no-default-features -- --test-threads=1
-
-installcheck: test
-
 run.postgres:
 	docker run -d --name pgmq-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pg16-pgmq:latest
 
@@ -33,12 +35,6 @@ META.json:
 
 Trunk.toml:
 	sed 's/@@VERSION@@/$(EXTVERSION)/g' Trunk.toml.in > Trunk.toml
-
-clean:
-	@rm -rf "$(EXTENSION)-$(EXTVERSION).zip"
-	@rm -rf "sql/$(EXTENSION)--$(EXTVERSION).sql"
-	@rm -rf META.json
-	@rm -rf Trunk.toml
 
 install-pg-partman:
 	git clone https://github.com/pgpartman/pg_partman.git && \
