@@ -3,21 +3,21 @@ name: PGMQ Extension Upgrade
 defaults:
   run:
     shell: bash
-    working-directory: ./
+    working-directory: ./pgmq-extension
 
 on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - "pgmq-rs/**"
-      - "tembo-pgmq-python/**"
+    paths:
+      - "pgmq-extension/**"
+      - ".github/workflows/extension_upgrade.yml"
   push:
     branches:
       - main
-    paths-ignore:
-      - "pgmq-rs/**"
-      - "tembo-pgmq-python/**"
+    paths:
+      - "pgmq-extension/**"
+      - ".github/workflows/extension_upgrade.yml"
   release:
     types:
       - created

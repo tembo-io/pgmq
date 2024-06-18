@@ -3,21 +3,21 @@ name: PGMQ Extension
 defaults:
   run:
     shell: bash
-    working-directory: ./
+    working-directory: ./pgmq-extension
 
 on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - "pgmq-rs/**"
-      - "tembo-pgmq-python/**"
+    paths:
+      - "pgmq-extension/**"
+      - ".github/workflows/extension_ci.yml"
   push:
     branches:
       - main
-    paths-ignore:
-      - "pgmq-rs/**"
-      - "tembo-pgmq-python/**"
+    paths:
+      - "pgmq-extension/**"
+      - ".github/workflows/extension_ci.yml"
   release:
     types:
       - created
@@ -33,6 +33,7 @@ jobs:
     container: pgxn/pgxn-tools
     steps:
       - run: pg-start ${{ matrix.pg }}
+        working-directory: ./
       - uses: actions/checkout@v4
       - run: pgxn install 'pg_partman=4.7.3'
       - run: pg-build-test
@@ -53,7 +54,7 @@ jobs:
         with:
           prefix-key: "pgmq-extension-test"
           workspaces: |
-            pgmq/extension
+            pgmq/pgmq-extension
       - name: Install stoml and pg-trunk
         shell: bash
         run: |
@@ -66,12 +67,10 @@ jobs:
       - name: Make trunk
         run: make Trunk.toml
       - name: trunk build
-        working-directory: ./
         run: trunk build --pg-version ${{ matrix.pg-version }}
       - name: trunk publish
         # only publish release events
         if: github.event_name == 'release'
-        working-directory: ./
         env:
           TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
         run: |
@@ -81,8 +80,6 @@ jobs:
           trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
     name: Build and push images
-    # needs:
-    #   - publish
     runs-on:
       - self-hosted
       - dind
@@ -123,6 +120,7 @@ jobs:
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
       - name: Generate dockerfile from template file
+        working-directory: ./
         run: ./images/pgmq-pg/replace-pg-version.sh ${{ matrix.pg }} ./images/pgmq-pg/Dockerfile.in ./images/pgmq-pg/Dockerfile
 
       - name: Build and push -- Commit
@@ -130,6 +128,7 @@ jobs:
         if: github.event_name != 'release'
         uses: docker/build-push-action@v5
         with:
+          working-directory: ./
           file: ./images/pgmq-pg/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64
@@ -142,6 +141,7 @@ jobs:
         if: github.event_name == 'release'
         uses: docker/build-push-action@v5
         with:
+          working-directory: ./
           file: ./images/pgmq-pg/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64

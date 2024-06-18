@@ -28,7 +28,7 @@ Now, connect to postgres and run:
 ALTER EXTENSION pgmq UPDATE
 ```
 
-If successfull, pgmq is updated!
+If successful, pgmq is updated!
 
 #### When building from source (pre-1.3.0)
 
@@ -55,4 +55,4 @@ Now, connect to postgres and run:
 ALTER EXTENSION pgmq UPDATE
 ```
 
-If successfull, pgmq is updated!
+If successful, pgmq is updated!
