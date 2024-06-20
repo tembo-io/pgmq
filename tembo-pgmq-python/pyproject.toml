@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tembo-pgmq-python"
-version = "0.7.0"
+version = "0.8.0"
 description = "Python client for the PGMQ Postgres extension."
 authors = ["Adam Hendel <adam@tembo.io>"]
 license = "PostgreSQL"
