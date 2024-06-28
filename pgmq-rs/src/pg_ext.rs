@@ -170,16 +170,19 @@ impl PGMQueueExt {
         &self,
         queue_name: &str,
         message: &T,
+        cxn: Option<&mut sqlx::Transaction<'_, sqlx::Postgres>>,
     ) -> Result<i64, PgmqError> {
         check_input(queue_name)?;
         let msg = serde_json::json!(&message);
-        let sent = sqlx::query!(
+        let prepared = sqlx::query!(
             "SELECT send as msg_id from pgmq.send($1::text, $2::jsonb, 0::integer);",
             queue_name,
             msg
-        )
-        .fetch_one(&self.connection)
-        .await?;
+        );
+        let sent = match cxn {
+            Some(tx) => prepared.fetch_one(&mut **tx).await?,
+            None => prepared.fetch_one(&self.connection).await?,
+        };
         Ok(sent.msg_id.expect("no message id"))
     }
 

@@ -1,4 +1,5 @@
 use pgmq::types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX};
+use pgmq::util::connect;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres, Row};
@@ -126,7 +127,7 @@ async fn test_ext_send_read_delete() {
     let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
     assert_eq!(num_rows_queue, 0);
 
-    let msg_id = queue.send(&test_queue, &msg).await.unwrap();
+    let msg_id = queue.send(&test_queue, &msg, None).await.unwrap();
     assert!(msg_id >= 1);
 
     let read_message = queue
@@ -178,7 +179,7 @@ async fn test_ext_send_read_delete() {
     assert_eq!(read_message.msg_id, msg_id);
 
     // delete message
-    let msg_id_del = queue.send(&test_queue, &msg).await.unwrap();
+    let msg_id_del = queue.send(&test_queue, &msg, None).await.unwrap();
 
     let deleted = queue
         .delete(&test_queue, msg_id_del)
@@ -224,7 +225,7 @@ async fn test_ext_send_pop() {
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
 
-    let _ = queue.send(&test_queue, &msg).await.unwrap();
+    let _ = queue.send(&test_queue, &msg, None).await.unwrap();
 
     let popped = queue
         .pop::<MyMessage>(&test_queue)
@@ -243,7 +244,7 @@ async fn test_ext_send_archive() {
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
 
-    let msg_id = queue.send(&test_queue, &msg).await.unwrap();
+    let msg_id = queue.send(&test_queue, &msg, None).await.unwrap();
 
     let archived = queue
         .archive(&test_queue, msg_id)
@@ -261,9 +262,9 @@ async fn test_ext_archive_batch() {
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
 
-    let m1 = queue.send(&test_queue, &msg).await.unwrap();
-    let m2 = queue.send(&test_queue, &msg).await.unwrap();
-    let m3 = queue.send(&test_queue, &msg).await.unwrap();
+    let m1 = queue.send(&test_queue, &msg, None).await.unwrap();
+    let m2 = queue.send(&test_queue, &msg, None).await.unwrap();
+    let m3 = queue.send(&test_queue, &msg, None).await.unwrap();
 
     let archive_result = queue
         .archive_batch(&test_queue, &[m1, m2, m3])
@@ -288,9 +289,9 @@ async fn test_ext_delete_batch() {
 
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
-    let m1 = queue.send(&test_queue, &msg).await.unwrap();
-    let m2 = queue.send(&test_queue, &msg).await.unwrap();
-    let m3 = queue.send(&test_queue, &msg).await.unwrap();
+    let m1 = queue.send(&test_queue, &msg, None).await.unwrap();
+    let m2 = queue.send(&test_queue, &msg, None).await.unwrap();
+    let m3 = queue.send(&test_queue, &msg, None).await.unwrap();
     let delete_result = queue
         .delete_batch(&test_queue, &[m1, m2, m3])
         .await
@@ -309,9 +310,9 @@ async fn test_ext_purge_queue() {
 
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
-    let _ = queue.send(&test_queue, &msg).await.unwrap();
-    let _ = queue.send(&test_queue, &msg).await.unwrap();
-    let _ = queue.send(&test_queue, &msg).await.unwrap();
+    let _ = queue.send(&test_queue, &msg, None).await.unwrap();
+    let _ = queue.send(&test_queue, &msg, None).await.unwrap();
+    let _ = queue.send(&test_queue, &msg, None).await.unwrap();
 
     let purged_count = queue
         .purge_queue(&test_queue)
@@ -366,4 +367,58 @@ async fn test_byop() {
         .await
         .expect("failed to create queue");
     assert!(created);
+}
+
+#[tokio::test]
+async fn test_transactional_send() {
+    let test_queue = format!("test_tx_{}", rand::thread_rng().gen_range(0..100000));
+    let db_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_owned());
+    // pool_0 for the queue object and transaction
+    let pool_0 = connect(&db_url, 2)
+        .await
+        .expect("failed to connect to postgres");
+    // pool_1 for querying outside of transaction
+    let pool_1 = connect(&db_url, 2)
+        .await
+        .expect("failed to connect to postgres");
+
+    // create queue using pool_0
+    let queue = pgmq::PGMQueueExt::new_with_pool(pool_0.clone()).await;
+    let init = queue.init().await.expect("failed to create extension");
+    assert!(init, "failed to create extension");
+
+    let created = queue
+        .create(&test_queue)
+        .await
+        .expect("failed to create queue");
+    assert!(created);
+
+    let mut tx = pool_0.begin().await.expect("failed to start transaction");
+
+    // transaction still open, but message sent
+    let sent_msg = queue
+        .send(&test_queue, &MyMessage::default(), Some(&mut tx))
+        .await
+        .expect("failed to send message");
+    assert_eq!(sent_msg, 1);
+
+    // transaction still not closed, no rows yet
+    let query = format!("SELECT count(*) FROM pgmq.q_{test_queue}");
+    let rows = sqlx::query(&query)
+        .fetch_one(&pool_1)
+        .await
+        .expect("failed to fetch row")
+        .get::<i64, usize>(0);
+    assert_eq!(rows, 0);
+
+    tx.commit().await.expect("failed to commit transaction");
+
+    // transaction now committed, row is available
+    let rows = sqlx::query(&query)
+        .fetch_one(&pool_1)
+        .await
+        .expect("failed to fetch row")
+        .get::<i64, usize>(0);
+    assert_eq!(rows, 1);
 }
