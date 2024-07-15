@@ -17,7 +17,7 @@ PG_CONFIG   ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
-all: sql/$(EXTENSION)--$(EXTVERSION).sql META.json Trunk.toml
+all: sql/$(EXTENSION)--$(EXTVERSION).sql Trunk.toml
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
