@@ -773,7 +773,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE pgmq.convert_archive_partitioned(table_name TEXT)
+CREATE FUNCTION pgmq.convert_archive_partitioned(table_name TEXT)
 RETURNS void AS $$
 BEGIN
     EXECUTE format('ALTER TABLE pgmq.a_%I RENAME TO a_%I_old', table_name, table_name);
