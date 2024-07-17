@@ -1,39 +1,67 @@
 -- Add function to convert archive queues to partitioned tables
-CREATE pgmq.convert_archive_partitioned(table_name TEXT)
+CREATE FUNCTION pgmq.convert_archive_partitioned(table_name TEXT,
+                                                 partition_interval TEXT DEFAULT '10000',
+                                                 retention_interval TEXT DEFAULT '100000',
+                                                 leading_partition INT DEFAULT 10)
 RETURNS void AS $$
+DECLARE
+a_table_name TEXT;
+a_table_name_old TEXT;
+qualified_a_table_name TEXT;
+qualified_a_table_name_old TEXT;
 BEGIN
-    EXECUTE format('ALTER TABLE pgmq.a_%I RENAME TO a_%I_old', table_name, table_name);
+  PERFORM pgmq._ensure_pg_partman_installed();
+  SELECT FORMAT('%s', 'a_'|| table_name) INTO a_table_name;
+  SELECT FORMAT('%s', 'a_'|| table_name || '_old') INTO a_table_name_old;
+  SELECT FORMAT('%s.%s', 'pgmq','a_'|| table_name) INTO qualified_a_table_name;
+  SELECT FORMAT('%s.%s', 'pgmq','a_'|| table_name || '_old') INTO qualified_a_table_name_old;
 
-    EXECUTE format('
-    CREATE TABLE pgmq.a_%I (
-        msg_id bigint NOT NULL,
-        read_ct int4 NULL DEFAULT 0,
-        enqueued_at timestamptz NULL DEFAULT now(),
-        archived_at timestamptz NULL DEFAULT now(),
-        vt timestamptz NULL,
-        message jsonb NULL
-    )
-    PARTITION BY RANGE (archived_at)', table_name);
+  PERFORM c.relkind
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relname = a_table_name
+    AND c.relkind = 'p';
 
-    EXECUTE format('ALTER INDEX pgmq.archived_at_idx_a_%I RENAME TO archived_at_idx_a_%I_old',
-                   replace(table_name, 'a_', ''), replace(table_name, 'a_', ''));
-    EXECUTE format('CREATE INDEX pgmqarchived_at_idx_a_%I ON pgmq.a_%I (archived_at)',
-                   replace(table_name, 'a_', ''), table_name);
+  IF FOUND THEN
+    RAISE NOTICE 'Table %s is already partitioned', a_table_name;
+    RETURN;
+  END IF;
 
-    EXECUTE format('
-    SELECT public.create_parent(
-        ''pgmq.a_%I'',
-        ''archived_at'',
-        ''native'',
-        ''daily''
-    )', table_name);
+  PERFORM c.relkind
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relname = a_table_name
+    AND c.relkind = 'r';
 
-    EXECUTE format('
+  IF NOT FOUND THEN
+    RAISE NOTICE 'Table %s doesnot exists', a_table_name;
+    RETURN;
+  END IF;
+
+  EXECUTE 'ALTER TABLE ' || qualified_a_table_name || ' RENAME TO ' || a_table_name_old;
+
+  EXECUTE 'CREATE TABLE '
+            || qualified_a_table_name
+            || '( msg_id BIGINT PRIMARY KEY,
+                  read_ct INT DEFAULT 0 NOT NULL,
+                  enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+                  archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+                  vt TIMESTAMP WITH TIME ZONE NOT NULL,
+                  message JSONB
+                ) PARTITION BY RANGE (msg_id)';
+
+    EXECUTE 'ALTER INDEX pgmq.archived_at_idx_' || table_name || ' RENAME TO archived_at_idx_' || table_name || '_old';
+    EXECUTE 'CREATE INDEX archived_at_idx_'|| table_name || ' ON ' || qualified_a_table_name ||'(archived_at)';
+
+    PERFORM create_parent(p_parent_table := qualified_a_table_name,
+                         p_control := 'msg_id', p_interval := partition_interval,
+                         p_premake := leading_partition);
+
     UPDATE part_config
-        SET retention = ''30 days'',
-            retention_keep_table = false,
-            retention_keep_index = false,
-            infinite_time_partitions = true
-        WHERE parent_table = ''pgmq.a_%I''', table_name);
+      SET retention = retention_interval,
+      retention_keep_table = false,
+      retention_keep_index = false,
+      infinite_time_partitions = true
+      WHERE parent_table = qualified_a_table_name;
 END;
 $$ LANGUAGE plpgsql;
