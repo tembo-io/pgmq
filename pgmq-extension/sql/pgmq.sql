@@ -779,16 +779,11 @@ CREATE FUNCTION pgmq.convert_archive_partitioned(table_name TEXT,
                                                  leading_partition INT DEFAULT 10)
 RETURNS void AS $$
 DECLARE
-a_table_name TEXT;
-a_table_name_old TEXT;
-qualified_a_table_name TEXT;
-qualified_a_table_name_old TEXT;
+a_table_name TEXT := 'a_' || table_name;
+a_table_name_old TEXT := 'a_'|| table_name || '_old';
+qualified_a_table_name TEXT := format('%I.%I', 'pgmq', table_name);
+qualified_a_table_name_old TEXT := format ('%I.%I', 'pgmq', table_name || '_old');
 BEGIN
-  PERFORM pgmq._ensure_pg_partman_installed();
-  SELECT FORMAT('%s', 'a_'|| table_name) INTO a_table_name;
-  SELECT FORMAT('%s', 'a_'|| table_name || '_old') INTO a_table_name_old;
-  SELECT FORMAT('%s.%s', 'pgmq','a_'|| table_name) INTO qualified_a_table_name;
-  SELECT FORMAT('%s.%s', 'pgmq','a_'|| table_name || '_old') INTO qualified_a_table_name_old;
 
   PERFORM c.relkind
     FROM pg_class c
