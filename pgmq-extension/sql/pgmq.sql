@@ -781,8 +781,8 @@ RETURNS void AS $$
 DECLARE
 a_table_name TEXT := 'a_' || table_name;
 a_table_name_old TEXT := 'a_'|| table_name || '_old';
-qualified_a_table_name TEXT := format('%I.%I', 'pgmq', table_name);
-qualified_a_table_name_old TEXT := format ('%I.%I', 'pgmq', table_name || '_old');
+qualified_a_table_name TEXT := format('%I.%I', 'pgmq', 'a_' || table_name);
+qualified_a_table_name_old TEXT := format ('%I.%I', 'pgmq', 'a_' || table_name || '_old');
 BEGIN
 
   PERFORM c.relkind

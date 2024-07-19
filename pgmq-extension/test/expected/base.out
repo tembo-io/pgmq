@@ -603,7 +603,7 @@ SELECT pgmq.convert_archive_partitioned('long_queue_name_12345678901234567890123
 NOTICE:  identifier "archived_at_idx_long_queue_name_1234567890123456789012345678901_old" will be truncated to "archived_at_idx_long_queue_name_1234567890123456789012345678901"
 ERROR:  relation "archived_at_idx_long_queue_name_1234567890123456789012345678901" already exists
 CONTEXT:  SQL statement "ALTER INDEX pgmq.archived_at_idx_long_queue_name_1234567890123456789012345678901 RENAME TO archived_at_idx_long_queue_name_1234567890123456789012345678901_old"
-PL/pgSQL function pgmq.convert_archive_partitioned(text,text,text,integer) line 48 at EXECUTE
+PL/pgSQL function pgmq.convert_archive_partitioned(text,text,text,integer) line 43 at EXECUTE
 --Success
 SELECT pgmq.create('long_queue_name_');
  create 
