@@ -78,10 +78,6 @@ CREATE EXTENSION pgmq cascade;
 If you are working with partitioned queues, you will need to install `pg_partman` version <= 4.7.0
 
 ```bash
-git clone https://github.com/pgpartman/pg_partman.git
-cd pg_partman
-git fetch
-git checkout 4.7.0
 make install-pg-partman
 ```
 
