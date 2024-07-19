@@ -827,8 +827,7 @@ BEGIN
     EXECUTE 'ALTER INDEX pgmq.archived_at_idx_' || table_name || ' RENAME TO archived_at_idx_' || table_name || '_old';
     EXECUTE 'CREATE INDEX archived_at_idx_'|| table_name || ' ON ' || qualified_a_table_name ||'(archived_at)';
 
-    PERFORM create_parent(p_parent_table := qualified_a_table_name,
-                         p_control := 'msg_id', p_interval := partition_interval,
+    PERFORM create_parent(qualified_a_table_name, 'msg_id', 'native',  partition_interval,
                          p_premake := leading_partition);
 
     UPDATE part_config
