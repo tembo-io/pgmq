@@ -809,27 +809,19 @@ BEGIN
 
   EXECUTE 'ALTER TABLE ' || qualified_a_table_name || ' RENAME TO ' || a_table_name_old;
 
-  EXECUTE 'CREATE TABLE '
-            || qualified_a_table_name
-            || '( msg_id BIGINT PRIMARY KEY,
-                  read_ct INT DEFAULT 0 NOT NULL,
-                  enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
-                  archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
-                  vt TIMESTAMP WITH TIME ZONE NOT NULL,
-                  message JSONB
-                ) PARTITION BY RANGE (msg_id)';
+  EXECUTE format( 'CREATE TABLE pgmq.%I (LIKE pgmq.%I including all) PARTITION BY RANGE (msg_id)', 'a_' || table_name, 'a_'|| table_name || '_old' );
 
-    EXECUTE 'ALTER INDEX pgmq.archived_at_idx_' || table_name || ' RENAME TO archived_at_idx_' || table_name || '_old';
-    EXECUTE 'CREATE INDEX archived_at_idx_'|| table_name || ' ON ' || qualified_a_table_name ||'(archived_at)';
+  EXECUTE 'ALTER INDEX pgmq.archived_at_idx_' || table_name || ' RENAME TO archived_at_idx_' || table_name || '_old';
+  EXECUTE 'CREATE INDEX archived_at_idx_'|| table_name || ' ON ' || qualified_a_table_name ||'(archived_at)';
 
-    PERFORM create_parent(qualified_a_table_name, 'msg_id', 'native',  partition_interval,
+  PERFORM create_parent(qualified_a_table_name, 'msg_id', 'native',  partition_interval,
                          p_premake := leading_partition);
 
-    UPDATE part_config
-      SET retention = retention_interval,
-      retention_keep_table = false,
-      retention_keep_index = false,
-      infinite_time_partitions = true
-      WHERE parent_table = qualified_a_table_name;
+  UPDATE part_config
+    SET retention = retention_interval,
+    retention_keep_table = false,
+    retention_keep_index = false,
+    infinite_time_partitions = true
+    WHERE parent_table = qualified_a_table_name;
 END;
 $$ LANGUAGE plpgsql;
