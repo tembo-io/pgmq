@@ -236,3 +236,21 @@ SELECT pgmq.create('detach_archive_queue');
 SELECT pgmq.detach_archive('detach_archive_queue');
 DROP EXTENSION pgmq CASCADE;
 SELECT tablename FROM pg_tables WHERE schemaname = 'pgmq' AND tablename = 'a_detach_archive_queue';
+
+--Truncated Index When queue name is max.
+CREATE EXTENSION pgmq;
+SELECT pgmq.create('long_queue_name_123456789012345678901234567890');
+SELECT pgmq.convert_archive_partitioned('long_queue_name_123456789012345678901234567890');
+
+--Check for archive is already partitioned
+SELECT pgmq.convert_archive_partitioned('long_queue_name_123456789012345678901234567890');
+
+--Error out due to Index duplicate index at old table.
+SELECT pgmq.create('long_queue_name_1234567890123456789012345678901');
+SELECT pgmq.convert_archive_partitioned('long_queue_name_1234567890123456789012345678901');
+
+--Success
+SELECT pgmq.create('long_queue_name_');
+SELECT pgmq.convert_archive_partitioned('long_queue_name_');
+
+DROP EXTENSION pgmq CASCADE;
