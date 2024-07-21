@@ -75,6 +75,7 @@ Community
 - [Kotlin JVM (JDBC)](https://github.com/vdsirotkin/pgmq-kotlin-jvm)
 - [Javascript (NodeJs)](https://github.com/Muhammad-Magdi/pgmq-js)
 - [.NET](https://github.com/brianpursley/Npgmq)
+- [Python (with SQLAlchemy)](https://github.com/jason810496/pgmq-sqlalchemy)
 
 ## SQL Examples
 
