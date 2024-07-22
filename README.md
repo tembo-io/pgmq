@@ -63,7 +63,7 @@ To update PGMQ versions, follow the instructions in [UPDATING.md](UPDATING.md).
 ## Client Libraries
 
 - [Rust](https://github.com/tembo-io/pgmq/tree/main/pgmq-rs)
-- [Python](https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python)
+- [Python (only for psycopg3)](https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python)
 
 Community
 
@@ -75,6 +75,7 @@ Community
 - [Kotlin JVM (JDBC)](https://github.com/vdsirotkin/pgmq-kotlin-jvm)
 - [Javascript (NodeJs)](https://github.com/Muhammad-Magdi/pgmq-js)
 - [.NET](https://github.com/brianpursley/Npgmq)
+- [Python (with SQLAlchemy)](https://github.com/jason810496/pgmq-sqlalchemy)
 
 ## SQL Examples
 
