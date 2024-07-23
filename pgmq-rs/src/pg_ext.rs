@@ -4,7 +4,7 @@ use crate::util::{check_input, connect};
 use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::types::chrono::Utc;
-use sqlx::{Executor, Pool, Postgres};
+use sqlx::{Pool, Postgres};
 
 const DEFAULT_POLL_TIMEOUT_S: i32 = 5;
 const DEFAULT_POLL_INTERVAL_MS: i32 = 250;
@@ -40,35 +40,65 @@ impl PGMQueueExt {
         }
     }
 
-    pub async fn init(&self) -> Result<bool, PgmqError> {
+    pub async fn init_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<bool, PgmqError> {
         sqlx::query!("CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;")
-            .execute(&self.connection)
+            .execute(executor)
             .await
             .map(|_| true)
             .map_err(PgmqError::from)
     }
 
-    /// Errors when there is any database error and Ok(false) when the queue already exists.
-    pub async fn create(&self, queue_name: &str) -> Result<bool, PgmqError> {
+    pub async fn init(&self) -> Result<bool, PgmqError> {
+        self.init_with_cxn(&self.connection).await
+    }
+
+    pub async fn create_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>>(
+        &self,
+        queue_name: &str,
+        executor: E,
+    ) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
         sqlx::query!("SELECT * from pgmq.create($1::text);", queue_name)
-            .execute(&self.connection)
+            .execute(executor)
+            .await?;
+        Ok(true)
+    }
+    /// Errors when there is any database error and Ok(false) when the queue already exists.
+    pub async fn create(&self, queue_name: &str) -> Result<bool, PgmqError> {
+        self.create_with_cxn(queue_name, &self.connection).await?;
+        Ok(true)
+    }
+
+    pub async fn create_unlogged_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>>(
+        &self,
+        queue_name: &str,
+        executor: E,
+    ) -> Result<bool, PgmqError> {
+        check_input(queue_name)?;
+        sqlx::query!("SELECT * from pgmq.create_unlogged($1::text);", queue_name)
+            .execute(executor)
             .await?;
         Ok(true)
     }
 
     /// Errors when there is any database error and Ok(false) when the queue already exists.
     pub async fn create_unlogged(&self, queue_name: &str) -> Result<bool, PgmqError> {
-        check_input(queue_name)?;
-        sqlx::query!("SELECT * from pgmq.create_unlogged($1::text);", queue_name)
-            .execute(&self.connection)
+        self.create_unlogged_with_cxn(queue_name, &self.connection)
             .await?;
         Ok(true)
     }
 
-    /// Create a new partitioned queue.
-    /// Errors when there is any database error and Ok(false) when the queue already exists.
-    pub async fn create_partitioned(&self, queue_name: &str) -> Result<bool, PgmqError> {
+    pub async fn create_partitioned_with_cxn<
+        'c,
+        E: sqlx::Executor<'c, Database = Postgres> + std::marker::Copy,
+    >(
+        &self,
+        queue_name: &str,
+        executor: E,
+    ) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
         let queue_table = format!("pgmq.{QUEUE_PREFIX}_{queue_name}");
         // we need to check whether the queue exists first
@@ -77,9 +107,7 @@ impl PGMQueueExt {
             "SELECT EXISTS(SELECT * from part_config where parent_table = '{queue_table}');",
             queue_table = queue_table
         );
-        let exists = sqlx::query_scalar(&exists_stmt)
-            .fetch_one(&self.connection)
-            .await?;
+        let exists = sqlx::query_scalar(&exists_stmt).fetch_one(executor).await?;
         if exists {
             info!("queue: {} already exists", queue_name);
             Ok(false)
@@ -88,16 +116,26 @@ impl PGMQueueExt {
                 "SELECT * from pgmq.create_partitioned($1::text);",
                 queue_name
             )
-            .execute(&self.connection)
+            .execute(executor)
             .await?;
             Ok(true)
         }
     }
 
-    /// Drop an existing queue table.
-    pub async fn drop_queue(&self, queue_name: &str) -> Result<(), PgmqError> {
+    /// Create a new partitioned queue.
+    /// Errors when there is any database error and Ok(false) when the queue already exists.
+    pub async fn create_partitioned(&self, queue_name: &str) -> Result<bool, PgmqError> {
+        self.create_partitioned_with_cxn(queue_name, &self.connection)
+            .await
+    }
+
+    pub async fn drop_queue_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>>(
+        &self,
+        queue_name: &str,
+        executor: E,
+    ) -> Result<(), PgmqError> {
         check_input(queue_name)?;
-        self.connection
+        executor
             .execute(sqlx::query!(
                 "SELECT * from pgmq.drop_queue($1::text);",
                 queue_name
@@ -108,19 +146,36 @@ impl PGMQueueExt {
     }
 
     /// Drop an existing queue table.
-    pub async fn purge_queue(&self, queue_name: &str) -> Result<i64, PgmqError> {
+    pub async fn drop_queue(&self, queue_name: &str) -> Result<(), PgmqError> {
+        self.drop_queue_with_cxn(queue_name, &self.connection).await
+    }
+
+    /// Drop an existing queue table.
+    pub async fn purge_queue_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>>(
+        &self,
+        queue_name: &str,
+        executor: E,
+    ) -> Result<i64, PgmqError> {
         check_input(queue_name)?;
         let purged = sqlx::query!("SELECT * from pgmq.purge_queue($1::text);", queue_name)
-            .fetch_one(&self.connection)
+            .fetch_one(executor)
             .await?;
 
         Ok(purged.purge_queue.expect("no purged count"))
     }
 
-    /// List all queues in the Postgres instance.
-    pub async fn list_queues(&self) -> Result<Option<Vec<PGMQueueMeta>>, PgmqError> {
+    /// Drop an existing queue table.
+    pub async fn purge_queue(&self, queue_name: &str) -> Result<i64, PgmqError> {
+        self.purge_queue_with_cxn(queue_name, &self.connection)
+            .await
+    }
+
+    pub async fn list_queues_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<Option<Vec<PGMQueueMeta>>, PgmqError> {
         let queues = sqlx::query!("SELECT * from pgmq.list_queues();")
-            .fetch_all(&self.connection)
+            .fetch_all(executor)
             .await?;
         if queues.is_empty() {
             Ok(None)
@@ -138,12 +193,21 @@ impl PGMQueueExt {
         }
     }
 
-    // Set the visibility time on an existing message.
-    pub async fn set_vt<T: for<'de> Deserialize<'de>>(
+    /// List all queues in the Postgres instance.
+    pub async fn list_queues(&self) -> Result<Option<Vec<PGMQueueMeta>>, PgmqError> {
+        self.list_queues_with_cxn(&self.connection).await
+    }
+
+    pub async fn set_vt_with_cxn<
+        'c,
+        E: sqlx::Executor<'c, Database = Postgres>,
+        T: for<'de> Deserialize<'de>,
+    >(
         &self,
         queue_name: &str,
         msg_id: i64,
         vt: i32,
+        executor: E,
     ) -> Result<Message<T>, PgmqError> {
         check_input(queue_name)?;
         let updated = sqlx::query!(
@@ -152,7 +216,7 @@ impl PGMQueueExt {
             msg_id,
             vt
         )
-        .fetch_one(&self.connection)
+        .fetch_one(executor)
         .await?;
         let raw_msg = updated.message.expect("no message");
         let parsed_msg = serde_json::from_value::<T>(raw_msg)?;
@@ -165,12 +229,22 @@ impl PGMQueueExt {
             message: parsed_msg,
         })
     }
+    // Set the visibility time on an existing message.
+    pub async fn set_vt<T: for<'de> Deserialize<'de>>(
+        &self,
+        queue_name: &str,
+        msg_id: i64,
+        vt: i32,
+    ) -> Result<Message<T>, PgmqError> {
+        self.set_vt_with_cxn(queue_name, msg_id, vt, &self.connection)
+            .await
+    }
 
-    pub async fn send<T: Serialize>(
+    pub async fn send_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>, T: Serialize>(
         &self,
         queue_name: &str,
         message: &T,
-        cxn: Option<&mut sqlx::Transaction<'_, sqlx::Postgres>>,
+        executor: E,
     ) -> Result<i64, PgmqError> {
         check_input(queue_name)?;
         let msg = serde_json::json!(&message);
@@ -179,18 +253,29 @@ impl PGMQueueExt {
             queue_name,
             msg
         );
-        let sent = match cxn {
-            Some(tx) => prepared.fetch_one(&mut **tx).await?,
-            None => prepared.fetch_one(&self.connection).await?,
-        };
+        let sent = prepared.fetch_one(executor).await?;
         Ok(sent.msg_id.expect("no message id"))
     }
 
-    pub async fn send_delay<T: Serialize>(
+    pub async fn send<T: Serialize>(
+        &self,
+        queue_name: &str,
+        message: &T,
+    ) -> Result<i64, PgmqError> {
+        self.send_with_cxn(queue_name, message, &self.connection)
+            .await
+    }
+
+    pub async fn send_delay_with_cxn<
+        'c,
+        E: sqlx::Executor<'c, Database = Postgres>,
+        T: Serialize,
+    >(
         &self,
         queue_name: &str,
         message: &T,
         delay: u32,
+        executor: E,
     ) -> Result<i64, PgmqError> {
         check_input(queue_name)?;
         let msg = serde_json::json!(&message);
@@ -200,15 +285,30 @@ impl PGMQueueExt {
             msg,
             delay as i32
         )
-        .fetch_one(&self.connection)
+        .fetch_one(executor)
         .await?;
         Ok(sent.msg_id.expect("no message id"))
     }
 
-    pub async fn read<T: for<'de> Deserialize<'de>>(
+    pub async fn send_delay<T: Serialize>(
+        &self,
+        queue_name: &str,
+        message: &T,
+        delay: u32,
+    ) -> Result<i64, PgmqError> {
+        self.send_delay_with_cxn(queue_name, message, delay, &self.connection)
+            .await
+    }
+
+    pub async fn read_with_cxn<
+        'c,
+        E: sqlx::Executor<'c, Database = Postgres>,
+        T: for<'de> Deserialize<'de>,
+    >(
         &self,
         queue_name: &str,
         vt: i32,
+        executor: E,
     ) -> Result<Option<Message<T>>, PgmqError> {
         check_input(queue_name)?;
         let row = sqlx::query!(
@@ -217,7 +317,7 @@ impl PGMQueueExt {
             vt,
             1
         )
-        .fetch_optional(&self.connection)
+        .fetch_optional(executor)
         .await?;
         match row {
             Some(row) => {
@@ -240,14 +340,26 @@ impl PGMQueueExt {
             }
         }
     }
+    pub async fn read<T: for<'de> Deserialize<'de>>(
+        &self,
+        queue_name: &str,
+        vt: i32,
+    ) -> Result<Option<Message<T>>, PgmqError> {
+        self.read_with_cxn(queue_name, vt, &self.connection).await
+    }
 
-    pub async fn read_batch_with_poll<T: for<'de> Deserialize<'de>>(
+    pub async fn read_batch_with_poll_with_cxn<
+        'c,
+        E: sqlx::Executor<'c, Database = Postgres>,
+        T: for<'de> Deserialize<'de>,
+    >(
         &self,
         queue_name: &str,
         vt: i32,
         max_batch_size: i32,
         poll_timeout: Option<std::time::Duration>,
         poll_interval: Option<std::time::Duration>,
+        executor: E,
     ) -> Result<Option<Vec<Message<T>>>, PgmqError> {
         check_input(queue_name)?;
         let poll_timeout_s = poll_timeout.map_or(DEFAULT_POLL_TIMEOUT_S, |t| t.as_secs() as i32);
@@ -261,7 +373,7 @@ impl PGMQueueExt {
             poll_timeout_s,
             poll_interval_ms
         )
-        .fetch_all(&self.connection)
+        .fetch_all(executor)
         .await;
 
         match result {
@@ -292,17 +404,65 @@ impl PGMQueueExt {
         }
     }
 
-    /// Move a message to the archive table.
-    pub async fn archive(&self, queue_name: &str, msg_id: i64) -> Result<bool, PgmqError> {
+    pub async fn read_batch_with_poll<T: for<'de> Deserialize<'de>>(
+        &self,
+        queue_name: &str,
+        vt: i32,
+        max_batch_size: i32,
+        poll_timeout: Option<std::time::Duration>,
+        poll_interval: Option<std::time::Duration>,
+    ) -> Result<Option<Vec<Message<T>>>, PgmqError> {
+        self.read_batch_with_poll_with_cxn(
+            queue_name,
+            vt,
+            max_batch_size,
+            poll_timeout,
+            poll_interval,
+            &self.connection,
+        )
+        .await
+    }
+
+    pub async fn archive_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>>(
+        &self,
+        queue_name: &str,
+        msg_id: i64,
+        executor: E,
+    ) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
         let arch = sqlx::query!(
             "SELECT * from pgmq.archive($1::text, $2::bigint)",
             queue_name,
             msg_id
         )
-        .fetch_one(&self.connection)
+        .fetch_one(executor)
         .await?;
         Ok(arch.archive.expect("no archive result"))
+    }
+    /// Move a message to the archive table.
+    pub async fn archive(&self, queue_name: &str, msg_id: i64) -> Result<bool, PgmqError> {
+        self.archive_with_cxn(queue_name, msg_id, &self.connection)
+            .await
+    }
+
+    /// Move a slice of messages to the archive table.
+    pub async fn archive_batch_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>>(
+        &self,
+        queue_name: &str,
+        msg_ids: &[i64],
+        executor: E,
+    ) -> Result<usize, PgmqError> {
+        check_input(queue_name)?;
+        let qty = sqlx::query!(
+            "SELECT * from pgmq.archive($1::text, $2::bigint[])",
+            queue_name,
+            msg_ids
+        )
+        .fetch_all(executor)
+        .await?
+        .len();
+
+        Ok(qty)
     }
 
     /// Move a slice of messages to the archive table.
@@ -311,27 +471,22 @@ impl PGMQueueExt {
         queue_name: &str,
         msg_ids: &[i64],
     ) -> Result<usize, PgmqError> {
-        check_input(queue_name)?;
-        let qty = sqlx::query!(
-            "SELECT * from pgmq.archive($1::text, $2::bigint[])",
-            queue_name,
-            msg_ids
-        )
-        .fetch_all(&self.connection)
-        .await?
-        .len();
-
-        Ok(qty)
+        self.archive_batch_with_cxn(queue_name, msg_ids, &self.connection)
+            .await
     }
 
-    // Read and message and immediately delete it.
-    pub async fn pop<T: for<'de> Deserialize<'de>>(
+    pub async fn pop_with_cxn<
+        'c,
+        E: sqlx::Executor<'c, Database = Postgres>,
+        T: for<'de> Deserialize<'de>,
+    >(
         &self,
         queue_name: &str,
+        executor: E,
     ) -> Result<Option<Message<T>>, PgmqError> {
         check_input(queue_name)?;
         let row = sqlx::query!("SELECT * from pgmq.pop($1::text)", queue_name,)
-            .fetch_optional(&self.connection)
+            .fetch_optional(executor)
             .await?;
         match row {
             Some(row) => {
@@ -354,31 +509,58 @@ impl PGMQueueExt {
             }
         }
     }
+    // Read and message and immediately delete it.
+    pub async fn pop<T: for<'de> Deserialize<'de>>(
+        &self,
+        queue_name: &str,
+    ) -> Result<Option<Message<T>>, PgmqError> {
+        self.pop_with_cxn(queue_name, &self.connection).await
+    }
 
-    // Delete a message by message id.
-    pub async fn delete(&self, queue_name: &str, msg_id: i64) -> Result<bool, PgmqError> {
+    pub async fn delete_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>>(
+        &self,
+        queue_name: &str,
+        msg_id: i64,
+        executor: E,
+    ) -> Result<bool, PgmqError> {
         let row = sqlx::query!(
             "SELECT * from pgmq.delete($1::text, $2::bigint)",
             queue_name,
             msg_id
         )
-        .fetch_one(&self.connection)
+        .fetch_one(executor)
         .await?;
         Ok(row.delete.expect("no delete result"))
     }
 
-    // Delete with a slice of message ids
-    pub async fn delete_batch(&self, queue_name: &str, msg_id: &[i64]) -> Result<usize, PgmqError> {
+    // Delete a message by message id.
+    pub async fn delete(&self, queue_name: &str, msg_id: i64) -> Result<bool, PgmqError> {
+        self.delete_with_cxn(queue_name, msg_id, &self.connection)
+            .await
+    }
+
+    pub async fn delete_batch_with_cxn<'c, E: sqlx::Executor<'c, Database = Postgres>>(
+        &self,
+        queue_name: &str,
+        msg_id: &[i64],
+        executor: E,
+    ) -> Result<usize, PgmqError> {
         let qty = sqlx::query!(
             "SELECT * from pgmq.delete($1::text, $2::bigint[])",
             queue_name,
             msg_id
         )
-        .fetch_all(&self.connection)
+        .fetch_all(executor)
         .await?
         .len();
 
         // FIXME: change function signature to Vec<i64> and return rows
         Ok(qty)
+    }
+
+    // Delete with a slice of message ids
+    pub async fn delete_batch(&self, queue_name: &str, msg_id: &[i64]) -> Result<usize, PgmqError> {
+        self.delete_batch_with_cxn(queue_name, msg_id, &self.connection)
+            .await
     }
 }

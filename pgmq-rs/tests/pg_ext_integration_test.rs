@@ -127,7 +127,7 @@ async fn test_ext_send_read_delete() {
     let num_rows_queue = rowcount(&test_queue, &queue.connection).await;
     assert_eq!(num_rows_queue, 0);
 
-    let msg_id = queue.send(&test_queue, &msg, None).await.unwrap();
+    let msg_id = queue.send(&test_queue, &msg).await.unwrap();
     assert!(msg_id >= 1);
 
     let read_message = queue
@@ -179,7 +179,7 @@ async fn test_ext_send_read_delete() {
     assert_eq!(read_message.msg_id, msg_id);
 
     // delete message
-    let msg_id_del = queue.send(&test_queue, &msg, None).await.unwrap();
+    let msg_id_del = queue.send(&test_queue, &msg).await.unwrap();
 
     let deleted = queue
         .delete(&test_queue, msg_id_del)
@@ -225,7 +225,7 @@ async fn test_ext_send_pop() {
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
 
-    let _ = queue.send(&test_queue, &msg, None).await.unwrap();
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
 
     let popped = queue
         .pop::<MyMessage>(&test_queue)
@@ -244,7 +244,7 @@ async fn test_ext_send_archive() {
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
 
-    let msg_id = queue.send(&test_queue, &msg, None).await.unwrap();
+    let msg_id = queue.send(&test_queue, &msg).await.unwrap();
 
     let archived = queue
         .archive(&test_queue, msg_id)
@@ -262,9 +262,9 @@ async fn test_ext_archive_batch() {
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
 
-    let m1 = queue.send(&test_queue, &msg, None).await.unwrap();
-    let m2 = queue.send(&test_queue, &msg, None).await.unwrap();
-    let m3 = queue.send(&test_queue, &msg, None).await.unwrap();
+    let m1 = queue.send(&test_queue, &msg).await.unwrap();
+    let m2 = queue.send(&test_queue, &msg).await.unwrap();
+    let m3 = queue.send(&test_queue, &msg).await.unwrap();
 
     let archive_result = queue
         .archive_batch(&test_queue, &[m1, m2, m3])
@@ -289,9 +289,9 @@ async fn test_ext_delete_batch() {
 
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
-    let m1 = queue.send(&test_queue, &msg, None).await.unwrap();
-    let m2 = queue.send(&test_queue, &msg, None).await.unwrap();
-    let m3 = queue.send(&test_queue, &msg, None).await.unwrap();
+    let m1 = queue.send(&test_queue, &msg).await.unwrap();
+    let m2 = queue.send(&test_queue, &msg).await.unwrap();
+    let m3 = queue.send(&test_queue, &msg).await.unwrap();
     let delete_result = queue
         .delete_batch(&test_queue, &[m1, m2, m3])
         .await
@@ -310,9 +310,9 @@ async fn test_ext_purge_queue() {
 
     let queue = init_queue_ext(&test_queue).await;
     let msg = MyMessage::default();
-    let _ = queue.send(&test_queue, &msg, None).await.unwrap();
-    let _ = queue.send(&test_queue, &msg, None).await.unwrap();
-    let _ = queue.send(&test_queue, &msg, None).await.unwrap();
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
+    let _ = queue.send(&test_queue, &msg).await.unwrap();
 
     let purged_count = queue
         .purge_queue(&test_queue)
@@ -370,7 +370,7 @@ async fn test_byop() {
 }
 
 #[tokio::test]
-async fn test_transactional_send() {
+async fn test_transactional() {
     let test_queue = format!("test_tx_{}", rand::thread_rng().gen_range(0..100000));
     let db_url = env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_owned());
@@ -389,7 +389,7 @@ async fn test_transactional_send() {
     assert!(init, "failed to create extension");
 
     let created = queue
-        .create(&test_queue)
+        .create_with_cxn(&test_queue, &pool_0)
         .await
         .expect("failed to create queue");
     assert!(created);
@@ -398,7 +398,7 @@ async fn test_transactional_send() {
 
     // transaction still open, but message sent
     let sent_msg = queue
-        .send(&test_queue, &MyMessage::default(), Some(&mut tx))
+        .send_with_cxn(&test_queue, &MyMessage::default(), &mut *tx)
         .await
         .expect("failed to send message");
     assert_eq!(sent_msg, 1);
