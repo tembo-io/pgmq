@@ -569,3 +569,52 @@ SELECT tablename FROM pg_tables WHERE schemaname = 'pgmq' AND tablename = 'a_det
  a_detach_archive_queue
 (1 row)
 
+--Truncated Index When queue name is max.
+CREATE EXTENSION pgmq;
+SELECT pgmq.create('long_queue_name_123456789012345678901234567890');
+ create 
+--------
+ 
+(1 row)
+
+SELECT pgmq.convert_archive_partitioned('long_queue_name_123456789012345678901234567890');
+NOTICE:  identifier "archived_at_idx_long_queue_name_123456789012345678901234567890_old" will be truncated to "archived_at_idx_long_queue_name_123456789012345678901234567890_"
+ convert_archive_partitioned 
+-----------------------------
+ 
+(1 row)
+
+--Check for archive is already partitioned
+SELECT pgmq.convert_archive_partitioned('long_queue_name_123456789012345678901234567890');
+NOTICE:  Table a_long_queue_name_123456789012345678901234567890s is already partitioned
+ convert_archive_partitioned 
+-----------------------------
+ 
+(1 row)
+
+--Error out due to Index duplicate index at old table.
+SELECT pgmq.create('long_queue_name_1234567890123456789012345678901');
+ create 
+--------
+ 
+(1 row)
+
+SELECT pgmq.convert_archive_partitioned('long_queue_name_1234567890123456789012345678901');
+NOTICE:  identifier "archived_at_idx_long_queue_name_1234567890123456789012345678901_old" will be truncated to "archived_at_idx_long_queue_name_1234567890123456789012345678901"
+ERROR:  relation "archived_at_idx_long_queue_name_1234567890123456789012345678901" already exists
+CONTEXT:  SQL statement "ALTER INDEX pgmq.archived_at_idx_long_queue_name_1234567890123456789012345678901 RENAME TO archived_at_idx_long_queue_name_1234567890123456789012345678901_old"
+PL/pgSQL function pgmq.convert_archive_partitioned(text,text,text,integer) line 35 at EXECUTE
+--Success
+SELECT pgmq.create('long_queue_name_');
+ create 
+--------
+ 
+(1 row)
+
+SELECT pgmq.convert_archive_partitioned('long_queue_name_');
+ convert_archive_partitioned 
+-----------------------------
+ 
+(1 row)
+
+DROP EXTENSION pgmq CASCADE;

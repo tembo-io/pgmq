@@ -141,11 +141,9 @@ These methods can be passed any type that implements `serde::Serialize`. This me
 Reading a message will make it invisible (unavailable for consumption) for the duration of the visibility timeout (vt).
 No messages are returned when the queue is empty or all messages are invisible.
 
-Messages can be parsed as serde_json::Value or into a struct. `queue.read()` returns an `Result<Option<Message<T>>, PGMQError>`
-where `T` is the type of the message on the queue. It returns an error when there is an issue parsing the message or if PGMQ is unable to reach postgres.
-Note that when parsing into a `struct`, the operation will return an error if
-parsed as the type specified. For example, if the message expected is
-`MyMessage{foo: "bar"}` but `{"hello": "world"}` is received, the application will panic.
+Messages can be parsed as serde_json::Value or into a struct. `queue.read()` returns an `Result<Option<Message<T>>, PgmqError>`
+where `T` is the type of the message on the queue. It returns an error when there is an issue parsing the message (`PgmqError::JsonParsingError`) or if PGMQ is unable to reach postgres (`PgmqError::DatabaseError`).
+Note that when parsing into a `struct` (say, you expect `MyMessage{foo: "bar"}`), and the data of the message does not correspond to the struct definition (e.g. `{"hello": "world"}`), an error will be returned and unwrapping this result the way it is done for demo purposes in the [example](#minimal-example-at-a-glance) above will cause a panic, so you will rather want to handle this case properly.
 
 Read a single message with `queue.read()` or as many as you want with `queue.read_batch()`.
 

@@ -43,7 +43,7 @@ A fresh install will have not have PGMQ installed.
 ```psql
 postgres=# \dx
                  List of installed extensions
-  Name   | Version |   Schema   |         Description          
+  Name   | Version |   Schema   |         Description
 ---------+---------+------------+------------------------------
  plpgsql | 1.0     | pg_catalog | PL/pgSQL procedural language
 (1 row)
@@ -75,7 +75,7 @@ CREATE EXTENSION pgmq cascade;
 
 ### Installing pg_partman (optional)
 
-If you are working with partitioned queues, you will need to install `pg_partman`.
+If you are working with partitioned queues, you will need to install `pg_partman` version <= 4.7.0
 
 ```bash
 make install-pg-partman
