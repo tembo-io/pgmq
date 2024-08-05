@@ -12,7 +12,7 @@ jobs:
     - name: Check out the repo
       uses: actions/checkout@v4
     - name: Bundle the Release
-      run: make dist
+      run: cd pgmq-extension && make dist
     - name: Release on PGXN
       env:
         PGXN_USERNAME: ${{ secrets.PGXN_USERNAME }}
