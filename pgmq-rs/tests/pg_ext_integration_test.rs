@@ -1,4 +1,5 @@
 use pgmq::types::{ARCHIVE_PREFIX, PGMQ_SCHEMA, QUEUE_PREFIX};
+use pgmq::util::connect;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres, Row};
@@ -366,4 +367,58 @@ async fn test_byop() {
         .await
         .expect("failed to create queue");
     assert!(created);
+}
+
+#[tokio::test]
+async fn test_transactional() {
+    let test_queue = format!("test_tx_{}", rand::thread_rng().gen_range(0..100000));
+    let db_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_owned());
+    // pool_0 for the queue object and transaction
+    let pool_0 = connect(&db_url, 2)
+        .await
+        .expect("failed to connect to postgres");
+    // pool_1 for querying outside of transaction
+    let pool_1 = connect(&db_url, 2)
+        .await
+        .expect("failed to connect to postgres");
+
+    // create queue using pool_0
+    let queue = pgmq::PGMQueueExt::new_with_pool(pool_0.clone()).await;
+    let init = queue.init().await.expect("failed to create extension");
+    assert!(init, "failed to create extension");
+
+    let created = queue
+        .create_with_cxn(&test_queue, &pool_0)
+        .await
+        .expect("failed to create queue");
+    assert!(created);
+
+    let mut tx = pool_0.begin().await.expect("failed to start transaction");
+
+    // transaction still open, but message sent
+    let sent_msg = queue
+        .send_with_cxn(&test_queue, &MyMessage::default(), &mut *tx)
+        .await
+        .expect("failed to send message");
+    assert_eq!(sent_msg, 1);
+
+    // transaction still not closed, no rows yet
+    let query = format!("SELECT count(*) FROM pgmq.q_{test_queue}");
+    let rows = sqlx::query(&query)
+        .fetch_one(&pool_1)
+        .await
+        .expect("failed to fetch row")
+        .get::<i64, usize>(0);
+    assert_eq!(rows, 0);
+
+    tx.commit().await.expect("failed to commit transaction");
+
+    // transaction now committed, row is available
+    let rows = sqlx::query(&query)
+        .fetch_one(&pool_1)
+        .await
+        .expect("failed to fetch row")
+        .get::<i64, usize>(0);
+    assert_eq!(rows, 1);
 }
