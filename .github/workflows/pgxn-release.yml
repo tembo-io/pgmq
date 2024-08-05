@@ -8,11 +8,14 @@ jobs:
     name: Release on PGXN
     runs-on: ubuntu-latest
     container: pgxn/pgxn-tools
+    defaults:
+      run:
+        working-directory: ./pgmq-extension
     steps:
     - name: Check out the repo
       uses: actions/checkout@v4
     - name: Bundle the Release
-      run: cd pgmq-extension && make dist
+      run: make dist
     - name: Release on PGXN
       env:
         PGXN_USERNAME: ${{ secrets.PGXN_USERNAME }}
