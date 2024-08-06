@@ -41,9 +41,10 @@ Postgres 12-16.
     - [Archive a message](#archive-a-message)
     - [Delete a message](#delete-a-message)
     - [Drop a queue](#drop-a-queue)
-- [Configuration](#configuration)
-  - [Partitioned Queues](#partitioned-queues)
+  - [Configuration](#configuration)
+    - [Partitioned Queues](#partitioned-queues)
   - [Visibility Timeout (vt)](#visibility-timeout-vt)
+  - [Who uses pgmq?](#who-uses-pgmq)
   - [✨ Contributors](#-contributors)
 
 ## Installation
@@ -51,14 +52,14 @@ Postgres 12-16.
 The fastest way to get started is by running the Tembo Docker image, where PGMQ comes pre-installed in Postgres.
 
 ```bash
-docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pg16-pgmq:latest
+docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pg16-pgmq:latest
 ```
 
 If you'd like to build from source, you can follow the instructions in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Updating
 
-To update PGMQ versions, follow the instructions in [UPDATING.md](UPDATING.md).
+To update PGMQ versions, follow the instructions in [UPDATING.md](pgmq-extension/UPDATING.md).
 
 ## Client Libraries
 
@@ -110,8 +111,10 @@ SELECT pgmq.create('my_queue');
 
 ```sql
 -- messages are sent as JSON
-SELECT * from pgmq.send('my_queue', '{"foo": "bar1"}');
-SELECT * from pgmq.send('my_queue', '{"foo": "bar2"}');
+SELECT * from pgmq.send(
+  queue_name  => 'my_queue',
+  msg         => '{"foo": "bar1"}'
+);
 ```
 
 The message id is returned from the send function.
@@ -121,7 +124,19 @@ The message id is returned from the send function.
 -----------
          1
 (1 row)
+```
 
+```sql
+-- Optionally provide a delay
+-- this message will be on the queue but unable to be consumed for 5 seconds
+SELECT * from pgmq.send(
+  queue_name  => 'my_queue',
+  msg         => '{"foo": "bar2"}',
+  delay       => 5
+);
+```
+
+```text
  send
 -----------
          2
@@ -135,7 +150,11 @@ If the messages are not deleted or archived within 30 seconds, they will become 
 and can be read by another consumer.
 
 ```sql
-SELECT * FROM pgmq.read('my_queue', 30, 2);
+SELECT * FROM pgmq.read(
+  queue_name => 'my_queue',
+  vt => 30,
+  qty => 2
+);
 ```
 
 ```text
@@ -148,7 +167,11 @@ SELECT * FROM pgmq.read('my_queue', 30, 2);
 If the queue is empty, or if all messages are currently invisible, no rows will be returned.
 
 ```sql
-SELECT pgmq.read('my_queue', 30, 1);
+SELECT * FROM pgmq.read(
+  queue_name => 'my_queue',
+  vt => 30,
+  qty => 1
+);
 ```
 
 ```text
@@ -159,8 +182,8 @@ SELECT pgmq.read('my_queue', 30, 1);
 ### Pop a message
 
 ```sql
--- Read a message and immediately delete it from the queue. Returns `None` if the queue is empty.
-SELECT pgmq.pop('my_queue');
+-- Read a message and immediately delete it from the queue. Returns an empty record if the queue is empty or all messages are invisible.
+SELECT * FROM pgmq.pop('my_queue');
 ```
 
 ```text
@@ -175,7 +198,10 @@ Archiving a message removes it from the queue and inserts it to the archive tabl
 
 ```sql
 -- Archive message with msg_id=2.
-SELECT pgmq.archive('my_queue', 2);
+SELECT pgmq.archive(
+  queue_name => 'my_queue',
+  msg_id => 2
+);
 ```
 
 ```text
@@ -185,15 +211,56 @@ SELECT pgmq.archive('my_queue', 2);
 (1 row)
 ```
 
+Or archive several messages in one operation using `msg_ids` (plural) parameter:
+
+First, send a batch of messages
+
 ```sql
--- Archive tables have the prefix `a_`:
+
+SELECT pgmq.send_batch('my_queue', ARRAY['{"foo": "bar3"}','{"foo": "bar4"}','{"foo": "bar5"}']::jsonb[]);
+```
+
+```text
+ send_batch 
+------------
+          3
+          4
+          5
+(3 rows)
+```
+
+Then archive them by using the msg_ids (plural) parameter.
+
+```sql
+SELECT pgmq.archive(
+  queue_name => 'my_queue',
+  msg_ids => ARRAY[3, 4, 5]
+);
+```
+
+```text
+ archive 
+---------
+       3
+       4
+       5
+(3 rows)
+```
+
+Archive tables can be inspected directly with SQL.
+ Archive tables have the prefix `a_` in the `pgmq` schema.
+
+```sql
 SELECT * FROM pgmq.a_my_queue;
 ```
 
 ```text
- msg_id | read_ct |         enqueued_at          |          archived_at          |              vt               |     message
---------+---------+------------------------------+-------------------------------+-------------------------------+-----------------
-      2 |       1 | 2023-04-25 00:55:40.68417-05 | 2023-04-25 00:56:35.937594-05 | 2023-04-25 00:56:20.532012-05 | {"foo": "bar2"}
+ msg_id | read_ct |          enqueued_at          |          archived_at          |              vt               |     message     
+--------+---------+-------------------------------+-------------------------------+-------------------------------+-----------------
+      2 |       0 | 2024-08-06 16:03:41.531556+00 | 2024-08-06 16:03:52.811063+00 | 2024-08-06 16:03:46.532246+00 | {"foo": "bar2"}
+      3 |       0 | 2024-08-06 16:03:58.586444+00 | 2024-08-06 16:04:02.85799+00  | 2024-08-06 16:03:58.587272+00 | {"foo": "bar3"}
+      4 |       0 | 2024-08-06 16:03:58.586444+00 | 2024-08-06 16:04:02.85799+00  | 2024-08-06 16:03:58.587508+00 | {"foo": "bar4"}
+      5 |       0 | 2024-08-06 16:03:58.586444+00 | 2024-08-06 16:04:02.85799+00  | 2024-08-06 16:03:58.587543+00 | {"foo": "bar5"}
 ```
 
 ### Delete a message
@@ -201,20 +268,20 @@ SELECT * FROM pgmq.a_my_queue;
 Send another message, so that we can delete it.
 
 ```sql
-SELECT pgmq.send('my_queue', '{"foo": "bar3"}');
+SELECT pgmq.send('my_queue', '{"foo": "bar6"}');
 ```
 
 ```text
  send
 -----------
-        3
+        6
 (1 row)
 ```
 
-Delete the message with id `3` from the queue named `my_queue`.
+Delete the message with id `6` from the queue named `my_queue`.
 
 ```sql
-SELECT pgmq.delete('my_queue', 3);
+SELECT pgmq.delete('my_queue', 6);
 ```
 
 ```text
@@ -239,9 +306,9 @@ SELECT pgmq.drop_queue('my_queue');
 (1 row)
 ```
 
-# Configuration
+## Configuration
 
-## Partitioned Queues
+### Partitioned Queues
 
 You will need to install [pg_partman](https://github.com/pgpartman/pg_partman/) if you want to use `pgmq` partitioned queues.
 
@@ -264,7 +331,7 @@ Add the following to `postgresql.conf`. Note, changing `shared_preload_libraries
 
 `pg_partman_bgw.interval` sets the interval at which `pg_partman` conducts maintenance. This creates new partitions and dropping of partitions falling out of the `retention_interval`. By default, `pg_partman` will keep 4 partitions "ahead" of the currently active partition.
 
-```
+```text
 shared_preload_libraries = 'pg_partman_bgw' # requires restart of Postgres
 pg_partman_bgw.interval = 60
 pg_partman_bgw.role = 'postgres'
