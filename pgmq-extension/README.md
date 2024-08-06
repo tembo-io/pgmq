@@ -130,9 +130,9 @@ The message id is returned from the send function.
 -- Optionally provide a delay
 -- this message will be on the queue but unable to be consumed for 5 seconds
 SELECT * from pgmq.send(
-  queue_name  => 'my_queue',
-  msg         => '{"foo": "bar2"}',
-  delay       => 5
+  queue_name => 'my_queue',
+  msg        => '{"foo": "bar2"}',
+  delay      => 5
 );
 ```
 
@@ -152,8 +152,8 @@ and can be read by another consumer.
 ```sql
 SELECT * FROM pgmq.read(
   queue_name => 'my_queue',
-  vt => 30,
-  qty => 2
+  vt         => 30,
+  qty        => 2
 );
 ```
 
@@ -169,8 +169,8 @@ If the queue is empty, or if all messages are currently invisible, no rows will 
 ```sql
 SELECT * FROM pgmq.read(
   queue_name => 'my_queue',
-  vt => 30,
-  qty => 1
+  vt         => 30,
+  qty        => 1
 );
 ```
 
@@ -200,7 +200,7 @@ Archiving a message removes it from the queue and inserts it to the archive tabl
 -- Archive message with msg_id=2.
 SELECT pgmq.archive(
   queue_name => 'my_queue',
-  msg_id => 2
+  msg_id     => 2
 );
 ```
 
@@ -218,7 +218,7 @@ First, send a batch of messages
 ```sql
 SELECT pgmq.send_batch(
   queue_name => 'my_queue',
-  msgs => ARRAY['{"foo": "bar3"}','{"foo": "bar4"}','{"foo": "bar5"}']::jsonb[]
+  msgs       => ARRAY['{"foo": "bar3"}','{"foo": "bar4"}','{"foo": "bar5"}']::jsonb[]
 );
 ```
 
@@ -236,7 +236,7 @@ Then archive them by using the msg_ids (plural) parameter.
 ```sql
 SELECT pgmq.archive(
   queue_name => 'my_queue',
-  msg_ids => ARRAY[3, 4, 5]
+  msg_ids    => ARRAY[3, 4, 5]
 );
 ```
 
