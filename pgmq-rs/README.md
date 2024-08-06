@@ -113,7 +113,11 @@ async fn main() -> Result<(), PgmqError> {
 
 ## Transactions
 
-You can execute all of PGMQ's operations within a transaction along with other database operations. See the [transaction example](./examples/transaction.rs).
+You can execute all of PGMQ's operations within a transaction along with other database operations. See the [transaction example](./examples/transaction.rs) or run the example with:
+
+```bash
+cargo run --example transactions
+```
 
 ## Sending messages
 
