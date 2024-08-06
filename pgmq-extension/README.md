@@ -216,8 +216,10 @@ Or archive several messages in one operation using `msg_ids` (plural) parameter:
 First, send a batch of messages
 
 ```sql
-
-SELECT pgmq.send_batch('my_queue', ARRAY['{"foo": "bar3"}','{"foo": "bar4"}','{"foo": "bar5"}']::jsonb[]);
+SELECT pgmq.send_batch(
+  queue_name => 'my_queue',
+  msgs => ARRAY['{"foo": "bar3"}','{"foo": "bar4"}','{"foo": "bar5"}']::jsonb[]
+);
 ```
 
 ```text
