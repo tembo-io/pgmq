@@ -19,3 +19,4 @@ Trunk.toml
 /results/
 /regression.*
 /output_iso/
+.env
