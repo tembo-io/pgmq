@@ -2,7 +2,6 @@ import unittest
 import time
 from tembo_pgmq_python import Message, PGMQueue
 from datetime import datetime, timezone, timedelta
-# Function to load environment variables
 
 
 class BaseTestPGMQueue(unittest.TestCase):
@@ -15,6 +14,7 @@ class BaseTestPGMQueue(unittest.TestCase):
             username="postgres",
             password="postgres",
             database="postgres",
+            verbose=False,
         )
 
         # Test database connection first
@@ -192,6 +192,55 @@ class BaseTestPGMQueue(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             self.queue.validate_queue_name(invalid_queue_name)
         self.assertIn("queue name is too long", str(context.exception))
+
+    def test_transaction_create_queue(self):
+        """Test creating a queue within a transaction."""
+        try:
+            self.queue.create_queue("test_queue_txn", perform_transaction=True)
+            raise Exception("Intentional failure")
+        except Exception:
+            pass
+        finally:
+            queues = self.queue.list_queues(perform_transaction=False)
+            self.assertNotIn("test_queue_txn", queues)
+
+    def test_transaction_send_and_read_message(self):
+        """Test sending and reading a message within a transaction."""
+        try:
+            self.queue.send(
+                self.test_queue, self.test_message, perform_transaction=True
+            )
+            raise Exception("Intentional failure")
+        except Exception:
+            pass
+        finally:
+            message = self.queue.read(self.test_queue, perform_transaction=False)
+            self.assertIsNone(message, "No message expected in queue")
+
+    def test_transaction_purge_queue(self):
+        """Test purging a queue within a transaction."""
+        self.queue.send(self.test_queue, self.test_message, perform_transaction=False)
+        try:
+            self.queue.purge(self.test_queue, perform_transaction=True)
+            raise Exception("Intentional failure")
+        except Exception:
+            pass
+        finally:
+            message = self.queue.read(self.test_queue, perform_transaction=False)
+            self.assertIsNotNone(message, "Message expected in queue")
+
+    def test_transaction_rollback(self):
+        """Test rollback of a transaction."""
+        try:
+            self.queue.send(
+                self.test_queue, self.test_message, perform_transaction=True
+            )
+            raise Exception("Intentional failure to trigger rollback")
+        except Exception:
+            pass
+        finally:
+            message = self.queue.read(self.test_queue, perform_transaction=False)
+            self.assertIsNone(message, "No message expected in queue after rollback")
 
 
 class TestPGMQueueWithEnv(BaseTestPGMQueue):
