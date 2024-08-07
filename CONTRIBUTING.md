@@ -55,7 +55,7 @@ Clone the repo and change into the directory.
 
 ```bash
 git clone https://github.com/tembo-io/pgmq.git
-cd pgmq
+cd pgmq/pgmq-extension
 ```
 
 ### Install PGMQ to Postgres
