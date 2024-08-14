@@ -55,21 +55,21 @@ BEGIN
         WITH cte AS
         (
             SELECT msg_id
-            FROM pgmq.q_%I
+            FROM pgmq.%I
             WHERE vt <= clock_timestamp()
             ORDER BY msg_id ASC
             LIMIT $1
             FOR UPDATE SKIP LOCKED
         )
-        UPDATE pgmq.q_%I m
+        UPDATE pgmq.%I m
         SET
-            vt = clock_timestamp() + interval '%I seconds',
+            vt = clock_timestamp() + interval '%s seconds',
             read_ct = read_ct + 1
         FROM cte
         WHERE m.msg_id = cte.msg_id
         RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
         $QUERY$,
-        queue_name, queue_name, vt
+        'q_' || queue_name, 'q_' || queue_name, vt
     );
     RETURN QUERY EXECUTE sql USING qty;
 END;
@@ -90,7 +90,7 @@ DECLARE
     stop_at TIMESTAMP;
     sql TEXT;
 BEGIN
-    stop_at := clock_timestamp() + FORMAT('%I seconds', max_poll_seconds)::interval;
+    stop_at := clock_timestamp() + FORMAT('%s seconds', max_poll_seconds)::interval;
     LOOP
       IF (SELECT clock_timestamp() >= stop_at) THEN
         RETURN;
@@ -101,21 +101,21 @@ BEGIN
           WITH cte AS
           (
               SELECT msg_id
-              FROM pgmq.q_%I
+              FROM pgmq.%I
               WHERE vt <= clock_timestamp()
               ORDER BY msg_id ASC
               LIMIT $1
               FOR UPDATE SKIP LOCKED
           )
-          UPDATE pgmq.q_%I m
+          UPDATE pgmq.%I m
           SET
-              vt = clock_timestamp() + interval '%I seconds',
+              vt = clock_timestamp() + interval '%s seconds',
               read_ct = read_ct + 1
           FROM cte
           WHERE m.msg_id = cte.msg_id
           RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
           $QUERY$,
-          queue_name, queue_name, vt
+          'q_' || queue_name, 'q_' || queue_name, vt
       );
 
       FOR r IN
@@ -147,16 +147,16 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         WITH archived AS (
-            DELETE FROM pgmq.q_%I
+            DELETE FROM pgmq.%I
             WHERE msg_id = $1
             RETURNING msg_id, vt, read_ct, enqueued_at, message
         )
-        INSERT INTO pgmq.a_%I (msg_id, vt, read_ct, enqueued_at, message)
+        INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message)
         SELECT msg_id, vt, read_ct, enqueued_at, message
         FROM archived
         RETURNING msg_id;
         $QUERY$,
-        queue_name, queue_name
+        'q_' || queue_name, 'a_' || queue_name
     );
     EXECUTE sql USING msg_id INTO result;
     RETURN NOT (result IS NULL);
@@ -177,16 +177,16 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         WITH archived AS (
-            DELETE FROM pgmq.q_%I
+            DELETE FROM pgmq.%I
             WHERE msg_id = ANY($1)
             RETURNING msg_id, vt, read_ct, enqueued_at, message
         )
-        INSERT INTO pgmq.a_%I (msg_id, vt, read_ct, enqueued_at, message)
+        INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message)
         SELECT msg_id, vt, read_ct, enqueued_at, message
         FROM archived
         RETURNING msg_id;
         $QUERY$,
-        queue_name, queue_name
+        'q_' || queue_name, 'a_' || queue_name
     );
     RETURN QUERY EXECUTE sql USING msg_ids;
 END;
@@ -205,11 +205,11 @@ DECLARE
 BEGIN
     sql := FORMAT(
         $QUERY$
-        DELETE FROM pgmq.q_%I
+        DELETE FROM pgmq.%I
         WHERE msg_id = $1
         RETURNING msg_id
         $QUERY$,
-        queue_name
+        'q_' || queue_name
     );
     EXECUTE sql USING msg_id INTO result;
     RETURN NOT (result IS NULL);
@@ -228,11 +228,11 @@ DECLARE
 BEGIN
     sql := FORMAT(
         $QUERY$
-        DELETE FROM pgmq.q_%I
+        DELETE FROM pgmq.%I
         WHERE msg_id = ANY($1)
         RETURNING msg_id
         $QUERY$,
-        queue_name
+        'q_' || queue_name
     );
     RETURN QUERY EXECUTE sql USING msg_ids;
 END;
@@ -250,11 +250,11 @@ DECLARE
 BEGIN
     sql := FORMAT(
         $QUERY$
-        INSERT INTO pgmq.q_%I (vt, message)
-        VALUES ((clock_timestamp() + interval '%I seconds'), $1)
+        INSERT INTO pgmq.%I (vt, message)
+        VALUES ((clock_timestamp() + interval '%s seconds'), $1)
         RETURNING msg_id;
         $QUERY$,
-        queue_name, delay
+        'q_' || queue_name, delay
     );
     RETURN QUERY EXECUTE sql USING msg;
 END;
@@ -272,11 +272,11 @@ DECLARE
 BEGIN
     sql := FORMAT(
         $QUERY$
-        INSERT INTO pgmq.q_%I (vt, message)
-        SELECT clock_timestamp() + interval '%I seconds', unnest($1)
+        INSERT INTO pgmq.%I (vt, message)
+        SELECT clock_timestamp() + interval '%s seconds', unnest($1)
         RETURNING msg_id;
         $QUERY$,
-        queue_name, delay
+        'q_' || queue_name, delay
     );
     RETURN QUERY EXECUTE sql USING msgs;
 END;
@@ -307,13 +307,13 @@ BEGIN
                 EXTRACT(epoch FROM (NOW() - max(enqueued_at)))::int as newest_msg_age_sec,
                 EXTRACT(epoch FROM (NOW() - min(enqueued_at)))::int as oldest_msg_age_sec,
                 NOW() as scrape_time
-            FROM pgmq.q_%I
+            FROM pgmq.%I
         ),
         all_metrics AS (
             SELECT CASE
                 WHEN is_called THEN last_value ELSE 0
                 END as total_messages
-            FROM pgmq.q_%I_msg_id_seq
+            FROM pgmq.%I
         )
         SELECT
             '%I' as queue_name,
@@ -324,7 +324,7 @@ BEGIN
             q_summary.scrape_time
         FROM q_summary, all_metrics
         $QUERY$,
-        queue_name, queue_name, queue_name
+        'q_' || queue_name, 'q_' || queue_name | '_msg_id_seq', queue_name
     );
     EXECUTE query INTO result_row;
     RETURN result_row;
@@ -359,7 +359,7 @@ RETURNS BIGINT AS $$
 DECLARE
   deleted_count INTEGER;
 BEGIN
-  EXECUTE format('DELETE FROM pgmq.q_%I', queue_name);
+  EXECUTE format('DELETE FROM pgmq.%I', 'q_' || queue_name);
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RETURN deleted_count;
 END
@@ -369,7 +369,7 @@ $$ LANGUAGE plpgsql;
 CREATE FUNCTION pgmq."detach_archive"(queue_name TEXT)
 RETURNS VOID AS $$
 BEGIN
-  EXECUTE format('ALTER EXTENSION pgmq DROP TABLE pgmq.a_%I', queue_name);
+  EXECUTE format('ALTER EXTENSION pgmq DROP TABLE pgmq.%I', 'a_' || queue_name);
 END
 $$ LANGUAGE plpgsql;
 
@@ -385,17 +385,17 @@ BEGIN
         WITH cte AS
             (
                 SELECT msg_id
-                FROM pgmq.q_%I
+                FROM pgmq.%I
                 WHERE vt <= now()
                 ORDER BY msg_id ASC
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED
             )
-        DELETE from pgmq.q_%I
+        DELETE from pgmq.%I
         WHERE msg_id = (select msg_id from cte)
         RETURNING *;
         $QUERY$,
-        queue_name, queue_name
+        'q_' || queue_name, 'q_' || queue_name
     );
     RETURN QUERY EXECUTE sql;
 END;
@@ -410,12 +410,12 @@ DECLARE
 BEGIN
     sql := FORMAT(
         $QUERY$
-        UPDATE pgmq.q_%I
-        SET vt = (now() + interval '%I seconds')
-        WHERE msg_id = %I
+        UPDATE pgmq.%I
+        SET vt = (now() + interval '%s seconds')
+        WHERE msg_id = %s
         RETURNING *;
         $QUERY$,
-        queue_name, vt, msg_id
+        'q_' || queue_name, vt, msg_id
     );
     RETURN QUERY EXECUTE sql;
 END;
@@ -426,30 +426,30 @@ RETURNS BOOLEAN AS $$
 BEGIN
     EXECUTE FORMAT(
         $QUERY$
-        ALTER EXTENSION pgmq DROP TABLE pgmq.q_%I
+        ALTER EXTENSION pgmq DROP TABLE pgmq.%I
         $QUERY$,
-        queue_name
+        'q_' || queue_name
     );
 
     EXECUTE FORMAT(
         $QUERY$
-        ALTER EXTENSION pgmq DROP TABLE pgmq.a_%I
+        ALTER EXTENSION pgmq DROP TABLE pgmq.%I
         $QUERY$,
-        queue_name
+        'a_' || queue_name
     );
 
     EXECUTE FORMAT(
         $QUERY$
-        DROP TABLE IF EXISTS pgmq.q_%I
+        DROP TABLE IF EXISTS pgmq.%I
         $QUERY$,
-        queue_name
+        'q_' || queue_name
     );
 
     EXECUTE FORMAT(
         $QUERY$
-        DROP TABLE IF EXISTS pgmq.a_%I
+        DROP TABLE IF EXISTS pgmq.%I
         $QUERY$,
-        queue_name
+        'a_' || queue_name
     );
 
      IF EXISTS (
@@ -459,7 +459,7 @@ BEGIN
      ) THEN
         EXECUTE FORMAT(
             $QUERY$
-            DELETE FROM pgmq.meta WHERE queue_name = '%I'
+            DELETE FROM pgmq.meta WHERE queue_name = '%L'
             $QUERY$,
             queue_name
         );
@@ -468,7 +468,7 @@ BEGIN
      IF partitioned THEN
         EXECUTE FORMAT(
           $QUERY$
-          DELETE FROM public.part_config where parent_table = '%I'
+          DELETE FROM public.part_config where parent_table = '%L'
           $QUERY$,
           queue_name
         );
@@ -514,7 +514,7 @@ BEGIN
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE TABLE IF NOT EXISTS pgmq.q_%I (
+    CREATE TABLE IF NOT EXISTS pgmq.%I (
         msg_id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
@@ -522,12 +522,12 @@ BEGIN
         message JSONB
     )
     $QUERY$,
-    queue_name
+    'q_' || queue_name
   );
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE TABLE IF NOT EXISTS pgmq.a_%I (
+    CREATE TABLE IF NOT EXISTS pgmq.%I (
       msg_id BIGINT PRIMARY KEY,
       read_ct INT DEFAULT 0 NOT NULL,
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
@@ -536,35 +536,35 @@ BEGIN
       message JSONB
     );
     $QUERY$,
-    queue_name
+    'a_' || queue_name
   );
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('q_%I', queue_name)) THEN
-      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.q_%I', queue_name);
+  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', 'q_' || queue_name)) THEN
+      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', 'q_' || queue_name);
   END IF;
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('a_%I', queue_name)) THEN
-      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.a_%I', queue_name);
+  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', 'a_' || queue_name)) THEN
+      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', 'a_' || queue_name);
   END IF;
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE INDEX IF NOT EXISTS q_%I_vt_idx ON pgmq.q_%I (vt ASC);
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (vt ASC);
     $QUERY$,
-    queue_name, queue_name
+    'q_' || queue_name || '_vt_idx', 'q_' || queue_name
   );
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE INDEX IF NOT EXISTS archived_at_idx_%I ON pgmq.a_%I (archived_at);
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (archived_at);
     $QUERY$,
-    queue_name, queue_name
+    'archived_at_idx_' || queue_name, 'a_' || queue_name
   );
 
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%I', false, false)
+    VALUES ('%L', false, false)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
@@ -580,7 +580,7 @@ BEGIN
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE UNLOGGED TABLE IF NOT EXISTS pgmq.q_%I (
+    CREATE UNLOGGED TABLE IF NOT EXISTS pgmq.%I (
         msg_id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
@@ -588,12 +588,12 @@ BEGIN
         message JSONB
     )
     $QUERY$,
-    queue_name
+    'q_' || queue_name
   );
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE TABLE IF NOT EXISTS pgmq.a_%I (
+    CREATE TABLE IF NOT EXISTS pgmq.%I (
       msg_id BIGINT PRIMARY KEY,
       read_ct INT DEFAULT 0 NOT NULL,
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
@@ -602,35 +602,35 @@ BEGIN
       message JSONB
     );
     $QUERY$,
-    queue_name
+    'a_' || queue_name
   );
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('q_%I', queue_name)) THEN
-      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.q_%I', queue_name);
+  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', 'q_' || queue_name)) THEN
+      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', 'q_' || queue_name);
   END IF;
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('a_%I', queue_name)) THEN
-      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.a_%I', queue_name);
+  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', 'a_' || queue_name)) THEN
+      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', 'a_' || queue_name);
   END IF;
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE INDEX IF NOT EXISTS q_%I_vt_idx ON pgmq.q_%I (vt ASC);
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (vt ASC);
     $QUERY$,
-    queue_name, queue_name
+    'q_' || queue_name || '_vt_idx', 'q_' || queue_name
   );
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE INDEX IF NOT EXISTS archived_at_idx_%I ON pgmq.a_%I (archived_at);
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (archived_at);
     $QUERY$,
-    queue_name, queue_name
+    'archived_at_idx_' || queue_name, 'a_' || queue_name
   );
 
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%I', false, true)
+    VALUES ('%L', false, true)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
@@ -687,52 +687,52 @@ BEGIN
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE TABLE IF NOT EXISTS pgmq.q_%I (
+    CREATE TABLE IF NOT EXISTS pgmq.%I (
         msg_id BIGINT GENERATED ALWAYS AS IDENTITY,
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
         message JSONB
-    ) PARTITION BY RANGE (%I)
+    ) PARTITION BY RANGE (%L)
     $QUERY$,
-    queue_name, partition_col
+    'q_' || queue_name, partition_col
   );
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('q_%I', queue_name)) THEN
-      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.q_%I', queue_name);
+  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', 'q_' || queue_name)) THEN
+      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', 'q_' || queue_name);
   END IF;
 
   EXECUTE FORMAT(
     $QUERY$
-    SELECT public.create_parent('pgmq.q_%I', '%I', 'native', '%I');
+    SELECT public.create_parent('pgmq.%I', '%L', 'native', '%L');
     $QUERY$,
-    queue_name, partition_col, partition_interval
+    'q_' || queue_name, partition_col, partition_interval
   );
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE INDEX IF NOT EXISTS q_%I_part_idx ON pgmq.q_%I (%I);
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (Ls);
     $QUERY$,
-    queue_name, queue_name, partition_col
+    'q_' || queue_name || '_part_idx', 'q_' || queue_name, partition_col
   );
 
   EXECUTE FORMAT(
     $QUERY$
     UPDATE public.part_config
     SET
-        retention = '%I',
+        retention = '%L',
         retention_keep_table = false,
         retention_keep_index = true,
         automatic_maintenance = 'on'
     WHERE parent_table = 'pgmq.q_%I';
     $QUERY$,
-    retention_interval, queue_name
+    retention_interval, 'q_' || queue_name
   );
 
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%I', true, false)
+    VALUES ('%L', true, false)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
@@ -747,47 +747,47 @@ BEGIN
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE TABLE IF NOT EXISTS pgmq.a_%I (
+    CREATE TABLE IF NOT EXISTS pgmq.%I (
       msg_id BIGINT,
       read_ct INT DEFAULT 0 NOT NULL,
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
       message JSONB
-    ) PARTITION BY RANGE (%I);
+    ) PARTITION BY RANGE (%L);
     $QUERY$,
-    queue_name, a_partition_col
+    'a_' || queue_name, a_partition_col
   );
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('a_%I', queue_name)) THEN
-      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.a_%I', queue_name);
+  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', 'a_' || queue_name)) THEN
+      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', 'a_' || queue_name);
   END IF;
 
   EXECUTE FORMAT(
     $QUERY$
-    SELECT public.create_parent('pgmq.a_%I', '%I', 'native', '%I');
+    SELECT public.create_parent('pgmq.%I', '%L', 'native', '%L');
     $QUERY$,
-    queue_name, a_partition_col, partition_interval
+    'a_' || queue_name, a_partition_col, partition_interval
   );
 
   EXECUTE FORMAT(
     $QUERY$
     UPDATE public.part_config
     SET
-        retention = '%I',
+        retention = '%L',
         retention_keep_table = false,
         retention_keep_index = true,
         automatic_maintenance = 'on'
-    WHERE parent_table = 'pgmq.a_%I';
+    WHERE parent_table = 'pgmq.&I';
     $QUERY$,
-    retention_interval, queue_name
+    retention_interval, 'a_' || queue_name
   );
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE INDEX IF NOT EXISTS archived_at_idx_%I ON pgmq.a_%I (archived_at);
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (archived_at);
     $QUERY$,
-    queue_name, queue_name
+    'archived_at_idx_' || queue_name, 'a_' || queue_name
   );
 
 END;
@@ -820,7 +820,7 @@ BEGIN
     AND c.relkind = 'p';
 
   IF FOUND THEN
-    RAISE NOTICE 'Table %I is already partitioned', a_table_name;
+    RAISE NOTICE 'Table %s is already partitioned', a_table_name;
     RETURN;
   END IF;
 
@@ -831,7 +831,7 @@ BEGIN
     AND c.relkind = 'r';
 
   IF NOT FOUND THEN
-    RAISE NOTICE 'Table %I doesnot exists', a_table_name;
+    RAISE NOTICE 'Table %s doesnot exists', a_table_name;
     RETURN;
   END IF;
 
