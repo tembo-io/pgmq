@@ -703,9 +703,9 @@ BEGIN
   END IF;
 
   PERFORM public.create_parent(
-        'pgmq.' || quote_ident('q_' || queue_name),
-        partition_col, partition_interval
-    );
+    'pgmq.' || quote_ident('q_' || queue_name),
+    partition_col, 'native', partition_interval
+  );
 
   EXECUTE FORMAT(
     $QUERY$
@@ -762,9 +762,10 @@ BEGIN
   END IF;
 
   PERFORM public.create_parent(
-        'pgmq.' || quote_ident('a_' || queue_name),
-        partition_col, partition_interval
-    );
+    'pgmq.' || quote_ident('a_' || queue_name),
+    a_partition_col, 'native', partition_interval
+  );
+
   EXECUTE FORMAT(
     $QUERY$
     UPDATE public.part_config
