@@ -1,47 +1,4 @@
-------------------------------------------------------------
--- Schema, tables, records, privileges, indexes, etc
-------------------------------------------------------------
--- We don't need to create the `pgmq` schema because it is automatically
--- created by postgres due to being declared in extension control file
-
--- Table where queues and metadata about them is stored
-CREATE TABLE pgmq.meta (
-    queue_name VARCHAR UNIQUE NOT NULL,
-    is_partitioned BOOLEAN NOT NULL,
-    is_unlogged BOOLEAN NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
-);
-
--- Grant permission to pg_monitor to all tables and sequences
-GRANT USAGE ON SCHEMA pgmq TO pg_monitor;
-GRANT SELECT ON ALL TABLES IN SCHEMA pgmq TO pg_monitor;
-GRANT SELECT ON ALL SEQUENCES IN SCHEMA pgmq TO pg_monitor;
-ALTER DEFAULT PRIVILEGES IN SCHEMA pgmq GRANT SELECT ON TABLES TO pg_monitor;
-ALTER DEFAULT PRIVILEGES IN SCHEMA pgmq GRANT SELECT ON SEQUENCES TO pg_monitor;
-
--- This type has the shape of a message in a queue, and is often returned by
--- pgmq functions that return messages
-CREATE TYPE pgmq.message_record AS (
-    msg_id BIGINT,
-    read_ct INTEGER,
-    enqueued_at TIMESTAMP WITH TIME ZONE,
-    vt TIMESTAMP WITH TIME ZONE,
-    message JSONB
-);
-
-CREATE TYPE pgmq.queue_record AS (
-    queue_name VARCHAR,
-    is_partitioned BOOLEAN,
-    is_unlogged BOOLEAN,
-    created_at TIMESTAMP WITH TIME ZONE
-);
-
-------------------------------------------------------------
--- Functions
-------------------------------------------------------------
--- read
--- reads a number of messages from a queue, setting a visibility timeout on them
-CREATE FUNCTION pgmq.read(
+CREATE OR REPLACE FUNCTION pgmq.read(
     queue_name TEXT,
     vt INTEGER,
     qty INTEGER
@@ -75,9 +32,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- read_with_poll
----- reads a number of messages from a queue, setting a visibility timeout on them
-CREATE FUNCTION pgmq.read_with_poll(
+
+CREATE OR REPLACE FUNCTION pgmq.read_with_poll(
     queue_name TEXT,
     vt INTEGER,
     qty INTEGER,
@@ -132,10 +88,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- archive
----- removes a message from the queue, and sends it to the archive, where its
----- saved permanently.
-CREATE FUNCTION pgmq.archive(
+
+CREATE OR REPLACE FUNCTION pgmq.archive(
     queue_name TEXT,
     msg_id BIGINT
 )
@@ -163,10 +117,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- archive
----- removes an array of message ids from the queue, and sends it to the archive,
----- where these messages will be saved permanently.
-CREATE FUNCTION pgmq.archive(
+
+CREATE OR REPLACE FUNCTION pgmq.archive(
     queue_name TEXT,
     msg_ids BIGINT[]
 )
@@ -192,9 +144,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- delete
----- deletes a message id from the queue permanently
-CREATE FUNCTION pgmq.delete(
+
+CREATE OR REPLACE FUNCTION pgmq.delete(
     queue_name TEXT,
     msg_id BIGINT
 )
@@ -216,9 +167,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- delete
----- deletes an array of message ids from the queue permanently
-CREATE FUNCTION pgmq.delete(
+
+CREATE OR REPLACE FUNCTION pgmq.delete(
     queue_name TEXT,
     msg_ids BIGINT[]
 )
@@ -238,9 +188,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- send
--- sends a message to a queue, optionally with a delay
-CREATE FUNCTION pgmq.send(
+
+CREATE OR REPLACE FUNCTION pgmq.send(
     queue_name TEXT,
     msg JSONB,
     delay INTEGER DEFAULT 0
@@ -260,9 +209,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- send_batch
--- sends an array of list of messages to a queue, optionally with a delay
-CREATE FUNCTION pgmq.send_batch(
+
+CREATE OR REPLACE FUNCTION pgmq.send_batch(
     queue_name TEXT,
     msgs JSONB[],
     delay INTEGER DEFAULT 0
@@ -282,18 +230,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- returned by pgmq.metrics() and pgmq.metrics_all
-CREATE TYPE pgmq.metrics_result AS (
-    queue_name text,
-    queue_length bigint,
-    newest_msg_age_sec int,
-    oldest_msg_age_sec int,
-    total_messages bigint,
-    scrape_time timestamp with time zone
-);
 
--- get metrics for a single queue
-CREATE FUNCTION pgmq.metrics(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.metrics(queue_name TEXT)
 RETURNS pgmq.metrics_result AS $$
 DECLARE
     result_row pgmq.metrics_result;
@@ -331,30 +269,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- get metrics for all queues
-CREATE FUNCTION pgmq."metrics_all"()
-RETURNS SETOF pgmq.metrics_result AS $$
-DECLARE
-    row_name RECORD;
-    result_row pgmq.metrics_result;
-BEGIN
-    FOR row_name IN SELECT queue_name FROM pgmq.meta LOOP
-        result_row := pgmq.metrics(row_name.queue_name);
-        RETURN NEXT result_row;
-    END LOOP;
-END;
-$$ LANGUAGE plpgsql;
 
--- list queues
-CREATE FUNCTION pgmq."list_queues"()
-RETURNS SETOF pgmq.queue_record AS $$
-BEGIN
-  RETURN QUERY SELECT * FROM pgmq.meta;
-END
-$$ LANGUAGE plpgsql;
-
--- purge queue, deleting all entries in it.
-CREATE FUNCTION pgmq."purge_queue"(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq."purge_queue"(queue_name TEXT)
 RETURNS BIGINT AS $$
 DECLARE
   deleted_count INTEGER;
@@ -365,8 +281,8 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
--- unassign archive, so it can be kept when a queue is deleted
-CREATE FUNCTION pgmq."detach_archive"(queue_name TEXT)
+
+CREATE OR REPLACE FUNCTION pgmq."detach_archive"(queue_name TEXT)
 RETURNS VOID AS $$
 BEGIN
   EXECUTE format('ALTER EXTENSION pgmq DROP TABLE pgmq.a_%I', queue_name);
@@ -374,7 +290,7 @@ END
 $$ LANGUAGE plpgsql;
 
 -- pop a single message
-CREATE FUNCTION pgmq.pop(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.pop(queue_name TEXT)
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
     sql TEXT;
@@ -401,8 +317,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Sets vt of a message, returns it
-CREATE FUNCTION pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt INTEGER)
+
+CREATE OR REPLACE FUNCTION pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt INTEGER)
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
     sql TEXT;
@@ -421,7 +337,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN DEFAULT FALSE)
+
+CREATE OR REPLACE FUNCTION pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN DEFAULT FALSE)
 RETURNS BOOLEAN AS $$
 BEGIN
     EXECUTE FORMAT(
@@ -478,7 +395,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.validate_queue_name(queue_name TEXT)
+
+CREATE OR REPLACE FUNCTION pgmq.validate_queue_name(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
   IF length(queue_name) >= 48 THEN
@@ -487,7 +405,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq._belongs_to_pgmq(table_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq._belongs_to_pgmq(table_name TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
     sql TEXT;
@@ -507,7 +425,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.create_non_partitioned(queue_name TEXT)
+
+CREATE OR REPLACE FUNCTION pgmq.create_non_partitioned(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
@@ -573,7 +492,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.create_unlogged(queue_name TEXT)
+
+CREATE OR REPLACE FUNCTION pgmq.create_unlogged(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
@@ -639,39 +559,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq._get_partition_col(partition_interval TEXT)
-RETURNS TEXT AS $$
-DECLARE
-  num INTEGER;
-BEGIN
-    BEGIN
-        num := partition_interval::INTEGER;
-        RETURN 'msg_id';
-    EXCEPTION
-        WHEN others THEN
-            RETURN 'enqueued_at';
-    END;
-END;
-$$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq._ensure_pg_partman_installed()
-RETURNS void AS $$
-DECLARE
-  extension_exists BOOLEAN;
-BEGIN
-  SELECT EXISTS (
-    SELECT 1
-    FROM pg_extension
-    WHERE extname = 'pg_partman'
-  ) INTO extension_exists;
-
-  IF NOT extension_exists THEN
-    RAISE EXCEPTION 'pg_partman is required for partitioned queues';
-  END IF;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE FUNCTION pgmq.create_partitioned(
+CREATE OR REPLACE FUNCTION pgmq.create_partitioned(
   queue_name TEXT,
   partition_interval TEXT DEFAULT '10000',
   retention_interval TEXT DEFAULT '100000'
@@ -794,7 +683,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE FUNCTION pgmq.create(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.create(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
     PERFORM pgmq.create_non_partitioned(queue_name);
