@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION pgmq.format_table_name(queue_name text, prefix text)
   immutable
   language sql
 as $$
-  select format('%I', lower(prefix || '_' || queue_name))
+  select lower(prefix || '_' || queue_name)
 $$;
 
 -- read
