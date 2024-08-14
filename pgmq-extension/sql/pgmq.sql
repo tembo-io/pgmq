@@ -702,12 +702,10 @@ BEGIN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', 'q_' || queue_name);
   END IF;
 
-  EXECUTE FORMAT(
-    $QUERY$
-    SELECT public.create_parent('pgmq.%I', '%s', 'native', '%s');
-    $QUERY$,
-    'q_' || queue_name, partition_col, partition_interval
-  );
+  PERFORM public.create_parent(
+        'pgmq.' || quote_ident('q_' || queue_name),
+        partition_col, partition_interval
+    );
 
   EXECUTE FORMAT(
     $QUERY$
@@ -763,13 +761,10 @@ BEGIN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', 'a_' || queue_name);
   END IF;
 
-  EXECUTE FORMAT(
-    $QUERY$
-    SELECT public.create_parent('pgmq.%I', '%s', 'native', '%s');
-    $QUERY$,
-    'a_' || queue_name, a_partition_col, partition_interval
-  );
-
+  PERFORM public.create_parent(
+        'pgmq.' || quote_ident('a_' || queue_name),
+        partition_col, partition_interval
+    );
   EXECUTE FORMAT(
     $QUERY$
     UPDATE public.part_config
