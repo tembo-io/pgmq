@@ -1,4 +1,4 @@
-CREATE OR REPLACE pgmq.read(
+CREATE OR REPLACE FUNCTION pgmq.read(
     queue_name TEXT,
     vt INTEGER,
     qty INTEGER
@@ -33,7 +33,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE pgmq.read_with_poll(
+CREATE OR REPLACE FUNCTION pgmq.read_with_poll(
     queue_name TEXT,
     vt INTEGER,
     qty INTEGER,
@@ -88,10 +88,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- archive
----- removes a message from the queue, and sends it to the archive, where its
----- saved permanently.
-CREATE OR REPLACE pgmq.archive(
+
+CREATE OR REPLACE FUNCTION pgmq.archive(
     queue_name TEXT,
     msg_id BIGINT
 )
@@ -119,10 +117,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- archive
----- removes an array of message ids from the queue, and sends it to the archive,
----- where these messages will be saved permanently.
-CREATE OR REPLACE pgmq.archive(
+
+CREATE OR REPLACE FUNCTION pgmq.archive(
     queue_name TEXT,
     msg_ids BIGINT[]
 )
@@ -148,9 +144,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- delete
----- deletes a message id from the queue permanently
-CREATE OR REPLACE pgmq.delete(
+
+CREATE OR REPLACE FUNCTION pgmq.delete(
     queue_name TEXT,
     msg_id BIGINT
 )
@@ -172,9 +167,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----- delete
----- deletes an array of message ids from the queue permanently
-CREATE OR REPLACE pgmq.delete(
+
+CREATE OR REPLACE FUNCTION pgmq.delete(
     queue_name TEXT,
     msg_ids BIGINT[]
 )
@@ -194,9 +188,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- send
--- sends a message to a queue, optionally with a delay
-CREATE OR REPLACE pgmq.send(
+
+CREATE OR REPLACE FUNCTION pgmq.send(
     queue_name TEXT,
     msg JSONB,
     delay INTEGER DEFAULT 0
@@ -216,9 +209,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- send_batch
--- sends an array of list of messages to a queue, optionally with a delay
-CREATE OR REPLACE pgmq.send_batch(
+
+CREATE OR REPLACE FUNCTION pgmq.send_batch(
     queue_name TEXT,
     msgs JSONB[],
     delay INTEGER DEFAULT 0
@@ -238,18 +230,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- returned by pgmq.metrics() and pgmq.metrics_all
-CREATE TYPE pgmq.metrics_result AS (
-    queue_name text,
-    queue_length bigint,
-    newest_msg_age_sec int,
-    oldest_msg_age_sec int,
-    total_messages bigint,
-    scrape_time timestamp with time zone
-);
 
--- get metrics for a single queue
-CREATE OR REPLACE pgmq.metrics(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.metrics(queue_name TEXT)
 RETURNS pgmq.metrics_result AS $$
 DECLARE
     result_row pgmq.metrics_result;
@@ -272,7 +254,7 @@ BEGIN
             FROM pgmq.%I
         )
         SELECT
-            '%I' as queue_name,
+            '%s' as queue_name,
             q_summary.queue_length,
             q_summary.newest_msg_age_sec,
             q_summary.oldest_msg_age_sec,
@@ -280,37 +262,15 @@ BEGIN
             q_summary.scrape_time
         FROM q_summary, all_metrics
         $QUERY$,
-        'q_' || queue_name, 'q_' || queue_name | '_msg_id_seq', queue_name
+        'q_' || queue_name, 'q_' || queue_name || '_msg_id_seq', queue_name
     );
     EXECUTE query INTO result_row;
     RETURN result_row;
 END;
 $$ LANGUAGE plpgsql;
 
--- get metrics for all queues
-CREATE OR REPLACE pgmq."metrics_all"()
-RETURNS SETOF pgmq.metrics_result AS $$
-DECLARE
-    row_name RECORD;
-    result_row pgmq.metrics_result;
-BEGIN
-    FOR row_name IN SELECT queue_name FROM pgmq.meta LOOP
-        result_row := pgmq.metrics(row_name.queue_name);
-        RETURN NEXT result_row;
-    END LOOP;
-END;
-$$ LANGUAGE plpgsql;
 
--- list queues
-CREATE OR REPLACE pgmq."list_queues"()
-RETURNS SETOF pgmq.queue_record AS $$
-BEGIN
-  RETURN QUERY SELECT * FROM pgmq.meta;
-END
-$$ LANGUAGE plpgsql;
-
--- purge queue, deleting all entries in it.
-CREATE OR REPLACE pgmq."purge_queue"(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq."purge_queue"(queue_name TEXT)
 RETURNS BIGINT AS $$
 DECLARE
   deleted_count INTEGER;
@@ -321,16 +281,16 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
--- unassign archive, so it can be kept when a queue is deleted
-CREATE OR REPLACE pgmq."detach_archive"(queue_name TEXT)
+
+CREATE OR REPLACE FUNCTION pgmq."detach_archive"(queue_name TEXT)
 RETURNS VOID AS $$
 BEGIN
   EXECUTE format('ALTER EXTENSION pgmq DROP TABLE pgmq.%I', 'a_' || queue_name);
 END
 $$ LANGUAGE plpgsql;
 
--- pop a single message
-CREATE OR REPLACE pgmq.pop(queue_name TEXT)
+
+CREATE OR REPLACE FUNCTION pgmq.pop(queue_name TEXT)
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
     sql TEXT;
@@ -357,8 +317,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Sets vt of a message, returns it
-CREATE OR REPLACE pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt INTEGER)
+
+CREATE OR REPLACE FUNCTION pgmq.set_vt(queue_name TEXT, msg_id BIGINT, vt INTEGER)
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
     sql TEXT;
@@ -377,7 +337,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN DEFAULT FALSE)
+CREATE OR REPLACE FUNCTION pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN DEFAULT FALSE)
 RETURNS BOOLEAN AS $$
 BEGIN
     EXECUTE FORMAT(
@@ -415,7 +375,7 @@ BEGIN
      ) THEN
         EXECUTE FORMAT(
             $QUERY$
-            DELETE FROM pgmq.meta WHERE queue_name = '%L'
+            DELETE FROM pgmq.meta WHERE queue_name = '%s'
             $QUERY$,
             queue_name
         );
@@ -424,7 +384,7 @@ BEGIN
      IF partitioned THEN
         EXECUTE FORMAT(
           $QUERY$
-          DELETE FROM public.part_config where parent_table = '%L'
+          DELETE FROM public.part_config where parent_table = '%s'
           $QUERY$,
           queue_name
         );
@@ -434,7 +394,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE pgmq.validate_queue_name(queue_name TEXT)
+
+CREATE OR REPLACE FUNCTION pgmq.validate_queue_name(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
   IF length(queue_name) >= 48 THEN
@@ -443,27 +404,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE pgmq._belongs_to_pgmq(table_name TEXT)
-RETURNS BOOLEAN AS $$
-DECLARE
-    sql TEXT;
-    result BOOLEAN;
-BEGIN
-  SELECT EXISTS (
-    SELECT 1
-    FROM pg_depend
-    WHERE refobjid = (SELECT oid FROM pg_extension WHERE extname = 'pgmq')
-    AND objid = (
-        SELECT oid
-        FROM pg_class
-        WHERE relname = table_name
-    )
-  ) INTO result;
-  RETURN result;
-END;
-$$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE pgmq.create_non_partitioned(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.create_non_partitioned(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
@@ -529,7 +471,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE pgmq.create_unlogged(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.create_unlogged(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
@@ -595,7 +537,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE pgmq._get_partition_col(partition_interval TEXT)
+CREATE OR REPLACE FUNCTION pgmq._get_partition_col(partition_interval TEXT)
 RETURNS TEXT AS $$
 DECLARE
   num INTEGER;
@@ -610,24 +552,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE pgmq._ensure_pg_partman_installed()
-RETURNS void AS $$
-DECLARE
-  extension_exists BOOLEAN;
-BEGIN
-  SELECT EXISTS (
-    SELECT 1
-    FROM pg_extension
-    WHERE extname = 'pg_partman'
-  ) INTO extension_exists;
 
-  IF NOT extension_exists THEN
-    RAISE EXCEPTION 'pg_partman is required for partitioned queues';
-  END IF;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE pgmq.create_partitioned(
+CREATE OR REPLACE FUNCTION pgmq.create_partitioned(
   queue_name TEXT,
   partition_interval TEXT DEFAULT '10000',
   retention_interval TEXT DEFAULT '100000'
@@ -649,7 +575,7 @@ BEGIN
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
         message JSONB
-    ) PARTITION BY RANGE (%L)
+    ) PARTITION BY RANGE (%s)
     $QUERY$,
     'q_' || queue_name, partition_col
   );
@@ -660,14 +586,14 @@ BEGIN
 
   EXECUTE FORMAT(
     $QUERY$
-    SELECT public.create_parent('pgmq.%I', '%L', 'native', '%L');
+    SELECT public.create_parent('pgmq.%I', '%s', 'native', '%s');
     $QUERY$,
     'q_' || queue_name, partition_col, partition_interval
   );
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (Ls);
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (%s);
     $QUERY$,
     'q_' || queue_name || '_part_idx', 'q_' || queue_name, partition_col
   );
@@ -676,7 +602,7 @@ BEGIN
     $QUERY$
     UPDATE public.part_config
     SET
-        retention = '%L',
+        retention = '%s',
         retention_keep_table = false,
         retention_keep_index = true,
         automatic_maintenance = 'on'
@@ -710,7 +636,7 @@ BEGIN
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
       message JSONB
-    ) PARTITION BY RANGE (%L);
+    ) PARTITION BY RANGE (%s);
     $QUERY$,
     'a_' || queue_name, a_partition_col
   );
@@ -721,7 +647,7 @@ BEGIN
 
   EXECUTE FORMAT(
     $QUERY$
-    SELECT public.create_parent('pgmq.%I', '%L', 'native', '%L');
+    SELECT public.create_parent('pgmq.%I', '%s', 'native', '%s');
     $QUERY$,
     'a_' || queue_name, a_partition_col, partition_interval
   );
@@ -730,7 +656,7 @@ BEGIN
     $QUERY$
     UPDATE public.part_config
     SET
-        retention = '%L',
+        retention = '%s',
         retention_keep_table = false,
         retention_keep_index = true,
         automatic_maintenance = 'on'
@@ -750,14 +676,14 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE pgmq.create(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq.create(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
     PERFORM pgmq.create_non_partitioned(queue_name);
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE pgmq.convert_archive_partitioned(table_name TEXT,
+CREATE OR REPLACE FUNCTION pgmq.convert_archive_partitioned(table_name TEXT,
                                                  partition_interval TEXT DEFAULT '10000',
                                                  retention_interval TEXT DEFAULT '100000',
                                                  leading_partition INT DEFAULT 10)

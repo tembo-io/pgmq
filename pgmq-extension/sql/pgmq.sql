@@ -316,7 +316,7 @@ BEGIN
             FROM pgmq.%I
         )
         SELECT
-            '%I' as queue_name,
+            '%s' as queue_name,
             q_summary.queue_length,
             q_summary.newest_msg_age_sec,
             q_summary.oldest_msg_age_sec,
@@ -324,7 +324,7 @@ BEGIN
             q_summary.scrape_time
         FROM q_summary, all_metrics
         $QUERY$,
-        'q_' || queue_name, 'q_' || queue_name | '_msg_id_seq', queue_name
+        'q_' || queue_name, 'q_' || queue_name || '_msg_id_seq', queue_name
     );
     EXECUTE query INTO result_row;
     RETURN result_row;
@@ -459,7 +459,7 @@ BEGIN
      ) THEN
         EXECUTE FORMAT(
             $QUERY$
-            DELETE FROM pgmq.meta WHERE queue_name = '%L'
+            DELETE FROM pgmq.meta WHERE queue_name = '%s'
             $QUERY$,
             queue_name
         );
@@ -468,7 +468,7 @@ BEGIN
      IF partitioned THEN
         EXECUTE FORMAT(
           $QUERY$
-          DELETE FROM public.part_config where parent_table = '%L'
+          DELETE FROM public.part_config where parent_table = '%s'
           $QUERY$,
           queue_name
         );
@@ -693,7 +693,7 @@ BEGIN
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
         message JSONB
-    ) PARTITION BY RANGE (%L)
+    ) PARTITION BY RANGE (%s)
     $QUERY$,
     'q_' || queue_name, partition_col
   );
@@ -704,14 +704,14 @@ BEGIN
 
   EXECUTE FORMAT(
     $QUERY$
-    SELECT public.create_parent('pgmq.%I', '%L', 'native', '%L');
+    SELECT public.create_parent('pgmq.%I', '%s', 'native', '%s');
     $QUERY$,
     'q_' || queue_name, partition_col, partition_interval
   );
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (Ls);
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (%s);
     $QUERY$,
     'q_' || queue_name || '_part_idx', 'q_' || queue_name, partition_col
   );
@@ -720,7 +720,7 @@ BEGIN
     $QUERY$
     UPDATE public.part_config
     SET
-        retention = '%L',
+        retention = '%s',
         retention_keep_table = false,
         retention_keep_index = true,
         automatic_maintenance = 'on'
@@ -754,7 +754,7 @@ BEGIN
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
       message JSONB
-    ) PARTITION BY RANGE (%L);
+    ) PARTITION BY RANGE (%s);
     $QUERY$,
     'a_' || queue_name, a_partition_col
   );
@@ -765,7 +765,7 @@ BEGIN
 
   EXECUTE FORMAT(
     $QUERY$
-    SELECT public.create_parent('pgmq.%I', '%L', 'native', '%L');
+    SELECT public.create_parent('pgmq.%I', '%s', 'native', '%s');
     $QUERY$,
     'a_' || queue_name, a_partition_col, partition_interval
   );
@@ -774,7 +774,7 @@ BEGIN
     $QUERY$
     UPDATE public.part_config
     SET
-        retention = '%L',
+        retention = '%s',
         retention_keep_table = false,
         retention_keep_index = true,
         automatic_maintenance = 'on'
