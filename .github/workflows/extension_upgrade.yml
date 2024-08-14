@@ -46,15 +46,16 @@ jobs:
       - uses: ./.github/actions/pgx-init
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
+      - name: Set PG_CONFIG environment variable
+        run: echo "PG_CONFIG=$(cargo pgrx info pg-config pg16)" >> $GITHUB_ENV
       - name: Install pg_partman
         run: |
           git clone https://github.com/pgpartman/pg_partman.git && \
           cd pg_partman && \
           git checkout v4.7.4 && \
-          sed -i 's|PG_CONFIG = pg_config|PG_CONFIG = ~/.pgrx/16.3/pgrx-install/bin/pg_config|' Makefile && \
+          sed -i "s|PG_CONFIG = pg_config|PG_CONFIG = ${PG_CONFIG}|" Makefile && \
           make && \
-          make install && \
-          ls -alh /home/runner/.pgrx/16.3/pgrx-install/share/postgresql/extension/pg_partman*
+          make install
       - name: Checkout old version (1.0.0)
         run: |
           git fetch --tags
@@ -71,20 +72,16 @@ jobs:
           psql $DATABASE_URL -c "CREATE EXTENSION pgmq;"
           psql $DATABASE_URL -c "select * from pgmq.create('test_queue_1')"
           psql $DATABASE_URL -c "select * from pgmq.create_partitioned('test_partitioned_queue_1');"
-          ls -alh /home/runner/.pgrx/16.3/pgrx-install/share/postgresql/extension/pg_partman*
       - name: Checkout branch's version
         env:
           CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
         run: |
           git checkout $CI_BRANCH
       - name: Upgrade extension version
-        env:
-          PG_CONFIG: ~/.pgrx/16.3/pgrx-install/bin/pg_config
         run: |
           make clean
           make
           make install
-          ls -alh /home/runner/.pgrx/16.3/pgrx-install/share/postgresql/extension/pgmq*
           psql postgres://$USER:postgres@localhost:28816/pgmq -c "ALTER EXTENSION pgmq UPDATE;"
       - name: Run tests
         env:
