@@ -778,7 +778,7 @@ BEGIN
         retention_keep_table = false,
         retention_keep_index = true,
         automatic_maintenance = 'on'
-    WHERE parent_table = 'pgmq.&I';
+    WHERE parent_table = 'pgmq.%I';
     $QUERY$,
     retention_interval, 'a_' || queue_name
   );
