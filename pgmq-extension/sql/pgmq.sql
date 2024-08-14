@@ -564,7 +564,7 @@ BEGIN
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%L', false, false)
+    VALUES ('%s', false, false)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
@@ -630,7 +630,7 @@ BEGIN
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%L', false, true)
+    VALUES ('%s', false, true)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
@@ -732,7 +732,7 @@ BEGIN
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%L', true, false)
+    VALUES ('%s', true, false)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
