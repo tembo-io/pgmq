@@ -738,6 +738,8 @@ BEGIN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', qtable);
   END IF;
 
+  -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
+  -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM public.create_parent(
     FORMAT('pgmq.%s', qtable),
     partition_col, 'native', partition_interval
@@ -797,6 +799,8 @@ BEGIN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', atable);
   END IF;
 
+  -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
+  -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM public.create_parent(
     FORMAT('pgmq.%s', atable),
     a_partition_col, 'native', partition_interval
@@ -873,6 +877,8 @@ BEGIN
   EXECUTE 'ALTER INDEX pgmq.archived_at_idx_' || table_name || ' RENAME TO archived_at_idx_' || table_name || '_old';
   EXECUTE 'CREATE INDEX archived_at_idx_'|| table_name || ' ON ' || qualified_a_table_name ||'(archived_at)';
 
+  -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
+  -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM create_parent(qualified_a_table_name, 'msg_id', 'native',  partition_interval,
                          p_premake := leading_partition);
 
