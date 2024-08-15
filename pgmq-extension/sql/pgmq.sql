@@ -571,11 +571,11 @@ BEGIN
     atable
   );
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', qtable)) THEN
+  IF NOT pgmq._belongs_to_pgmq(qtable) THEN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', qtable);
   END IF;
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', atable)) THEN
+  IF NOT pgmq._belongs_to_pgmq(atable) THEN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', atable);
   END IF;
 
@@ -639,11 +639,11 @@ BEGIN
     atable
   );
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', qtable)) THEN
+  IF NOT pgmq._belongs_to_pgmq(qtable) THEN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', qtable);
   END IF;
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', atable)) THEN
+  IF NOT pgmq._belongs_to_pgmq(atable) THEN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', atable);
   END IF;
 
@@ -734,12 +734,14 @@ BEGIN
     qtable, partition_col
   );
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', qtable)) THEN
+  IF NOT pgmq._belongs_to_pgmq(qtable) THEN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', qtable);
   END IF;
 
+  -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
+  -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM public.create_parent(
-    'pgmq.' || quote_ident(qtable),
+    FORMAT('pgmq.%s', qtable),
     partition_col, 'native', partition_interval
   );
 
@@ -793,12 +795,14 @@ BEGIN
     atable, a_partition_col
   );
 
-  IF NOT pgmq._belongs_to_pgmq(FORMAT('%I', atable)) THEN
+  IF NOT pgmq._belongs_to_pgmq(atable) THEN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', atable);
   END IF;
 
+  -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
+  -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM public.create_parent(
-    'pgmq.' || quote_ident(atable),
+    FORMAT('pgmq.%s', atable),
     a_partition_col, 'native', partition_interval
   );
 
@@ -842,7 +846,6 @@ DECLARE
 a_table_name TEXT := pgmq.format_table_name(table_name, 'a');
 a_table_name_old TEXT := pgmq.format_table_name(table_name, 'a') || '_old';
 qualified_a_table_name TEXT := format('pgmq.%I', a_table_name);
-qualified_a_table_name_old TEXT := format ('pgmq.%I', a_table_name_old || '_old');
 BEGIN
 
   PERFORM c.relkind
@@ -874,6 +877,8 @@ BEGIN
   EXECUTE 'ALTER INDEX pgmq.archived_at_idx_' || table_name || ' RENAME TO archived_at_idx_' || table_name || '_old';
   EXECUTE 'CREATE INDEX archived_at_idx_'|| table_name || ' ON ' || qualified_a_table_name ||'(archived_at)';
 
+  -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
+  -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM create_parent(qualified_a_table_name, 'msg_id', 'native',  partition_interval,
                          p_premake := leading_partition);
 
