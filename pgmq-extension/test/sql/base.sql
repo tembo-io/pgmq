@@ -253,4 +253,15 @@ SELECT pgmq.convert_archive_partitioned('long_queue_name_12345678901234567890123
 SELECT pgmq.create('long_queue_name_');
 SELECT pgmq.convert_archive_partitioned('long_queue_name_');
 
+--Failed SQL injection attack
+SELECT pgmq.create('abc');
+SELECT
+   pgmq.delete(
+     'abc where false;
+     create table public.attack_vector(id int); -- Any SQL can be placed here
+     delete from pgmq.q_abc',
+     1
+  );
+
+--Cleanup tests
 DROP EXTENSION pgmq CASCADE;
