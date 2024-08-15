@@ -617,4 +617,35 @@ SELECT pgmq.convert_archive_partitioned('long_queue_name_');
  
 (1 row)
 
+--Failed SQL injection attack
+SELECT pgmq.create('abc');
+ create 
+--------
+ 
+(1 row)
+
+SELECT
+   pgmq.delete(
+     'abc where false;
+     create table public.attack_vector(id int); -- Any SQL can be placed here
+     delete from pgmq.q_abc',
+     1
+  );
+NOTICE:  identifier "q_abc where false;
+     create table public.attack_vector(id int); -- any sql can be placed here
+     delete from pgmq.q_abc" will be truncated to "q_abc where false;
+     create table public.attack_vector(id in"
+ERROR:  relation "pgmq.q_abc where false;
+     create table public.attack_vector(id in" does not exist
+LINE 2:         DELETE FROM pgmq."q_abc where false;
+                            ^
+QUERY:  
+        DELETE FROM pgmq."q_abc where false;
+     create table public.attack_vector(id int); -- any sql can be placed here
+     delete from pgmq.q_abc"
+        WHERE msg_id = $1
+        RETURNING msg_id
+        
+CONTEXT:  PL/pgSQL function pgmq.delete(text,bigint) line 15 at EXECUTE
+--Cleanup tests
 DROP EXTENSION pgmq CASCADE;
