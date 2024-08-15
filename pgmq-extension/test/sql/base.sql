@@ -258,10 +258,42 @@ SELECT pgmq.create('abc');
 SELECT
    pgmq.delete(
      'abc where false;
-     create table public.attack_vector(id int); -- Any SQL can be placed here
+     create table public.attack_vector(id int);
      delete from pgmq.q_abc',
      1
   );
 
+--Special characters in queue name
+SELECT pgmq.create('queue-hyphened');
+SELECT pgmq.send('queue-hyphened', '{"hello":"world"}');
+SELECT msg_id, read_ct, message FROM pgmq.read('queue-hyphened', 1, 1);
+SELECT pgmq.archive('queue-hyphened', 1);
+
+SELECT pgmq.create('dollar$-signed');
+SELECT pgmq.send('dollar$-signed', '{"hello":"world"}');
+SELECT msg_id, read_ct, message FROM pgmq.read('dollar$-signed', 1, 1);
+SELECT pgmq.archive('dollar$-signed', 1);
+
+SELECT pgmq.create('QueueCased');
+SELECT pgmq.send('QueueCased', '{"hello":"world"}');
+SELECT msg_id, read_ct, message FROM pgmq.read('QueueCased', 1, 1);
+SELECT pgmq.archive('QueueCased', 1);
+
+SELECT pgmq.create_partitioned('queue-hyphened-part');
+SELECT pgmq.send('queue-hyphened-part', '{"hello":"world"}');
+SELECT msg_id, read_ct, message FROM pgmq.read('queue-hyphened-part', 1, 1);
+SELECT pgmq.archive('queue-hyphened-part', 1);
+
+SELECT pgmq.create_partitioned('dollar$-signed-part');
+SELECT pgmq.send('dollar$-signed-part', '{"hello":"world"}');
+SELECT msg_id, read_ct, message FROM pgmq.read('dollar$-signed-part', 1, 1);
+SELECT pgmq.archive('dollar$-signed-part', 1);
+
+SELECT pgmq.create_partitioned('QueueCasedPart');
+SELECT pgmq.send('QueueCasedPart', '{"hello":"world"}');
+SELECT msg_id, read_ct, message FROM pgmq.read('QueueCasedPart', 1, 1);
+SELECT pgmq.archive('QueueCasedPart', 1);
+
 --Cleanup tests
 DROP EXTENSION pgmq CASCADE;
+DROP EXTENSION pg_partman CASCADE;
