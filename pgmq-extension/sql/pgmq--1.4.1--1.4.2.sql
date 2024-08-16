@@ -78,7 +78,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.create_partitioned(
+CREATE OR REPLACE FUNCTION pgmq.create_partitioned(
   queue_name TEXT,
   partition_interval TEXT DEFAULT '10000',
   retention_interval TEXT DEFAULT '100000'
@@ -268,7 +268,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE FUNCTION pgmq.convert_archive_partitioned(table_name TEXT,
+CREATE OR REPLACE FUNCTION pgmq.convert_archive_partitioned(table_name TEXT,
                                                  partition_interval TEXT DEFAULT '10000',
                                                  retention_interval TEXT DEFAULT '100000',
                                                  leading_partition INT DEFAULT 10)
@@ -319,5 +319,44 @@ BEGIN
     retention_keep_index = false,
     infinite_time_partitions = true
     WHERE parent_table = qualified_a_table_name;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION pgmq.metrics(queue_name TEXT)
+RETURNS pgmq.metrics_result AS $$
+DECLARE
+    result_row pgmq.metrics_result;
+    query TEXT;
+    qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+BEGIN
+    query := FORMAT(
+        $QUERY$
+        WITH q_summary AS (
+            SELECT
+                count(*) as queue_length,
+                EXTRACT(epoch FROM (NOW() - max(enqueued_at)))::int as newest_msg_age_sec,
+                EXTRACT(epoch FROM (NOW() - min(enqueued_at)))::int as oldest_msg_age_sec,
+                NOW() as scrape_time
+            FROM pgmq.%I
+        ),
+        all_metrics AS (
+            SELECT CASE
+                WHEN is_called THEN last_value ELSE 0
+                END as total_messages
+            FROM pgmq.%I
+        )
+        SELECT
+            %L as queue_name,
+            q_summary.queue_length,
+            q_summary.newest_msg_age_sec,
+            q_summary.oldest_msg_age_sec,
+            all_metrics.total_messages,
+            q_summary.scrape_time
+        FROM q_summary, all_metrics
+        $QUERY$,
+        qtable, qtable || '_msg_id_seq', queue_name
+    );
+    EXECUTE query INTO result_row;
+    RETURN result_row;
 END;
 $$ LANGUAGE plpgsql;
