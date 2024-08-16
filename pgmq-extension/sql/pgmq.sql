@@ -40,14 +40,17 @@ CREATE TYPE pgmq.queue_record AS (
 -- Functions
 ------------------------------------------------------------
 
--- a helper to format table names to lowercase and in the pgmq schema
+-- a helper to format table names and check for invalid characters
 CREATE FUNCTION pgmq.format_table_name(queue_name text, prefix text)
-  returns text
-  immutable
-  language sql
-as $$
-  select lower(prefix || '_' || queue_name)
-$$;
+RETURNS TEXT AS $$
+BEGIN
+    IF queue_name ~ '\$|;|--|'''
+    THEN
+        RAISE EXCEPTION 'queue name contains invalid characters: $, ;, --, or \''';
+    END IF;
+    RETURN lower(prefix || '_' || queue_name);
+END;
+$$ LANGUAGE plpgsql;
 
 -- read
 -- reads a number of messages from a queue, setting a visibility timeout on them
@@ -74,13 +77,13 @@ BEGIN
         )
         UPDATE pgmq.%I m
         SET
-            vt = clock_timestamp() + interval '%s seconds',
+            vt = clock_timestamp() + %L,
             read_ct = read_ct + 1
         FROM cte
         WHERE m.msg_id = cte.msg_id
         RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
         $QUERY$,
-        qtable, qtable, vt
+        qtable, qtable, make_interval(secs => vt)
     );
     RETURN QUERY EXECUTE sql USING qty;
 END;
@@ -102,7 +105,7 @@ DECLARE
     sql TEXT;
     qtable TEXT := pgmq.format_table_name(queue_name, 'q');
 BEGIN
-    stop_at := clock_timestamp() + FORMAT('%s seconds', max_poll_seconds)::interval;
+    stop_at := clock_timestamp() + make_interval(secs => max_poll_seconds);
     LOOP
       IF (SELECT clock_timestamp() >= stop_at) THEN
         RETURN;
@@ -121,13 +124,13 @@ BEGIN
           )
           UPDATE pgmq.%I m
           SET
-              vt = clock_timestamp() + interval '%s seconds',
+              vt = clock_timestamp() + %L,
               read_ct = read_ct + 1
           FROM cte
           WHERE m.msg_id = cte.msg_id
           RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
           $QUERY$,
-          qtable, qtable, vt
+          qtable, qtable, make_interval(secs => vt)
       );
 
       FOR r IN
@@ -270,10 +273,10 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         INSERT INTO pgmq.%I (vt, message)
-        VALUES ((clock_timestamp() + interval '%s seconds'), $1)
+        VALUES ((clock_timestamp() + %L), $1)
         RETURNING msg_id;
         $QUERY$,
-        qtable, delay
+        qtable, make_interval(secs => delay)
     );
     RETURN QUERY EXECUTE sql USING msg;
 END;
@@ -293,10 +296,10 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         INSERT INTO pgmq.%I (vt, message)
-        SELECT clock_timestamp() + interval '%s seconds', unnest($1)
+        SELECT clock_timestamp() + %L, unnest($1)
         RETURNING msg_id;
         $QUERY$,
-        qtable, delay
+        qtable, make_interval(secs => delay)
     );
     RETURN QUERY EXECUTE sql USING msgs;
 END;
@@ -337,7 +340,7 @@ BEGIN
             FROM pgmq.%I
         )
         SELECT
-            '%s' as queue_name,
+            %L as queue_name,
             q_summary.queue_length,
             q_summary.newest_msg_age_sec,
             q_summary.oldest_msg_age_sec,
@@ -437,11 +440,11 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         UPDATE pgmq.%I
-        SET vt = (now() + interval '%s seconds')
-        WHERE msg_id = %s
+        SET vt = (now() + %L)
+        WHERE msg_id = %L
         RETURNING *;
         $QUERY$,
-        qtable, vt, msg_id
+        qtable, make_interval(secs => vt), msg_id
     );
     RETURN QUERY EXECUTE sql;
 END;
@@ -451,7 +454,9 @@ CREATE FUNCTION pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN DEFAULT FAL
 RETURNS BOOLEAN AS $$
 DECLARE
     qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+    fq_qtable TEXT := 'pgmq.' || qtable;
     atable TEXT := pgmq.format_table_name(queue_name, 'a');
+    fq_atable TEXT := 'pgmq.' || atable;
 BEGIN
     EXECUTE FORMAT(
         $QUERY$
@@ -488,7 +493,7 @@ BEGIN
      ) THEN
         EXECUTE FORMAT(
             $QUERY$
-            DELETE FROM pgmq.meta WHERE queue_name = '%s'
+            DELETE FROM pgmq.meta WHERE queue_name = %L
             $QUERY$,
             queue_name
         );
@@ -497,9 +502,9 @@ BEGIN
      IF partitioned THEN
         EXECUTE FORMAT(
           $QUERY$
-          DELETE FROM public.part_config where parent_table = '%s'
+          DELETE FROM public.part_config where parent_table in (%L, %L)
           $QUERY$,
-          queue_name
+          fq_qtable, fq_atable
         );
      END IF;
 
@@ -596,7 +601,7 @@ BEGIN
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%s', false, false)
+    VALUES (%L, false, false)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
@@ -664,7 +669,7 @@ BEGIN
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%s', false, true)
+    VALUES (%L, false, true)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
@@ -716,6 +721,8 @@ DECLARE
   a_partition_col TEXT;
   qtable TEXT := pgmq.format_table_name(queue_name, 'q');
   atable TEXT := pgmq.format_table_name(queue_name, 'a');
+  fq_qtable TEXT := 'pgmq.' || qtable;
+  fq_atable TEXT := 'pgmq.' || atable;
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
   PERFORM pgmq._ensure_pg_partman_installed();
@@ -729,7 +736,7 @@ BEGIN
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
         message JSONB
-    ) PARTITION BY RANGE (%s)
+    ) PARTITION BY RANGE (%I)
     $QUERY$,
     qtable, partition_col
   );
@@ -741,13 +748,13 @@ BEGIN
   -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
   -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM public.create_parent(
-    FORMAT('pgmq.%s', qtable),
+    fq_qtable,
     partition_col, 'native', partition_interval
   );
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (%s);
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (%I);
     $QUERY$,
     qtable || '_part_idx', qtable, partition_col
   );
@@ -756,19 +763,19 @@ BEGIN
     $QUERY$
     UPDATE public.part_config
     SET
-        retention = '%s',
+        retention = %L,
         retention_keep_table = false,
         retention_keep_index = true,
         automatic_maintenance = 'on'
-    WHERE parent_table = 'pgmq.%I';
+    WHERE parent_table = %L;
     $QUERY$,
-    retention_interval, qtable
+    retention_interval, 'pgmq.' || qtable
   );
 
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%s', true, false)
+    VALUES (%L, true, false)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
@@ -790,7 +797,7 @@ BEGIN
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
       message JSONB
-    ) PARTITION BY RANGE (%s);
+    ) PARTITION BY RANGE (%I);
     $QUERY$,
     atable, a_partition_col
   );
@@ -802,7 +809,7 @@ BEGIN
   -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
   -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM public.create_parent(
-    FORMAT('pgmq.%s', atable),
+    fq_atable,
     a_partition_col, 'native', partition_interval
   );
 
@@ -810,13 +817,13 @@ BEGIN
     $QUERY$
     UPDATE public.part_config
     SET
-        retention = '%s',
+        retention = %L,
         retention_keep_table = false,
         retention_keep_index = true,
         automatic_maintenance = 'on'
-    WHERE parent_table = 'pgmq.%I';
+    WHERE parent_table = %L;
     $QUERY$,
-    retention_interval, atable
+    retention_interval, 'pgmq.' || atable
   );
 
   EXECUTE FORMAT(
@@ -866,7 +873,7 @@ BEGIN
     AND c.relkind = 'r';
 
   IF NOT FOUND THEN
-    RAISE NOTICE 'Table %s doesnot exists', a_table_name;
+    RAISE NOTICE 'Table %s does not exists', a_table_name;
     RETURN;
   END IF;
 

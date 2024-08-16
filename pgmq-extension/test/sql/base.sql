@@ -253,6 +253,8 @@ SELECT pgmq.convert_archive_partitioned('long_queue_name_12345678901234567890123
 SELECT pgmq.create('long_queue_name_');
 SELECT pgmq.convert_archive_partitioned('long_queue_name_');
 
+\set SHOW_CONTEXT never
+
 --Failed SQL injection attack
 SELECT pgmq.create('abc');
 SELECT
@@ -269,11 +271,6 @@ SELECT pgmq.send('queue-hyphened', '{"hello":"world"}');
 SELECT msg_id, read_ct, message FROM pgmq.read('queue-hyphened', 1, 1);
 SELECT pgmq.archive('queue-hyphened', 1);
 
-SELECT pgmq.create('dollar$-signed');
-SELECT pgmq.send('dollar$-signed', '{"hello":"world"}');
-SELECT msg_id, read_ct, message FROM pgmq.read('dollar$-signed', 1, 1);
-SELECT pgmq.archive('dollar$-signed', 1);
-
 SELECT pgmq.create('QueueCased');
 SELECT pgmq.send('QueueCased', '{"hello":"world"}');
 SELECT msg_id, read_ct, message FROM pgmq.read('QueueCased', 1, 1);
@@ -284,15 +281,25 @@ SELECT pgmq.send('queue-hyphened-part', '{"hello":"world"}');
 SELECT msg_id, read_ct, message FROM pgmq.read('queue-hyphened-part', 1, 1);
 SELECT pgmq.archive('queue-hyphened-part', 1);
 
-SELECT pgmq.create_partitioned('dollar$-signed-part');
-SELECT pgmq.send('dollar$-signed-part', '{"hello":"world"}');
-SELECT msg_id, read_ct, message FROM pgmq.read('dollar$-signed-part', 1, 1);
-SELECT pgmq.archive('dollar$-signed-part', 1);
-
 SELECT pgmq.create_partitioned('QueueCasedPart');
 SELECT pgmq.send('QueueCasedPart', '{"hello":"world"}');
 SELECT msg_id, read_ct, message FROM pgmq.read('QueueCasedPart', 1, 1);
 SELECT pgmq.archive('QueueCasedPart', 1);
+
+-- fails with invalid queue name
+SELECT pgmq.create('dollar$-signed');
+SELECT pgmq.create_partitioned('dollar$-signed-part');
+
+-- input validation success
+SELECT pgmq.format_table_name('cat', 'q');
+SELECT pgmq.format_table_name('cat-dog', 'a');
+SELECT pgmq.format_table_name('cat_dog', 'q');
+
+-- input validation failure
+SELECT pgmq.format_table_name('dollar$fail', 'q');
+SELECT pgmq.format_table_name('double--hyphen-fail', 'a');
+SELECT pgmq.format_table_name('semicolon;fail', 'a');
+SELECT pgmq.format_table_name($$single'quote-fail$$, 'a');
 
 --Cleanup tests
 DROP EXTENSION pgmq CASCADE;
