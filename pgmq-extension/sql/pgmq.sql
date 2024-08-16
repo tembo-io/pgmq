@@ -721,6 +721,8 @@ DECLARE
   a_partition_col TEXT;
   qtable TEXT := pgmq.format_table_name(queue_name, 'q');
   atable TEXT := pgmq.format_table_name(queue_name, 'a');
+  fq_qtable TEXT := 'pgmq.' || qtable;
+  fq_atable TEXT := 'pgmq.' || atable;
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
   PERFORM pgmq._ensure_pg_partman_installed();
@@ -746,7 +748,7 @@ BEGIN
   -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
   -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM public.create_parent(
-    FORMAT('pgmq.%s', qtable),
+    fq_qtable,
     partition_col, 'native', partition_interval
   );
 
@@ -807,7 +809,7 @@ BEGIN
   -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
   -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM public.create_parent(
-    FORMAT('%s', 'pgmq.' || atable),
+    fq_atable,
     a_partition_col, 'native', partition_interval
   );
 
