@@ -44,7 +44,7 @@ CREATE TYPE pgmq.queue_record AS (
 CREATE FUNCTION pgmq.format_table_name(queue_name text, prefix text)
 RETURNS TEXT AS $$
 BEGIN
-    IF queue_name ~ '\$|;|--|'''
+    IF queue_name ~ '\$|;|--|''|\s'
     THEN
         RAISE EXCEPTION 'queue name contains invalid characters: $, ;, --, or \''';
     END IF;
@@ -340,7 +340,7 @@ BEGIN
             FROM pgmq.%I
         )
         SELECT
-            '%s' as queue_name,
+            %L as queue_name,
             q_summary.queue_length,
             q_summary.newest_msg_age_sec,
             q_summary.oldest_msg_age_sec,
@@ -454,7 +454,9 @@ CREATE FUNCTION pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN DEFAULT FAL
 RETURNS BOOLEAN AS $$
 DECLARE
     qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+    fq_qtable TEXT := 'pgmq.' || qtable;
     atable TEXT := pgmq.format_table_name(queue_name, 'a');
+    fq_atable TEXT := 'pgmq.' || atable;
 BEGIN
     EXECUTE FORMAT(
         $QUERY$
@@ -491,7 +493,7 @@ BEGIN
      ) THEN
         EXECUTE FORMAT(
             $QUERY$
-            DELETE FROM pgmq.meta WHERE queue_name = '%s'
+            DELETE FROM pgmq.meta WHERE queue_name = %L
             $QUERY$,
             queue_name
         );
@@ -500,9 +502,9 @@ BEGIN
      IF partitioned THEN
         EXECUTE FORMAT(
           $QUERY$
-          DELETE FROM public.part_config where parent_table = '%s'
+          DELETE FROM public.part_config where parent_table in (%L, %L)
           $QUERY$,
-          queue_name
+          fq_qtable, fq_atable
         );
      END IF;
 
@@ -599,7 +601,7 @@ BEGIN
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%s', false, false)
+    VALUES (%L, false, false)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
@@ -667,7 +669,7 @@ BEGIN
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%s', false, true)
+    VALUES (%L, false, true)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
@@ -732,7 +734,7 @@ BEGIN
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
         message JSONB
-    ) PARTITION BY RANGE (%s)
+    ) PARTITION BY RANGE (%I)
     $QUERY$,
     qtable, partition_col
   );
@@ -750,7 +752,7 @@ BEGIN
 
   EXECUTE FORMAT(
     $QUERY$
-    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (%s);
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (%I);
     $QUERY$,
     qtable || '_part_idx', qtable, partition_col
   );
@@ -759,19 +761,19 @@ BEGIN
     $QUERY$
     UPDATE public.part_config
     SET
-        retention = '%s',
+        retention = %L,
         retention_keep_table = false,
         retention_keep_index = true,
         automatic_maintenance = 'on'
-    WHERE parent_table = 'pgmq.%I';
+    WHERE parent_table = %L;
     $QUERY$,
-    retention_interval, qtable
+    retention_interval, 'pgmq.' || qtable
   );
 
   EXECUTE FORMAT(
     $QUERY$
     INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
-    VALUES ('%s', true, false)
+    VALUES (%L, true, false)
     ON CONFLICT
     DO NOTHING;
     $QUERY$,
@@ -793,7 +795,7 @@ BEGIN
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
       message JSONB
-    ) PARTITION BY RANGE (%s);
+    ) PARTITION BY RANGE (%I);
     $QUERY$,
     atable, a_partition_col
   );
@@ -805,7 +807,7 @@ BEGIN
   -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
   -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM public.create_parent(
-    FORMAT('pgmq.%s', atable),
+    FORMAT('%s', 'pgmq.' || atable),
     a_partition_col, 'native', partition_interval
   );
 
@@ -813,13 +815,13 @@ BEGIN
     $QUERY$
     UPDATE public.part_config
     SET
-        retention = '%s',
+        retention = %L,
         retention_keep_table = false,
         retention_keep_index = true,
         automatic_maintenance = 'on'
-    WHERE parent_table = 'pgmq.%I';
+    WHERE parent_table = %L;
     $QUERY$,
-    retention_interval, atable
+    retention_interval, 'pgmq.' || atable
   );
 
   EXECUTE FORMAT(
@@ -869,7 +871,7 @@ BEGIN
     AND c.relkind = 'r';
 
   IF NOT FOUND THEN
-    RAISE NOTICE 'Table %s doesnot exists', a_table_name;
+    RAISE NOTICE 'Table %s does not exists', a_table_name;
     RETURN;
   END IF;
 
