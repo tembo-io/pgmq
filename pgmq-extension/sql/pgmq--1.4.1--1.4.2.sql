@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION pgmq.format_table_name(queue_name text, prefix text)
 RETURNS TEXT AS $$
 BEGIN
-    IF queue_name ~ '\$|;|--|''|\s'
+    IF queue_name ~ '\$|;|--|'''
     THEN
         RAISE EXCEPTION 'queue name contains invalid characters: $, ;, --, or \''';
     END IF;
