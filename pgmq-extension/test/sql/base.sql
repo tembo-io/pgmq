@@ -253,6 +253,8 @@ SELECT pgmq.convert_archive_partitioned('long_queue_name_12345678901234567890123
 SELECT pgmq.create('long_queue_name_');
 SELECT pgmq.convert_archive_partitioned('long_queue_name_');
 
+\set SHOW_CONTEXT never
+
 --Failed SQL injection attack
 SELECT pgmq.create('abc');
 SELECT

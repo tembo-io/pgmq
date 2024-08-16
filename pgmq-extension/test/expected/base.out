@@ -617,6 +617,7 @@ SELECT pgmq.convert_archive_partitioned('long_queue_name_');
  
 (1 row)
 
+\set SHOW_CONTEXT never
 --Failed SQL injection attack
 SELECT pgmq.create('abc');
  create 
@@ -632,8 +633,6 @@ SELECT
      1
   );
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
-CONTEXT:  PL/pgSQL function pgmq.format_table_name(text,text) line 5 at RAISE
-PL/pgSQL function pgmq.delete(text,bigint) line 5 during statement block local variable initialization
 --Special characters in queue name
 SELECT pgmq.create('queue-hyphened');
  create 
@@ -734,14 +733,8 @@ SELECT pgmq.archive('QueueCasedPart', 1);
 -- fails with invalid queue name
 SELECT pgmq.create('dollar$-signed');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
-CONTEXT:  PL/pgSQL function pgmq.format_table_name(text,text) line 5 at RAISE
-PL/pgSQL function pgmq.create_non_partitioned(text) line 3 during statement block local variable initialization
-SQL statement "SELECT pgmq.create_non_partitioned(queue_name)"
-PL/pgSQL function pgmq."create"(text) line 3 at PERFORM
 SELECT pgmq.create_partitioned('dollar$-signed-part');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
-CONTEXT:  PL/pgSQL function pgmq.format_table_name(text,text) line 5 at RAISE
-PL/pgSQL function pgmq.create_partitioned(text,text,text) line 5 during statement block local variable initialization
 -- input validation success
 SELECT pgmq.format_table_name('cat', 'q');
  format_table_name 
@@ -764,16 +757,12 @@ SELECT pgmq.format_table_name('cat_dog', 'q');
 -- input validation failure
 SELECT pgmq.format_table_name('dollar$fail', 'q');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
-CONTEXT:  PL/pgSQL function pgmq.format_table_name(text,text) line 5 at RAISE
 SELECT pgmq.format_table_name('double--hyphen-fail', 'a');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
-CONTEXT:  PL/pgSQL function pgmq.format_table_name(text,text) line 5 at RAISE
 SELECT pgmq.format_table_name('semicolon;fail', 'a');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
-CONTEXT:  PL/pgSQL function pgmq.format_table_name(text,text) line 5 at RAISE
 SELECT pgmq.format_table_name($$single'quote-fail$$, 'a');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
-CONTEXT:  PL/pgSQL function pgmq.format_table_name(text,text) line 5 at RAISE
 --Cleanup tests
 DROP EXTENSION pgmq CASCADE;
 DROP EXTENSION pg_partman CASCADE;
