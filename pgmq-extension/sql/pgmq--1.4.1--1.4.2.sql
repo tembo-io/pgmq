@@ -1,3 +1,14 @@
+CREATE OR REPLACE FUNCTION pgmq.format_table_name(queue_name text, prefix text)
+RETURNS TEXT AS $$
+BEGIN
+    IF queue_name ~ '\$|;|--|'''
+    THEN
+        RAISE EXCEPTION 'queue name contains invalid characters: $, ;, --, or \''';
+    END IF;
+    RETURN lower(prefix || '_' || queue_name);
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION pgmq.create_non_partitioned(queue_name TEXT)
 RETURNS void AS $$
 DECLARE

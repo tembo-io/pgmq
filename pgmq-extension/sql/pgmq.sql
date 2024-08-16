@@ -40,14 +40,17 @@ CREATE TYPE pgmq.queue_record AS (
 -- Functions
 ------------------------------------------------------------
 
--- a helper to format table names to lowercase and in the pgmq schema
+-- a helper to format table names and check for invalid characters
 CREATE FUNCTION pgmq.format_table_name(queue_name text, prefix text)
-  returns text
-  immutable
-  language sql
-as $$
-  select lower(prefix || '_' || queue_name)
-$$;
+RETURNS TEXT AS $$
+BEGIN
+    IF queue_name ~ '\$|;|--|'''
+    THEN
+        RAISE EXCEPTION 'queue name contains invalid characters: $, ;, --, or \''';
+    END IF;
+    RETURN lower(prefix || '_' || queue_name);
+END;
+$$ LANGUAGE plpgsql;
 
 -- read
 -- reads a number of messages from a queue, setting a visibility timeout on them
