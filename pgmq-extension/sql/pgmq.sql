@@ -77,13 +77,13 @@ BEGIN
         )
         UPDATE pgmq.%I m
         SET
-            vt = clock_timestamp() + interval '%s seconds',
+            vt = clock_timestamp() + %L,
             read_ct = read_ct + 1
         FROM cte
         WHERE m.msg_id = cte.msg_id
         RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
         $QUERY$,
-        qtable, qtable, vt
+        qtable, qtable, make_interval(secs => vt)
     );
     RETURN QUERY EXECUTE sql USING qty;
 END;
@@ -105,7 +105,7 @@ DECLARE
     sql TEXT;
     qtable TEXT := pgmq.format_table_name(queue_name, 'q');
 BEGIN
-    stop_at := clock_timestamp() + FORMAT('%s seconds', max_poll_seconds)::interval;
+    stop_at := clock_timestamp() + make_interval(secs => max_poll_seconds);
     LOOP
       IF (SELECT clock_timestamp() >= stop_at) THEN
         RETURN;
@@ -124,13 +124,13 @@ BEGIN
           )
           UPDATE pgmq.%I m
           SET
-              vt = clock_timestamp() + interval '%s seconds',
+              vt = clock_timestamp() + %L,
               read_ct = read_ct + 1
           FROM cte
           WHERE m.msg_id = cte.msg_id
           RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
           $QUERY$,
-          qtable, qtable, vt
+          qtable, qtable, make_interval(secs => vt)
       );
 
       FOR r IN
@@ -273,10 +273,10 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         INSERT INTO pgmq.%I (vt, message)
-        VALUES ((clock_timestamp() + interval '%s seconds'), $1)
+        VALUES ((clock_timestamp() + %L), $1)
         RETURNING msg_id;
         $QUERY$,
-        qtable, delay
+        qtable, make_interval(secs => delay)
     );
     RETURN QUERY EXECUTE sql USING msg;
 END;
@@ -296,10 +296,10 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         INSERT INTO pgmq.%I (vt, message)
-        SELECT clock_timestamp() + interval '%s seconds', unnest($1)
+        SELECT clock_timestamp() + %L, unnest($1)
         RETURNING msg_id;
         $QUERY$,
-        qtable, delay
+        qtable, make_interval(secs => delay)
     );
     RETURN QUERY EXECUTE sql USING msgs;
 END;
@@ -440,11 +440,11 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         UPDATE pgmq.%I
-        SET vt = (now() + interval '%s seconds')
-        WHERE msg_id = %s
+        SET vt = (now() + %L)
+        WHERE msg_id = %L
         RETURNING *;
         $QUERY$,
-        qtable, vt, msg_id
+        qtable, make_interval(secs => vt), msg_id
     );
     RETURN QUERY EXECUTE sql;
 END;
