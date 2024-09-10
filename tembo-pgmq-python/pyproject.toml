@@ -16,6 +16,10 @@ packages = [{include = "tembo_pgmq_python"}]
 python = ">=3.9"
 psycopg = {extras = ["binary", "pool"], version = "^3"}
 orjson = "^3"
+asyncpg = { version = "^0.29.0", optional = true }
+
+[tool.poetry.extras]
+async = ["asyncpg"]
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
