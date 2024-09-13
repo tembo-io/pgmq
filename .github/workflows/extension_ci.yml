@@ -24,7 +24,7 @@ on:
 
 jobs:
   test:
-    name: Run tests
+    name: Test 🐘 ${{ matrix.pg }} with pg_partman ${{ matrix.partman }}
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
