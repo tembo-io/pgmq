@@ -31,12 +31,19 @@ jobs:
       matrix:
         pg: [12, 13, 14, 15, 16]
         partman: [4.7.3, 5.1.0]
+        exclude:
+          # pg_partman does not support pg < 14
+          - pg: 12
+            partman: 5.1.0
+          - pg: 13
+            partman: 5.1.0
     container: pgxn/pgxn-tools
     steps:
       - run: pg-start ${{ matrix.pg }}
         working-directory: ./
       - uses: actions/checkout@v4
       # - run: pgxn install 'pg_partman=${{ matrix.partman }}'
+      # TODO: use pgxn to install pg_partman once 5.x is available in pgxn
       - run: make install-pg-partman PG_PARTMAN_VER=${{ matrix.partman }}
       - run: pg-build-test
 
