@@ -710,22 +710,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq._get_pg_partman_major_version() 
-RETURNS INT AS $$
-DECLARE
-  full_version TEXT;
-  major_version TEXT;
-BEGIN
-  -- Get the full version of pg_partman extension
-  SELECT extversion INTO full_version
+CREATE FUNCTION pgmq._get_pg_partman_major_version()
+RETURNS INT
+LANGUAGE SQL
+AS $$
+  SELECT split_part(extversion, '.', 1)::INT
   FROM pg_extension
-  WHERE extname = 'pg_partman';
-
-  -- Extract the major version (part before the first dot)
-  major_version := split_part(full_version, '.', 1);
-  RETURN major_version::INT;
-END;
-$$ LANGUAGE plpgsql;
+  WHERE extname = 'pg_partman'
+$$;
 
 CREATE FUNCTION pgmq.create_partitioned(
   queue_name TEXT,
