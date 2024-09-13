@@ -710,6 +710,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE FUNCTION pgmq._get_pg_partman_major_version()
+RETURNS INT
+LANGUAGE SQL
+AS $$
+  SELECT split_part(extversion, '.', 1)::INT
+  FROM pg_extension
+  WHERE extname = 'pg_partman'
+$$;
+
 CREATE FUNCTION pgmq.create_partitioned(
   queue_name TEXT,
   partition_interval TEXT DEFAULT '10000',
@@ -748,8 +757,13 @@ BEGIN
   -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
   -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM public.create_parent(
-    fq_qtable,
-    partition_col, 'native', partition_interval
+    p_parent_table := fq_qtable,
+    p_control := partition_col,
+    p_interval := partition_interval,
+    p_type := case
+      when pgmq._get_pg_partman_major_version() = 5 then 'range'
+      else 'native'
+    end
   );
 
   EXECUTE FORMAT(
@@ -791,7 +805,7 @@ BEGIN
   EXECUTE FORMAT(
     $QUERY$
     CREATE TABLE IF NOT EXISTS pgmq.%I (
-      msg_id BIGINT,
+      msg_id BIGINT NOT NULL,
       read_ct INT DEFAULT 0 NOT NULL,
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
@@ -809,8 +823,13 @@ BEGIN
   -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
   -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   PERFORM public.create_parent(
-    fq_atable,
-    a_partition_col, 'native', partition_interval
+    p_parent_table := fq_atable,
+    p_control := a_partition_col,
+    p_interval := partition_interval,
+    p_type := case
+      when pgmq._get_pg_partman_major_version() = 5 then 'range'
+      else 'native'
+    end
   );
 
   EXECUTE FORMAT(
@@ -844,15 +863,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION pgmq.convert_archive_partitioned(table_name TEXT,
-                                                 partition_interval TEXT DEFAULT '10000',
-                                                 retention_interval TEXT DEFAULT '100000',
-                                                 leading_partition INT DEFAULT 10)
+CREATE OR REPLACE FUNCTION pgmq.convert_archive_partitioned(
+  table_name TEXT,
+  partition_interval TEXT DEFAULT '10000',
+  retention_interval TEXT DEFAULT '100000',
+  leading_partition INT DEFAULT 10
+)
 RETURNS void AS $$
 DECLARE
-a_table_name TEXT := pgmq.format_table_name(table_name, 'a');
-a_table_name_old TEXT := pgmq.format_table_name(table_name, 'a') || '_old';
-qualified_a_table_name TEXT := format('pgmq.%I', a_table_name);
+  a_table_name TEXT := pgmq.format_table_name(table_name, 'a');
+  a_table_name_old TEXT := pgmq.format_table_name(table_name, 'a') || '_old';
+  qualified_a_table_name TEXT := format('pgmq.%I', a_table_name);
 BEGIN
 
   PERFORM c.relkind
@@ -886,8 +907,15 @@ BEGIN
 
   -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md
   -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
-  PERFORM create_parent(qualified_a_table_name, 'msg_id', 'native',  partition_interval,
-                         p_premake := leading_partition);
+ PERFORM public.create_parent(
+    p_parent_table := qualified_a_table_name,
+    p_control := 'msg_id',
+    p_interval := partition_interval,
+    p_type := case
+      when pgmq._get_pg_partman_major_version() = 5 then 'range'
+      else 'native'
+    end
+  );
 
   UPDATE part_config
     SET retention = retention_interval,
