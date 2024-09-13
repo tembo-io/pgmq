@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pg: [12, 13, 14, 15, 16]
+        pg: [12, 13, 14, 15, 16, 17]
         partman: [4.7.3, 5.1.0]
         exclude:
           # pg_partman does not support pg < 14
