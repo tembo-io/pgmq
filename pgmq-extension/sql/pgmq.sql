@@ -920,8 +920,8 @@ BEGIN
     p_control := 'msg_id',
     p_interval := partition_interval,
     p_type := case
-      when pgmq._get_pg_partman_major_version() = 5 then 'range',
-      else 'range'
+      when pgmq._get_pg_partman_major_version() = 5 then 'range'
+      else 'native'
     end
   );
 
