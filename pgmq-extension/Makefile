@@ -39,7 +39,7 @@ Trunk.toml:
 install-pg-partman:
 	git clone https://github.com/pgpartman/pg_partman.git && \
 	cd pg_partman && \
-	git checkout v4.7.4 && \
+	git checkout v5.1.0 && \
 	make && \
 	make install PG_CONFIG=$(PG_CONFIG) && \
 	cd ../ && rm -rf pg_partman
