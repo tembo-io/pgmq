@@ -42,9 +42,7 @@ jobs:
       - run: pg-start ${{ matrix.pg }}
         working-directory: ./
       - uses: actions/checkout@v4
-      # - run: pgxn install 'pg_partman=${{ matrix.partman }}'
-      # TODO: use pgxn to install pg_partman once 5.x is available in pgxn
-      - run: make install-pg-partman PG_PARTMAN_VER=${{ matrix.partman }}
+      - run: pgxn install 'pg_partman=${{ matrix.partman }}'
       - run: pg-build-test
 
   publish:
