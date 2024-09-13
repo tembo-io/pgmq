@@ -30,12 +30,13 @@ jobs:
       fail-fast: false
       matrix:
         pg: [12, 13, 14, 15, 16]
+        partman: [4.7.3, 5.1.0]
     container: pgxn/pgxn-tools
     steps:
       - run: pg-start ${{ matrix.pg }}
         working-directory: ./
       - uses: actions/checkout@v4
-      - run: pgxn install 'pg_partman=4.7.3'
+      - run: pgxn install 'pg_partman=${{ matrix.partman }}'
       - run: pg-build-test
 
   publish:
