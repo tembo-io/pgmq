@@ -8,6 +8,9 @@ jobs:
     name: Release on PGXN
     runs-on: ubuntu-latest
     container: pgxn/pgxn-tools
+    defaults:
+      run:
+        working-directory: ./pgmq-extension
     steps:
     - name: Check out the repo
       uses: actions/checkout@v4

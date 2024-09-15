@@ -13,60 +13,40 @@ PGMQ was created by [Tembo](https://tembo.io/). Our goal is to make the full Pos
 We're building a radically simplified Postgres platform designed to be developer-first and easily extensible.
 PGMQ is a part of that project.
 
-This project contains two APIs, a pure Rust client side library and the Rust SDK wrapped around the Postgres extrension. The APIs aim to be identical, but the extension wrapper has advantages including;
-- performance
-- support for partitioned queues
-- metrics
+This project contains two APIs, a pure Rust client side library and the Rust SDK wrapped around the Postgres extension.
 
-The pure Rust client
-```rust
-use pgmq::PGMQueue;
-```
-
-And a Rust SDK wrapped around the Postgres extension.
+`The Rust client for the Postgres extension`. This gives the you the an ORM-like experience with the Postgres extension and makes managing connection pools, transactions, and serialization/deserialization much easier.
 
 ```rust
 use pgmq::PGMQueueExt;
 ```
 
-Not building in Rust? Try the [Tembo pgmq Postgres extension](https://pgt.dev/extensions/pgmq).
+`The pure Rust client`. This provides minimal functionality but can be used on any existing Postgres instance.
 
-## Features
-
-- Lightweight - Rust and Postgres only
-- Guaranteed delivery of messages to exactly one consumer within a visibility timeout
-- API parity with [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq)
-- Messages stay in the queue until deleted
-- Messages can be archived, instead of deleted, for long-term retention and replayability
-- Completely asynchronous API
+```rust
+use pgmq::PGMQueue;
+```
 
 ## Quick start
 
 - First, you will need Postgres. We use a container in this example.
 
 ```bash
-docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres
+docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pg16-pgmq:latest
 ```
 
 - If you don't have Docker installed, it can be found [here](https://docs.docker.com/get-docker/).
 
-- Make sure you have the Rust toolchain installed:
+- Make sure you have the [Rust toolchain](https://www.rust-lang.org/tools/install) installed:
+
+- Clone the project and run the [basic example](./examples/basic.rs):
 
 ```bash
-cargo --version
-```
+git clone https://github.com/tembo-io/pgmq.git
 
-- This example was written with version 1.67.0, but the latest stable should work. You can go [here](https://www.rust-lang.org/tools/install) to install Rust if you don't have it already, then run `rustup install stable` to install the latest, stable toolchain.
+cd pgmq-rs
 
-- Change directory to the example project:
-```bash
-cd examples/basic
-```
-
-- Run the project!
-
-```bash
-cargo run
+cargo run --example basic
 ```
 
 ## Minimal example at a glance
@@ -131,6 +111,14 @@ async fn main() -> Result<(), PgmqError> {
 }
 ```
 
+## Transactions
+
+You can execute all of PGMQ's operations within a transaction along with other database operations. See the [transaction example](./examples/transaction.rs) or run the example with:
+
+```bash
+cargo run --example transactions
+```
+
 ## Sending messages
 
 You can send one message at a time with `queue.send()` or several with `queue.send_batch()`.
@@ -141,11 +129,9 @@ These methods can be passed any type that implements `serde::Serialize`. This me
 Reading a message will make it invisible (unavailable for consumption) for the duration of the visibility timeout (vt).
 No messages are returned when the queue is empty or all messages are invisible.
 
-Messages can be parsed as serde_json::Value or into a struct. `queue.read()` returns an `Result<Option<Message<T>>, PGMQError>`
-where `T` is the type of the message on the queue. It returns an error when there is an issue parsing the message or if PGMQ is unable to reach postgres.
-Note that when parsing into a `struct`, the operation will return an error if
-parsed as the type specified. For example, if the message expected is
-`MyMessage{foo: "bar"}` but `{"hello": "world"}` is received, the application will panic.
+Messages can be parsed as serde_json::Value or into a struct. `queue.read()` returns an `Result<Option<Message<T>>, PgmqError>`
+where `T` is the type of the message on the queue. It returns an error when there is an issue parsing the message (`PgmqError::JsonParsingError`) or if PGMQ is unable to reach postgres (`PgmqError::DatabaseError`).
+Note that when parsing into a `struct` (say, you expect `MyMessage{foo: "bar"}`), and the data of the message does not correspond to the struct definition (e.g. `{"hello": "world"}`), an error will be returned and unwrapping this result the way it is done for demo purposes in the [example](#minimal-example-at-a-glance) above will cause a panic, so you will rather want to handle this case properly.
 
 Read a single message with `queue.read()` or as many as you want with `queue.read_batch()`.
 
@@ -157,8 +143,7 @@ Read messages from the queue archive with SQL:
 
 ```sql
 SELECT *
-FROM pgmq_{your_queue_name}_archive;
+FROM pgmq.a_{your_queue_name};
 ```
-
 
 License: [PostgreSQL](LICENSE)

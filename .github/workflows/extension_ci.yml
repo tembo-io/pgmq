@@ -3,75 +3,46 @@ name: PGMQ Extension
 defaults:
   run:
     shell: bash
-    working-directory: ./
+    working-directory: ./pgmq-extension
 
 on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - "pgmq-rs/**"
-      - "tembo-pgmq-python/**"
+    paths:
+      - "pgmq-extension/**"
+      - ".github/workflows/extension_ci.yml"
   push:
     branches:
       - main
-    paths-ignore:
-      - "pgmq-rs/**"
-      - "tembo-pgmq-python/**"
+    paths:
+      - "pgmq-extension/**"
+      - ".github/workflows/extension_ci.yml"
   release:
     types:
       - created
 
 jobs:
-  lint:
-    name: Run linters for integration tests
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust minimal nightly with clippy and rustfmt
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "pgmq-extension-lint"
-          workspaces: |
-            pgmq/
-      - name: Cargo format
-        run: cargo +nightly fmt --manifest-path integration_test/Cargo.toml --all --check
-      - name: Clippy
-        run: cargo clippy --manifest-path integration_test/Cargo.toml
-
   test:
-    name: Run tests
+    name: Test 🐘 ${{ matrix.pg }} with pg_partman ${{ matrix.partman }}
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        pg: [12, 13, 14, 15, 16]
+        pg: [12, 13, 14, 15, 16, 17]
+        partman: [4.7.3, 5.1.0]
+        exclude:
+          # pg_partman does not support pg < 14
+          - pg: 12
+            partman: 5.1.0
+          - pg: 13
+            partman: 5.1.0
     container: pgxn/pgxn-tools
     steps:
       - run: pg-start ${{ matrix.pg }}
+        working-directory: ./
       - uses: actions/checkout@v4
-      - run: apt install -y pkg-config
-      - name: Install Rust stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "pgmq-extension-test-${{ matrix.pg }}"
-          workspaces: |
-            pgmq
-      - name: Install pg_partman
-        run: |
-          git clone https://github.com/pgpartman/pg_partman.git && \
-          cd pg_partman && \
-          git checkout v4.7.4 && \
-          make && \
-          make install
+      - run: pgxn install 'pg_partman=${{ matrix.partman }}'
       - run: pg-build-test
 
   publish:
@@ -90,7 +61,7 @@ jobs:
         with:
           prefix-key: "pgmq-extension-test"
           workspaces: |
-            pgmq/extension
+            pgmq/pgmq-extension
       - name: Install stoml and pg-trunk
         shell: bash
         run: |
@@ -103,12 +74,10 @@ jobs:
       - name: Make trunk
         run: make Trunk.toml
       - name: trunk build
-        working-directory: ./
         run: trunk build --pg-version ${{ matrix.pg-version }}
       - name: trunk publish
         # only publish release events
         if: github.event_name == 'release'
-        working-directory: ./
         env:
           TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
         run: |
@@ -118,8 +87,6 @@ jobs:
           trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
     name: Build and push images
-    # needs:
-    #   - publish
     runs-on:
       - self-hosted
       - dind
@@ -132,7 +99,7 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
-      - name: Install stoml and pg-trunk
+      - name: Install stoml
         shell: bash
         run: |
           set -xe
@@ -160,6 +127,7 @@ jobs:
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
       - name: Generate dockerfile from template file
+        working-directory: ./
         run: ./images/pgmq-pg/replace-pg-version.sh ${{ matrix.pg }} ./images/pgmq-pg/Dockerfile.in ./images/pgmq-pg/Dockerfile
 
       - name: Build and push -- Commit
@@ -167,6 +135,7 @@ jobs:
         if: github.event_name != 'release'
         uses: docker/build-push-action@v5
         with:
+          working-directory: ./
           file: ./images/pgmq-pg/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64
@@ -179,6 +148,7 @@ jobs:
         if: github.event_name == 'release'
         uses: docker/build-push-action@v5
         with:
+          working-directory: ./
           file: ./images/pgmq-pg/Dockerfile
           context: .
           platforms: linux/amd64, linux/arm64

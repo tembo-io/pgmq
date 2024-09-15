@@ -1,6 +1,6 @@
 -- CREATE pgmq.
-CREATE EXTENSION pgmq;
-CREATE EXTENSION pg_partman;
+CREATE EXTENSION IF NOT EXISTS pgmq;
+CREATE EXTENSION IF NOT EXISTS pg_partman;
 
 -- test_unlogged
 -- CREATE with default retention and partition strategy
@@ -175,7 +175,7 @@ SELECT msg_id FROM pgmq.set_vt('test_set_vt_queue', :first_msg_id, 0);
 SELECT msg_id from pgmq.read('test_set_vt_queue', 1, 1);
 
 -- test_partitioned_delete
-\set partition_interval 1
+\set partition_interval 2
 \set retention_interval 2
 
 -- We first will drop pg_partman and assert that create fails without the
@@ -225,12 +225,6 @@ SELECT pgmq.create('transaction_test_queue');
 ROLLBACK;
 SELECT tablename FROM pg_tables WHERE schemaname = 'pgmq' AND tablename = 'q_transaction_test_queue';
 
--- test_transaction_send
--- TODO: Needs multiple connections.
-
--- test_transaction_read
--- TODO: Needs multiple connections.
-
 -- test_detach_archive
 SELECT pgmq.create('detach_archive_queue');
 DROP EXTENSION pgmq CASCADE;
@@ -242,3 +236,71 @@ SELECT pgmq.create('detach_archive_queue');
 SELECT pgmq.detach_archive('detach_archive_queue');
 DROP EXTENSION pgmq CASCADE;
 SELECT tablename FROM pg_tables WHERE schemaname = 'pgmq' AND tablename = 'a_detach_archive_queue';
+
+--Truncated Index When queue name is max.
+CREATE EXTENSION pgmq;
+SELECT pgmq.create('long_queue_name_123456789012345678901234567890');
+SELECT pgmq.convert_archive_partitioned('long_queue_name_123456789012345678901234567890');
+
+--Check for archive is already partitioned
+SELECT pgmq.convert_archive_partitioned('long_queue_name_123456789012345678901234567890');
+
+--Error out due to Index duplicate index at old table.
+SELECT pgmq.create('long_queue_name_1234567890123456789012345678901');
+SELECT pgmq.convert_archive_partitioned('long_queue_name_1234567890123456789012345678901');
+
+--Success
+SELECT pgmq.create('long_queue_name_');
+SELECT pgmq.convert_archive_partitioned('long_queue_name_');
+
+\set SHOW_CONTEXT never
+
+--Failed SQL injection attack
+SELECT pgmq.create('abc');
+SELECT
+   pgmq.delete(
+     'abc where false;
+     create table public.attack_vector(id int);
+     delete from pgmq.q_abc',
+     1
+  );
+
+--Special characters in queue name
+SELECT pgmq.create('queue-hyphened');
+SELECT pgmq.send('queue-hyphened', '{"hello":"world"}');
+SELECT msg_id, read_ct, message FROM pgmq.read('queue-hyphened', 1, 1);
+SELECT pgmq.archive('queue-hyphened', 1);
+
+SELECT pgmq.create('QueueCased');
+SELECT pgmq.send('QueueCased', '{"hello":"world"}');
+SELECT msg_id, read_ct, message FROM pgmq.read('QueueCased', 1, 1);
+SELECT pgmq.archive('QueueCased', 1);
+
+SELECT pgmq.create_partitioned('queue-hyphened-part');
+SELECT pgmq.send('queue-hyphened-part', '{"hello":"world"}');
+SELECT msg_id, read_ct, message FROM pgmq.read('queue-hyphened-part', 1, 1);
+SELECT pgmq.archive('queue-hyphened-part', 1);
+
+SELECT pgmq.create_partitioned('QueueCasedPart');
+SELECT pgmq.send('QueueCasedPart', '{"hello":"world"}');
+SELECT msg_id, read_ct, message FROM pgmq.read('QueueCasedPart', 1, 1);
+SELECT pgmq.archive('QueueCasedPart', 1);
+
+-- fails with invalid queue name
+SELECT pgmq.create('dollar$-signed');
+SELECT pgmq.create_partitioned('dollar$-signed-part');
+
+-- input validation success
+SELECT pgmq.format_table_name('cat', 'q');
+SELECT pgmq.format_table_name('cat-dog', 'a');
+SELECT pgmq.format_table_name('cat_dog', 'q');
+
+-- input validation failure
+SELECT pgmq.format_table_name('dollar$fail', 'q');
+SELECT pgmq.format_table_name('double--hyphen-fail', 'a');
+SELECT pgmq.format_table_name('semicolon;fail', 'a');
+SELECT pgmq.format_table_name($$single'quote-fail$$, 'a');
+
+--Cleanup tests
+DROP EXTENSION pgmq CASCADE;
+DROP EXTENSION pg_partman CASCADE;

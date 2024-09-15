@@ -19,7 +19,7 @@ sudo apt-get install postgres-server-dev-14
 
 ## Installing Postgres
 
-If you already have Postgres instaleld locally, you can skip to [Install PGMQ to Postgres](#install-pgmq-to-postgres).
+If you already have Postgres installed locally, you can skip to [Install PGMQ to Postgres](#install-pgmq-to-postgres).
 
 If you need to install Postgres or want to set up a new environment for PGMQ development, [pgenv](https://github.com/theory/pgenv/) is a command line utility that makes it very easy to install and manage multiple versions of Postgres.
  Follow the [installation instructions](https://github.com/theory/pgenv/?tab=readme-ov-file#installation) to install it.
@@ -43,7 +43,7 @@ A fresh install will have not have PGMQ installed.
 ```psql
 postgres=# \dx
                  List of installed extensions
-  Name   | Version |   Schema   |         Description          
+  Name   | Version |   Schema   |         Description
 ---------+---------+------------+------------------------------
  plpgsql | 1.0     | pg_catalog | PL/pgSQL procedural language
 (1 row)
@@ -55,7 +55,7 @@ Clone the repo and change into the directory.
 
 ```bash
 git clone https://github.com/tembo-io/pgmq.git
-cd pgmq
+cd pgmq/pgmq-extension
 ```
 
 ### Install PGMQ to Postgres
@@ -75,7 +75,7 @@ CREATE EXTENSION pgmq cascade;
 
 ### Installing pg_partman (optional)
 
-If you are working with partitioned queues, you will need to install `pg_partman`.
+If you are working with partitioned queues, you will need to install `pg_partman` version <= 4.7.0
 
 ```bash
 make install-pg-partman
@@ -89,18 +89,12 @@ CREATE EXTENSION pg_partman;
 
 ## Running tests
 
-Tests are written in Rust, so you will need to have the [Rust toolchain](https://www.rust-lang.org/tools/install) installed in order to run them.
+Tests are written for [pg_regress](https://www.postgresql.org/docs/current/regress-run.html) and [pg_isolation_regress](https://github.com/postgres/postgres/blob/master/src/test/isolation/README). The latter is available on Postgres 14 and higher, so the `Makefile` skips them for earlier versions.
 
 Once you have a postgres instance with the extension installed, run:
 
 ```bash
-make test
-```
-
-If you want to run the tests on a specific Postgres instance, pass the `DATABASE_URL` environment variable along with the `make` command:
-
-```bash
-make test DATABASE_URL=postgres:postgres@myhost:5432/mydb
+make installcheck
 ```
 
 ## Releases

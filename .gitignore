@@ -18,3 +18,5 @@ Trunk.toml
 .vscode/
 /results/
 /regression.*
+/output_iso/
+.env

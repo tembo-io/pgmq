@@ -1,6 +1,6 @@
 -- CREATE pgmq.
-CREATE EXTENSION pgmq;
-CREATE EXTENSION pg_partman;
+CREATE EXTENSION IF NOT EXISTS pgmq;
+CREATE EXTENSION IF NOT EXISTS pg_partman;
 -- test_unlogged
 -- CREATE with default retention and partition strategy
 SELECT pgmq.create_unlogged('test_unlogged_queue');
@@ -28,7 +28,7 @@ SELECT pgmq.create(repeat('a', 48));
 ERROR:  queue name is too long, maximum length is 48 characters
 CONTEXT:  PL/pgSQL function pgmq.validate_queue_name(text) line 4 at RAISE
 SQL statement "SELECT pgmq.validate_queue_name(queue_name)"
-PL/pgSQL function pgmq.create_non_partitioned(text) line 3 at PERFORM
+PL/pgSQL function pgmq.create_non_partitioned(text) line 6 at PERFORM
 SQL statement "SELECT pgmq.create_non_partitioned(queue_name)"
 PL/pgSQL function pgmq."create"(text) line 3 at PERFORM
 SELECT pgmq.create(repeat('a', 47));
@@ -452,7 +452,7 @@ SELECT msg_id from pgmq.read('test_set_vt_queue', 1, 1);
 (1 row)
 
 -- test_partitioned_delete
-\set partition_interval 1
+\set partition_interval 2
 \set retention_interval 2
 -- We first will drop pg_partman and assert that create fails without the
 -- extension installed
@@ -465,7 +465,7 @@ SELECT * FROM pgmq.create_partitioned(
 ERROR:  pg_partman is required for partitioned queues
 CONTEXT:  PL/pgSQL function pgmq._ensure_pg_partman_installed() line 12 at RAISE
 SQL statement "SELECT pgmq._ensure_pg_partman_installed()"
-PL/pgSQL function pgmq.create_partitioned(text,text,text) line 6 at PERFORM
+PL/pgSQL function pgmq.create_partitioned(text,text,text) line 11 at PERFORM
 -- With the extension existing, the queue is created successfully
 CREATE EXTENSION pg_partman;
 SELECT * FROM pgmq.create_partitioned(
@@ -535,10 +535,6 @@ SELECT tablename FROM pg_tables WHERE schemaname = 'pgmq' AND tablename = 'q_tra
 -----------
 (0 rows)
 
--- test_transaction_send
--- TODO: Needs multiple connections.
--- test_transaction_read
--- TODO: Needs multiple connections.
 -- test_detach_archive
 SELECT pgmq.create('detach_archive_queue');
  create 
@@ -573,3 +569,200 @@ SELECT tablename FROM pg_tables WHERE schemaname = 'pgmq' AND tablename = 'a_det
  a_detach_archive_queue
 (1 row)
 
+--Truncated Index When queue name is max.
+CREATE EXTENSION pgmq;
+SELECT pgmq.create('long_queue_name_123456789012345678901234567890');
+ create 
+--------
+ 
+(1 row)
+
+SELECT pgmq.convert_archive_partitioned('long_queue_name_123456789012345678901234567890');
+NOTICE:  identifier "archived_at_idx_long_queue_name_123456789012345678901234567890_old" will be truncated to "archived_at_idx_long_queue_name_123456789012345678901234567890_"
+ convert_archive_partitioned 
+-----------------------------
+ 
+(1 row)
+
+--Check for archive is already partitioned
+SELECT pgmq.convert_archive_partitioned('long_queue_name_123456789012345678901234567890');
+NOTICE:  Table a_long_queue_name_123456789012345678901234567890s is already partitioned
+ convert_archive_partitioned 
+-----------------------------
+ 
+(1 row)
+
+--Error out due to Index duplicate index at old table.
+SELECT pgmq.create('long_queue_name_1234567890123456789012345678901');
+ create 
+--------
+ 
+(1 row)
+
+SELECT pgmq.convert_archive_partitioned('long_queue_name_1234567890123456789012345678901');
+NOTICE:  identifier "archived_at_idx_long_queue_name_1234567890123456789012345678901_old" will be truncated to "archived_at_idx_long_queue_name_1234567890123456789012345678901"
+ERROR:  relation "archived_at_idx_long_queue_name_1234567890123456789012345678901" already exists
+CONTEXT:  SQL statement "ALTER INDEX pgmq.archived_at_idx_long_queue_name_1234567890123456789012345678901 RENAME TO archived_at_idx_long_queue_name_1234567890123456789012345678901_old"
+PL/pgSQL function pgmq.convert_archive_partitioned(text,text,text,integer) line 34 at EXECUTE
+--Success
+SELECT pgmq.create('long_queue_name_');
+ create 
+--------
+ 
+(1 row)
+
+SELECT pgmq.convert_archive_partitioned('long_queue_name_');
+ convert_archive_partitioned 
+-----------------------------
+ 
+(1 row)
+
+\set SHOW_CONTEXT never
+--Failed SQL injection attack
+SELECT pgmq.create('abc');
+ create 
+--------
+ 
+(1 row)
+
+SELECT
+   pgmq.delete(
+     'abc where false;
+     create table public.attack_vector(id int);
+     delete from pgmq.q_abc',
+     1
+  );
+ERROR:  queue name contains invalid characters: $, ;, --, or \'
+--Special characters in queue name
+SELECT pgmq.create('queue-hyphened');
+ create 
+--------
+ 
+(1 row)
+
+SELECT pgmq.send('queue-hyphened', '{"hello":"world"}');
+ send 
+------
+    1
+(1 row)
+
+SELECT msg_id, read_ct, message FROM pgmq.read('queue-hyphened', 1, 1);
+ msg_id | read_ct |      message       
+--------+---------+--------------------
+      1 |       1 | {"hello": "world"}
+(1 row)
+
+SELECT pgmq.archive('queue-hyphened', 1);
+ archive 
+---------
+ t
+(1 row)
+
+SELECT pgmq.create('QueueCased');
+ create 
+--------
+ 
+(1 row)
+
+SELECT pgmq.send('QueueCased', '{"hello":"world"}');
+ send 
+------
+    1
+(1 row)
+
+SELECT msg_id, read_ct, message FROM pgmq.read('QueueCased', 1, 1);
+ msg_id | read_ct |      message       
+--------+---------+--------------------
+      1 |       1 | {"hello": "world"}
+(1 row)
+
+SELECT pgmq.archive('QueueCased', 1);
+ archive 
+---------
+ t
+(1 row)
+
+SELECT pgmq.create_partitioned('queue-hyphened-part');
+ create_partitioned 
+--------------------
+ 
+(1 row)
+
+SELECT pgmq.send('queue-hyphened-part', '{"hello":"world"}');
+ send 
+------
+    1
+(1 row)
+
+SELECT msg_id, read_ct, message FROM pgmq.read('queue-hyphened-part', 1, 1);
+ msg_id | read_ct |      message       
+--------+---------+--------------------
+      1 |       1 | {"hello": "world"}
+(1 row)
+
+SELECT pgmq.archive('queue-hyphened-part', 1);
+ archive 
+---------
+ t
+(1 row)
+
+SELECT pgmq.create_partitioned('QueueCasedPart');
+ create_partitioned 
+--------------------
+ 
+(1 row)
+
+SELECT pgmq.send('QueueCasedPart', '{"hello":"world"}');
+ send 
+------
+    1
+(1 row)
+
+SELECT msg_id, read_ct, message FROM pgmq.read('QueueCasedPart', 1, 1);
+ msg_id | read_ct |      message       
+--------+---------+--------------------
+      1 |       1 | {"hello": "world"}
+(1 row)
+
+SELECT pgmq.archive('QueueCasedPart', 1);
+ archive 
+---------
+ t
+(1 row)
+
+-- fails with invalid queue name
+SELECT pgmq.create('dollar$-signed');
+ERROR:  queue name contains invalid characters: $, ;, --, or \'
+SELECT pgmq.create_partitioned('dollar$-signed-part');
+ERROR:  queue name contains invalid characters: $, ;, --, or \'
+-- input validation success
+SELECT pgmq.format_table_name('cat', 'q');
+ format_table_name 
+-------------------
+ q_cat
+(1 row)
+
+SELECT pgmq.format_table_name('cat-dog', 'a');
+ format_table_name 
+-------------------
+ a_cat-dog
+(1 row)
+
+SELECT pgmq.format_table_name('cat_dog', 'q');
+ format_table_name 
+-------------------
+ q_cat_dog
+(1 row)
+
+-- input validation failure
+SELECT pgmq.format_table_name('dollar$fail', 'q');
+ERROR:  queue name contains invalid characters: $, ;, --, or \'
+SELECT pgmq.format_table_name('double--hyphen-fail', 'a');
+ERROR:  queue name contains invalid characters: $, ;, --, or \'
+SELECT pgmq.format_table_name('semicolon;fail', 'a');
+ERROR:  queue name contains invalid characters: $, ;, --, or \'
+SELECT pgmq.format_table_name($$single'quote-fail$$, 'a');
+ERROR:  queue name contains invalid characters: $, ;, --, or \'
+--Cleanup tests
+DROP EXTENSION pgmq CASCADE;
+DROP EXTENSION pg_partman CASCADE;

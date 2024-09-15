@@ -8,6 +8,13 @@ Install with `pip` from pypi.org:
 pip install tembo-pgmq-python
 ```
 
+In order to use async version install with the optional dependecies:
+
+``` bash
+pip install tembo-pgmq-python[async]
+```
+
+
 Dependencies:
 
 Postgres running the [Tembo PGMQ extension](https://github.com/tembo-io/tembo/tree/main/pgmq).
@@ -39,6 +46,20 @@ from tembo_pgmq_python import PGMQueue, Message
 
 queue = PGMQueue()
 ```
+
+### Note on the async version
+
+Initialization for the async version requires an explicit call of the initializer:
+
+``` bash
+from tembo_pgmq_python.async_queue import PGMQueue
+
+async def main():
+    queue = PGMQueue()
+    await queue.init()
+```
+
+Then, the interface is exactly the same as the sync version.
 
 ### Initialize a connection to Postgres without environment variables
 

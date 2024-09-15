@@ -50,7 +50,7 @@ async fn main() -> Result<(), PgmqError> {
 
     // Read the JSON message
     let received_json_message: Message<Value> = queue
-        .read::<Value>(&my_queue, Some(&visibility_timeout_seconds))
+        .read::<Value>(&my_queue, Some(visibility_timeout_seconds))
         .await
         .unwrap()
         .expect("No messages in the queue");
@@ -61,7 +61,7 @@ async fn main() -> Result<(), PgmqError> {
 
     // Read the struct message
     let received_struct_message: Message<MyMessage> = queue
-        .read::<MyMessage>(&my_queue, Some(&visibility_timeout_seconds))
+        .read::<MyMessage>(&my_queue, Some(visibility_timeout_seconds))
         .await
         .unwrap()
         .expect("No messages in the queue");
@@ -71,18 +71,18 @@ async fn main() -> Result<(), PgmqError> {
 
     // Delete the messages to remove them from the queue
     let _ = queue
-        .delete(&my_queue, &received_json_message.msg_id)
+        .delete(&my_queue, received_json_message.msg_id)
         .await
         .expect("Failed to delete message");
     let _ = queue
-        .delete(&my_queue, &received_struct_message.msg_id)
+        .delete(&my_queue, received_struct_message.msg_id)
         .await
         .expect("Failed to delete message");
     println!("Deleted the messages from the queue");
 
     // No messages are remaining
     let no_message: Option<Message<Value>> = queue
-        .read::<Value>(&my_queue, Some(&visibility_timeout_seconds))
+        .read::<Value>(&my_queue, Some(visibility_timeout_seconds))
         .await
         .unwrap();
     assert!(no_message.is_none());
@@ -104,7 +104,7 @@ async fn main() -> Result<(), PgmqError> {
     // Receive a batch of JSON messages
     let batch_size = 3;
     let batch: Vec<Message<Value>> = queue
-        .read_batch::<Value>(&my_queue, Some(&visibility_timeout_seconds), &batch_size)
+        .read_batch::<Value>(&my_queue, Some(visibility_timeout_seconds), batch_size)
         .await
         .unwrap()
         .expect("no messages in the queue!");
@@ -112,7 +112,7 @@ async fn main() -> Result<(), PgmqError> {
     for (_, message) in batch.iter().enumerate() {
         assert!(json_message_batch_ids.contains(&message.msg_id));
         let _ = queue
-            .delete(&my_queue, &message.msg_id)
+            .delete(&my_queue, message.msg_id)
             .await
             .expect("Failed to delete message");
         println!("Deleted message {}", message.msg_id);
@@ -139,7 +139,7 @@ async fn main() -> Result<(), PgmqError> {
     // Receive a batch of struct messages
     let batch_size = 3;
     let batch: Vec<Message<MyMessage>> = queue
-        .read_batch::<MyMessage>(&my_queue, Some(&visibility_timeout_seconds), &batch_size)
+        .read_batch::<MyMessage>(&my_queue, Some(visibility_timeout_seconds), batch_size)
         .await
         .unwrap()
         .expect("no messages in the queue!");
@@ -147,7 +147,7 @@ async fn main() -> Result<(), PgmqError> {
     for (_, message) in batch.iter().enumerate() {
         assert!(struct_message_batch_ids.contains(&message.msg_id));
         let _ = queue
-            .delete(&my_queue, &message.msg_id)
+            .delete(&my_queue, message.msg_id)
             .await
             .expect("Failed to delete message");
         println!("Deleted message {}", message.msg_id);
