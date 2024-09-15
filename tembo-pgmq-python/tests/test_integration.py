@@ -1,6 +1,7 @@
 import unittest
 import time
-from tembo_pgmq_python import Message, PGMQueue
+from tembo_pgmq_python import Message, PGMQueue, transaction
+
 from datetime import datetime, timezone, timedelta
 
 
@@ -195,51 +196,68 @@ class BaseTestPGMQueue(unittest.TestCase):
 
     def test_transaction_create_queue(self):
         """Test creating a queue within a transaction."""
-        try:
-            self.queue.create_queue("test_queue_txn", perform_transaction=True)
+
+        @transaction
+        def transactional_create_queue(queue, conn=None):
+            queue.create_queue("test_queue_txn", conn=conn)
             raise Exception("Intentional failure")
+
+        try:
+            transactional_create_queue(self.queue)
         except Exception:
             pass
         finally:
-            queues = self.queue.list_queues(perform_transaction=False)
+            queues = self.queue.list_queues()
             self.assertNotIn("test_queue_txn", queues)
 
     def test_transaction_send_and_read_message(self):
         """Test sending and reading a message within a transaction."""
-        try:
-            self.queue.send(
-                self.test_queue, self.test_message, perform_transaction=True
-            )
+
+        @transaction
+        def transactional_send(queue, conn=None):
+            queue.send(self.test_queue, self.test_message, conn=conn)
             raise Exception("Intentional failure")
+
+        try:
+            transactional_send(self.queue)
         except Exception:
             pass
         finally:
-            message = self.queue.read(self.test_queue, perform_transaction=False)
+            message = self.queue.read(self.test_queue)
             self.assertIsNone(message, "No message expected in queue")
 
     def test_transaction_purge_queue(self):
         """Test purging a queue within a transaction."""
-        self.queue.send(self.test_queue, self.test_message, perform_transaction=False)
-        try:
-            self.queue.purge(self.test_queue, perform_transaction=True)
+
+        self.queue.send(self.test_queue, self.test_message)
+
+        @transaction
+        def transactional_purge(queue, conn=None):
+            queue.purge(self.test_queue, conn=conn)
             raise Exception("Intentional failure")
+
+        try:
+            transactional_purge(self.queue)
         except Exception:
             pass
         finally:
-            message = self.queue.read(self.test_queue, perform_transaction=False)
+            message = self.queue.read(self.test_queue)
             self.assertIsNotNone(message, "Message expected in queue")
 
     def test_transaction_rollback(self):
         """Test rollback of a transaction."""
-        try:
-            self.queue.send(
-                self.test_queue, self.test_message, perform_transaction=True
-            )
+
+        @transaction
+        def transactional_operation(queue, conn=None):
+            queue.send(self.test_queue, self.test_message, conn=conn)
             raise Exception("Intentional failure to trigger rollback")
+
+        try:
+            transactional_operation(self.queue)
         except Exception:
             pass
         finally:
-            message = self.queue.read(self.test_queue, perform_transaction=False)
+            message = self.queue.read(self.test_queue)
             self.assertIsNone(message, "No message expected in queue after rollback")
 
 
