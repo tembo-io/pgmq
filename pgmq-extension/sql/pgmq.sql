@@ -950,7 +950,7 @@ BEGIN
     )
     $QUERY$,
     pgmq._get_pg_partman_schema(),
-    'pgmq.' || quote_ident(a_table_name),
+    qualified_a_table_name,
     partition_interval
   );
 
