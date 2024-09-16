@@ -855,7 +855,7 @@ BEGIN
     )
     $QUERY$,
     pgmq._get_pg_partman_schema(),
-    'pgmq.' || quote_ident(atable),
+    fq_atable,
     a_partition_col,
     partition_interval
   );
