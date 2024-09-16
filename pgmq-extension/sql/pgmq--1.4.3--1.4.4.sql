@@ -1,4 +1,4 @@
-CREATE FUNCTION pgmq._get_pg_partman_schema()
+CREATE OR REPLACE FUNCTION pgmq._get_pg_partman_schema()
 RETURNS TEXT AS $$
   SELECT
     extnamespace::regnamespace::text
@@ -9,7 +9,7 @@ RETURNS TEXT AS $$
 $$ LANGUAGE SQL;
 
 
-CREATE FUNCTION pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN DEFAULT FALSE)
+CREATE OR REPLACE FUNCTION pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN DEFAULT FALSE)
 RETURNS BOOLEAN AS $$
 DECLARE
     qtable TEXT := pgmq.format_table_name(queue_name, 'q');
@@ -72,7 +72,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE FUNCTION pgmq.create_partitioned(
+CREATE OR REPLACE FUNCTION pgmq.create_partitioned(
   queue_name TEXT,
   partition_interval TEXT DEFAULT '10000',
   retention_interval TEXT DEFAULT '100000'
