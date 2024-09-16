@@ -779,7 +779,7 @@ BEGIN
     )
     $QUERY$,
     pgmq._get_pg_partman_schema(),
-    'pgmq.' || quote_ident(qtable),
+    fq_qtable,
     partition_col,
     partition_interval
   );
