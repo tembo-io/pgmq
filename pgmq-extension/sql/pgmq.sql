@@ -512,7 +512,7 @@ BEGIN
      IF partitioned THEN
         EXECUTE FORMAT(
           $QUERY$
-          DELETE FROM %L.part_config where parent_table in (%L, %L)
+          DELETE FROM %I.part_config where parent_table in (%L, %L)
           $QUERY$,
           pgmq._get_pg_partman_schema(), fq_qtable, fq_atable
         );
@@ -768,10 +768,10 @@ BEGIN
   -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   EXECUTE FORMAT(
     $QUERY$
-    PERFORM %I.create_parent(
-      p_parent_table := pgmq.%I,
-      p_control := %I,
-      p_interval := %s, -- UNSAFE: TODO(OR)
+    SELECT %I.create_parent(
+      p_parent_table := %L,
+      p_control := %L,
+      p_interval := %L,
       p_type := case
         when pgmq._get_pg_partman_major_version() = 5 then 'range'
         else 'native'
@@ -779,7 +779,7 @@ BEGIN
     )
     $QUERY$,
     pgmq._get_pg_partman_schema(),
-    qtable,
+    'pgmq.' || quote_ident(qtable),
     partition_col,
     partition_interval
   );
@@ -844,10 +844,10 @@ BEGIN
   -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   EXECUTE FORMAT(
     $QUERY$
-    PERFORM %I.create_parent(
-      p_parent_table := pgmq.%I,
-      p_control := %I,
-      p_interval := %s, -- UNSAFE: TODO(OR)
+    SELECT %I.create_parent(
+      p_parent_table := %L,
+      p_control := %L,
+      p_interval := %L,
       p_type := case
         when pgmq._get_pg_partman_major_version() = 5 then 'range'
         else 'native'
@@ -855,7 +855,7 @@ BEGIN
     )
     $QUERY$,
     pgmq._get_pg_partman_schema(),
-    atable,
+    'pgmq.' || quote_ident(atable),
     a_partition_col,
     partition_interval
   );
@@ -939,10 +939,10 @@ BEGIN
   -- p_parent_table - the existing parent table. MUST be schema qualified, even if in public schema.
   EXECUTE FORMAT(
     $QUERY$
-    PERFORM %I.create_parent(
-      p_parent_table := pgmq.%I,
+    SELECT %I.create_parent(
+      p_parent_table := %L,
       p_control := 'msg_id',
-      p_interval := %s, -- UNSAFE: TODO(OR)
+      p_interval := %L,
       p_type := case
         when pgmq._get_pg_partman_major_version() = 5 then 'range'
         else 'native'
@@ -950,15 +950,25 @@ BEGIN
     )
     $QUERY$,
     pgmq._get_pg_partman_schema(),
-    a_table_name,
+    'pgmq.' || quote_ident(a_table_name),
     partition_interval
   );
 
-  UPDATE part_config
-    SET retention = retention_interval,
-    retention_keep_table = false,
-    retention_keep_index = false,
-    infinite_time_partitions = true
-    WHERE parent_table = qualified_a_table_name;
+  EXECUTE FORMAT(
+    $QUERY$
+    UPDATE %I.part_config
+    SET
+      retention = %L,
+      retention_keep_table = false,
+      retention_keep_index = false,
+      infinite_time_partitions = true
+    WHERE
+      parent_table = %L;
+    $QUERY$,
+    pgmq._get_pg_partman_schema(),
+    retention_interval,
+    qualified_a_table_name
+  );
+
 END;
 $$ LANGUAGE plpgsql;
