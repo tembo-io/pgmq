@@ -5,6 +5,7 @@ TESTS         = $(wildcard test/sql/*.sql)
 REGRESS       = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS ?= --inputdir=test
 EXTRA_CLEAN   = $(EXTENSION)-$(EXTVERSION).zip sql/$(EXTENSION)--$(EXTVERSION).sql META.json Trunk.toml
+PG_PARTMAN_VER = 5.1.0
 
 # pg_isolation_regress available in v14 and higher.
 ifeq ($(shell test $$(pg_config --version | awk '{print $$2}' | awk 'BEGIN { FS = "." }; { print $$1 }') -ge 14; echo $$?),0)
@@ -39,7 +40,7 @@ Trunk.toml:
 install-pg-partman:
 	git clone https://github.com/pgpartman/pg_partman.git && \
 	cd pg_partman && \
-	git checkout v5.1.0 && \
+	git checkout v${PG_PARTMAN_VER} && \
 	make && \
 	make install PG_CONFIG=$(PG_CONFIG) && \
 	cd ../ && rm -rf pg_partman

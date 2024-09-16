@@ -175,7 +175,7 @@ SELECT msg_id FROM pgmq.set_vt('test_set_vt_queue', :first_msg_id, 0);
 SELECT msg_id from pgmq.read('test_set_vt_queue', 1, 1);
 
 -- test_partitioned_delete
-\set partition_interval 1
+\set partition_interval 2
 \set retention_interval 2
 
 -- We first will drop pg_partman and assert that create fails without the
