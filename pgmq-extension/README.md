@@ -75,6 +75,7 @@ Community
 - [Java (Spring Boot)](https://github.com/adamalexandru4/pgmq-spring)
 - [Kotlin JVM (JDBC)](https://github.com/vdsirotkin/pgmq-kotlin-jvm)
 - [Javascript (NodeJs)](https://github.com/Muhammad-Magdi/pgmq-js)
+- [TypeScript (Deno)](https://github.com/tmountain/deno-pgmq)
 - [.NET](https://github.com/brianpursley/Npgmq)
 - [Python (with SQLAlchemy)](https://github.com/jason810496/pgmq-sqlalchemy)
 
