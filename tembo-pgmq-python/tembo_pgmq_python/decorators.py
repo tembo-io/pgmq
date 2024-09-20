@@ -12,7 +12,7 @@ def transaction(func):
 
             if "conn" not in kwargs:
                 with self.pool.connection() as conn:
-                    with conn.transaction() as txn:
+                    with conn.transaction():
                         self.logger.debug(f"Transaction started with conn: {conn}")
                         try:
                             kwargs["conn"] = conn  # Inject 'conn' into kwargs
@@ -30,7 +30,7 @@ def transaction(func):
 
             if "conn" not in kwargs:
                 with queue.pool.connection() as conn:
-                    with conn.transaction() as txn:
+                    with conn.transaction():
                         queue.logger.debug(f"Transaction started with conn: {conn}")
                         try:
                             kwargs["conn"] = conn  # Inject 'conn' into kwargs
