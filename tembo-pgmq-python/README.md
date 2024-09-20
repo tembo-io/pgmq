@@ -258,125 +258,33 @@
  )
  ```
  
- ### Using Transactions
- 
- To perform multiple operations within a single transaction, you can use the `@transaction` decorator from the `tembo_pgmq_python.decorators` module. This ensures that all operations within the transaction either complete successfully or are rolled back if an error occurs.
- 
- First, import the `transaction` decorator:
- 
- ```python
- from tembo_pgmq_python.decorators import transaction
- ```
- 
- #### Example: Transactional Operation
- 
- ```python
- @transaction
- def transactional_operation(queue: PGMQueue, conn=None):
-     # Perform multiple queue operations within a transaction
-     queue.create_queue("transactional_queue", conn=conn)
-     queue.send("transactional_queue", {"message": "Hello, World!"}, conn=conn)
-     # If an exception occurs here, all previous operations will be rolled back
-     # Uncomment the following line to simulate an error
-     # raise Exception("Simulated failure")
- 
- # Execute the transactional function
- try:
-     transactional_operation(queue)
- except Exception as e:
-     print(f"Transaction failed: {e}")
- ```
- 
- In this example:
- 
- - The `transactional_operation` function is decorated with `@transaction`, ensuring all operations within it are part of the same transaction.
- - The `conn` parameter is passed to each method to use the same database connection within the transaction.
- - If an exception occurs within the function (e.g., by raising an exception), the transaction is rolled back.
- 
- #### Example: Transaction Rollback on Failure
- 
- ```python
- @transaction
- def transactional_send_and_fail(queue: PGMQueue, conn=None):
-     queue.send("my_queue", {"data": "test"}, conn=conn)
-     # Simulate an error to trigger rollback
-     raise Exception("Intentional failure")
- 
- try:
-     transactional_send_and_fail(queue)
- except Exception as e:
-     print(f"Transaction failed: {e}")
-     # Verify that the message was not sent due to rollback
-     message = queue.read("my_queue")
-     assert message is None, "Message should not exist after rollback"
- ```
- 
- #### Using Transactions with Async Queue
- 
- For the async version, you can use the `@transaction` decorator in a similar way. Make sure to import the decorator and define your transactional functions as async.
- 
- ```python
- from tembo_pgmq_python.decorators import transaction
- from tembo_pgmq_python.async_queue import PGMQueue
- 
- async def main():
-     queue = PGMQueue()
-     await queue.init()
- 
-     @transaction
-     async def transactional_operation_async(queue: PGMQueue, conn=None):
-         await queue.create_queue("async_transactional_queue", conn=conn)
-         await queue.send("async_transactional_queue", {"message": "Hello, Async World!"}, conn=conn)
-         # Uncomment to simulate an error
-         # raise Exception("Simulated failure")
- 
-     try:
-         await transactional_operation_async(queue)
-     except Exception as e:
-         print(f"Transaction failed: {e}")
- ```
- 
- In this async example:
- 
- - Use `async def` to define asynchronous functions.
- - Use `await` when calling async methods.
- - The `@transaction` decorator manages the transaction context.
- 
- ### Important Notes on Transactions
- 
- - All methods used within a transaction must accept the `conn` parameter and pass it to the query execution methods.
- - If an exception occurs within the transactional function, the transaction will be rolled back.
- - Transactions help maintain data integrity by ensuring that a group of operations either all succeed or all fail together.
- 
- ### Enabling Transactions by Default
- 
- You can set the `perform_transaction` parameter to `True` when initializing the `PGMQueue` instance to enable transactions by default for all methods.
- 
- ```python
- queue = PGMQueue(
-     host="0.0.0.0",
-     port="5432",
-     username="postgres",
-     password="postgres",
-     database="postgres",
-     perform_transaction=True
- )
- ```
- 
- However, be cautious with this approach, as it will wrap every method call in a transaction, which might not be necessary or optimal for all operations.
- 
- ### Customizing Transaction Behavior
- 
- You can control transaction behavior on a per-method basis by using the `perform_transaction` keyword argument.
- 
- ```python
- # This method call will be executed within a transaction
- queue.send("my_queue", {"data": "test"}, perform_transaction=True)
- 
- # This method call will not use a transaction
- queue.send("my_queue", {"data": "test"}, perform_transaction=False)
- ```
- 
- ### Conclusion
- 
- Using transactions allows you to group multiple database operations into a single atomic unit of work, ensuring consistency and integrity of your data when performing complex operations.
+# Using Transactions
+
+ To perform multiple operations within a single transaction, use the `@transaction` decorator from the `tembo_pgmq_python.decorators` module. 
+ This ensures that all operations within the function are executed within the same transaction and are either committed together or rolled back if an error occurs.
+
+ First, import the transaction decorator:
+
+```python
+from tembo_pgmq_python.decorators import transaction
+```
+
+### Example: Transactional Operation
+
+```python
+@transaction
+def transactional_operation(queue: PGMQueue, conn=None):
+    # Perform multiple queue operations within a transaction
+    queue.create_queue("transactional_queue", conn=conn)
+    queue.send("transactional_queue", {"message": "Hello, World!"}, conn=conn)
+   
+```
+ To execute the transaction:
+
+```python
+try:
+    transactional_operation(queue)
+except Exception as e:
+    print(f"Transaction failed: {e}")
+``` 
+ In this example, the transactional_operation function is decorated with `@transaction`,  ensuring all operations inside it are part of a single transaction.  If an error occurs, the entire transaction is rolled back automatically.
