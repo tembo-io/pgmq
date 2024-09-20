@@ -25,7 +25,6 @@ class PGMQueue:
     verbose: bool = False
     log_filename: Optional[str] = None
     pool: ConnectionPool = field(init=False)
-    perform_transaction: bool = False
     logger: logging.Logger = field(init=False)
 
     def __post_init__(self) -> None:

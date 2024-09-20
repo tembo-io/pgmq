@@ -174,7 +174,6 @@ class BaseTestPGMQueue(unittest.TestCase):
         self.queue.send(self.test_queue, self.test_message)
         self.queue.archive(self.test_queue, 1)
         self.queue.detach_archive(self.test_queue)
-        # This is just a basic call to ensure the method works without exceptions.
 
     def test_drop_queue(self):
         """Test dropping a queue."""
