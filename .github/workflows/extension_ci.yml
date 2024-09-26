@@ -50,6 +50,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
+        # add 17 when trunk supports it
         pg-version: [14, 15, 16]
     steps:
       - uses: actions/checkout@v4
@@ -93,7 +94,7 @@ jobs:
       - large-8x8
     strategy:
       matrix:
-        pg: [14, 15, 16]
+        pg: [14, 15, 16, 17]
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
@@ -141,6 +142,7 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
+            quay.io/tembo/pg${{matrix.pg}}-pgmq:latest
             quay.io/tembo/pg${{matrix.pg}}-pgmq:v${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Build and push -- Releases
