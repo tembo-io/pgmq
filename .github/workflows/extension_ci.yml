@@ -139,10 +139,9 @@ jobs:
           working-directory: ./
           file: ./images/pgmq-pg/Dockerfile
           context: .
-          platforms: linux/amd64
+          platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/pg${{matrix.pg}}-pgmq:latest
             quay.io/tembo/pg${{matrix.pg}}-pgmq:v${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Build and push -- Releases
