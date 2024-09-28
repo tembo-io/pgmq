@@ -85,8 +85,6 @@ async def main():
         # Send messages
         msg_ids = await queue.send_batch(test_queue, [message1, message2], conn=conn)
         print(f"Messages sent with IDs: {msg_ids}")
-
-        # Read messages in queue
         messages_in_queue = await queue.read_batch(test_queue, batch_size=10, conn=conn)
         print(
             f"Messages currently in queue before conditional failure: {messages_in_queue}"
@@ -130,7 +128,6 @@ async def main():
             f"Messages currently in queue before successful conditional deletion: {messages_in_queue}"
         )
 
-        # Proceed with deletion if more than 3 messages are in the queue
         if len(messages_in_queue) > 3:
             await queue.delete(
                 test_queue, msg_id=messages_in_queue[0].msg_id, conn=conn
@@ -154,7 +151,6 @@ async def main():
     else:
         print("No messages found after transactions.")
 
-    # Clean up
     await queue.drop_queue(test_queue)
     await queue.pool.close()
 
