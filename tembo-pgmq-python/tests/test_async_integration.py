@@ -2,6 +2,7 @@ import unittest
 import time
 from tembo_pgmq_python.messages import Message
 from tembo_pgmq_python.async_queue import PGMQueue
+from tembo_pgmq_python.decorators import async_transaction as transaction
 from datetime import datetime, timezone, timedelta
 
 # Function to load environment variables
@@ -92,7 +93,9 @@ class BaseTestPGMQueue(unittest.IsolatedAsyncioTestCase):
         """Test reading a batch of messages from the queue."""
         messages = [self.test_message, self.test_message]
         await self.queue.send_batch(self.test_queue, messages)
-        read_messages = await self.queue.read_batch(self.test_queue, vt=20, batch_size=2)
+        read_messages = await self.queue.read_batch(
+            self.test_queue, vt=20, batch_size=2
+        )
         self.assertEqual(len(read_messages), 2)
         for message in read_messages:
             self.assertEqual(message.message, self.test_message)
@@ -145,7 +148,9 @@ class BaseTestPGMQueue(unittest.IsolatedAsyncioTestCase):
         messages = [self.test_message, self.test_message]
         msg_ids = await self.queue.send_batch(self.test_queue, messages)
         await self.queue.archive_batch(self.test_queue, msg_ids)
-        read_messages = await self.queue.read_batch(self.test_queue, vt=20, batch_size=2)
+        read_messages = await self.queue.read_batch(
+            self.test_queue, vt=20, batch_size=2
+        )
         self.assertEqual(len(read_messages), 0)
 
     async def test_delete_batch(self):
@@ -153,7 +158,9 @@ class BaseTestPGMQueue(unittest.IsolatedAsyncioTestCase):
         messages = [self.test_message, self.test_message]
         msg_ids = await self.queue.send_batch(self.test_queue, messages)
         await self.queue.delete_batch(self.test_queue, msg_ids)
-        read_messages = await self.queue.read_batch(self.test_queue, vt=20, batch_size=2)
+        read_messages = await self.queue.read_batch(
+            self.test_queue, vt=20, batch_size=2
+        )
         self.assertEqual(len(read_messages), 0)
 
     async def test_set_vt(self):
@@ -195,9 +202,50 @@ class BaseTestPGMQueue(unittest.IsolatedAsyncioTestCase):
             await self.queue.validate_queue_name(invalid_queue_name)
         self.assertIn("queue name is too long", str(context.exception))
 
+    async def test_transaction_create_queue(self):
+        @transaction
+        async def transactional_create_queue(queue):
+            await queue.create_queue("test_queue_txn")
+            raise Exception("Simulated failure")
+
+        try:
+            await transactional_create_queue(self.queue)
+        except Exception:
+            pass
+
+        queues = await self.queue.list_queues()
+        self.assertNotIn("test_queue_txn", queues)
+
+    async def test_transaction_rollback(self):
+        @transaction
+        async def transactional_operation(queue):
+            await queue.send(
+                self.test_queue,
+                self.test_message,
+            )
+            raise Exception("Intentional failure")
+
+        try:
+            await transactional_operation(self.queue)
+        except Exception:
+            pass
+
+        message = await self.queue.read(self.test_queue)
+        self.assertIsNone(message, "No message expected in queue after rollback")
+
+    async def test_transaction_send_and_read_message(self):
+        @transaction
+        async def transactional_send(queue, conn):
+            await queue.send(self.test_queue, self.test_message, conn=conn)
+
+        await transactional_send(self.queue)
+
+        message = await self.queue.read(self.test_queue)
+        self.assertIsNotNone(message, "Expected message in queue")
+        self.assertEqual(message.message, self.test_message)
+
 
 class TestPGMQueueWithEnv(unittest.IsolatedAsyncioTestCase):
-
     async def asyncSetUp(self):
         """Set up a connection to the PGMQueue using environment variables and create a test queue."""
 

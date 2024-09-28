@@ -8,16 +8,15 @@ Install with `pip` from pypi.org:
 pip install tembo-pgmq-python
 ```
 
-In order to use async version install with the optional dependecies:
+To use the async version, install with the optional dependencies:
 
-``` bash
+```bash
 pip install tembo-pgmq-python[async]
 ```
 
-
 Dependencies:
 
-Postgres running the [Tembo PGMQ extension](https://github.com/tembo-io/tembo/tree/main/pgmq).
+- Postgres running the [Tembo PGMQ extension](https://github.com/tembo-io/tembo/tree/main/pgmq).
 
 ## Usage
 
@@ -51,7 +50,7 @@ queue = PGMQueue()
 
 Initialization for the async version requires an explicit call of the initializer:
 
-``` bash
+```python
 from tembo_pgmq_python.async_queue import PGMQueue
 
 async def main():
@@ -81,11 +80,12 @@ queue = PGMQueue(
 queue.create_queue("my_queue")
 ```
 
-### or a partitioned queue
+### Or create a partitioned queue
 
 ```python
 queue.create_partitioned_queue("my_partitioned_queue", partition_interval=10000)
 ```
+
 ### List all queues
 
 ```python
@@ -128,14 +128,18 @@ The `read_with_poll` method allows you to repeatedly check for messages in the q
 In the following example, the method will check for up to 5 messages in the queue `my_queue`, making the messages invisible for 30 seconds (`vt`), and will poll for a maximum of 5 seconds (`max_poll_seconds`) with intervals of 100 milliseconds (`poll_interval_ms`) between checks.
 
 ```python
-read_messages: list[Message] = queue.read_with_poll("my_queue", vt=30, qty=5, max_poll_seconds=5, poll_interval_ms=100)
+read_messages: list[Message] = queue.read_with_poll(
+    "my_queue", vt=30, qty=5, max_poll_seconds=5, poll_interval_ms=100
+)
 for message in read_messages:
     print(message)
 ```
 
 This method will continue polling until it either finds the specified number of messages (`qty`) or the `max_poll_seconds` duration is reached. The `poll_interval_ms` parameter controls the interval between successive polls, allowing you to avoid hammering the database with continuous queries.
 
-### Archive the message after we're done with it. Archived messages are moved to an archive table
+### Archive the message after we're done with it
+
+Archived messages are moved to an archive table.
 
 ```python
 archived: bool = queue.archive("my_queue", read_message.msg_id)
@@ -238,5 +242,49 @@ for metrics in all_metrics:
     print(f"Scrape time: {metrics.scrape_time}")
 ```
 
+### Optional Logging Configuration
 
+You can enable verbose logging and specify a custom log filename.
 
+```python
+queue = PGMQueue(
+    host="0.0.0.0",
+    port="5432",
+    username="postgres",
+    password="postgres",
+    database="postgres",
+    verbose=True,
+    log_filename="my_custom_log.log"
+)
+```
+
+# Using Transactions
+
+To perform multiple operations within a single transaction, use the `@transaction` decorator from the `tembo_pgmq_python.decorators` module. 
+This ensures that all operations within the function are executed within the same transaction and are either committed together or rolled back if an error occurs.
+
+First, import the transaction decorator:
+
+```python
+from tembo_pgmq_python.decorators import transaction
+```
+
+### Example: Transactional Operation
+
+```python
+@transaction
+def transactional_operation(queue: PGMQueue, conn=None):
+    # Perform multiple queue operations within a transaction
+    queue.create_queue("transactional_queue", conn=conn)
+    queue.send("transactional_queue", {"message": "Hello, World!"}, conn=conn)
+
+```
+To execute the transaction:
+
+```python
+try:
+    transactional_operation(queue)
+except Exception as e:
+    print(f"Transaction failed: {e}")
+``` 
+In this example, the transactional_operation function is decorated with `@transaction`,  ensuring all operations inside it are part of a single transaction.  If an error occurs, the entire transaction is rolled back automatically.
