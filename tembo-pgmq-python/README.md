@@ -274,17 +274,17 @@ from tembo_pgmq_python.decorators import transaction
 ```python
 @transaction
 def transactional_operation(queue: PGMQueue, conn=None):
-# Perform multiple queue operations within a transaction
-queue.create_queue("transactional_queue", conn=conn)
-queue.send("transactional_queue", {"message": "Hello, World!"}, conn=conn)
+    # Perform multiple queue operations within a transaction
+    queue.create_queue("transactional_queue", conn=conn)
+    queue.send("transactional_queue", {"message": "Hello, World!"}, conn=conn)
 
 ```
 To execute the transaction:
 
 ```python
 try:
-transactional_operation(queue)
+    transactional_operation(queue)
 except Exception as e:
-print(f"Transaction failed: {e}")
+    print(f"Transaction failed: {e}")
 ``` 
 In this example, the transactional_operation function is decorated with `@transaction`,  ensuring all operations inside it are part of a single transaction.  If an error occurs, the entire transaction is rolled back automatically.
