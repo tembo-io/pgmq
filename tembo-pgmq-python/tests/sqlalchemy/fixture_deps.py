@@ -3,8 +3,8 @@ from typing import Tuple
 
 import pytest
 
-from pgmq_sqlalchemy import PGMQueue
-from tests._utils import check_queue_exists
+from tembo_pgmq_python.sqlalchemy.queue import PGMQueue
+from ._utils import check_queue_exists
 
 LAZY_FIXTURES = [
     pytest.lazy_fixture("pgmq_by_dsn"),
