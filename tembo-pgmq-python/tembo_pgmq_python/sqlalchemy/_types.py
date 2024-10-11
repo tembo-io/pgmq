@@ -1,9 +1,10 @@
-from typing import Union, Any, Literal
+from typing import Union, Any, Literal, Tuple, Dict
 from collections.abc import Mapping, Sequence
 from ._db_api_interface import DBAPICursor
 
 from sqlalchemy.orm import Session
 from sqlalchemy.engine import Engine
+from sqlalchemy.sql.elements import TextClause
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 ENGINE_TYPE = Union[Engine, AsyncEngine]
@@ -15,6 +16,7 @@ DIALECTS_TYPE = Literal[
     'psycopg2',
     'psycopg3',
 ]
+STATEMENT_TYPE = Tuple[TextClause, Dict[str, Any]]
 
 class AsyncDBAPICursor(DBAPICursor):
     async def execute(
