@@ -120,10 +120,27 @@ class PGMQueue:
         return result[0][0]
 
     @transaction
+    def send_at(self, queue: str, message: dict, delay: str, conn=None) -> int:
+        """Send a message to a queue with timestamp."""
+        self.logger.debug(f"send called with conn: {conn}")
+        query = "select * from pgmq.send_at(%s, %s, %s);"
+        result = self._execute_query_with_result(query, [queue, Jsonb(message), delay], conn=conn)
+        return result[0][0]
+
+    @transaction
     def send_batch(self, queue: str, messages: List[dict], delay: int = 0, conn=None) -> List[int]:
         """Send a batch of messages to a queue."""
         self.logger.debug(f"send_batch called with conn: {conn}")
         query = "select * from pgmq.send_batch(%s, %s, %s);"
+        params = [queue, [Jsonb(message) for message in messages], delay]
+        result = self._execute_query_with_result(query, params, conn=conn)
+        return [message[0] for message in result]
+
+    @transaction
+    def send_batch_at(self, queue: str, messages: List[dict], delay: str, conn=None) -> List[int]:
+        """Send a batch of messages to a queue with timestamp."""
+        self.logger.debug(f"send_batch called with conn: {conn}")
+        query = "select * from pgmq.send_batch_at(%s, %s, %s);"
         params = [queue, [Jsonb(message) for message in messages], delay]
         result = self._execute_query_with_result(query, params, conn=conn)
         return [message[0] for message in result]

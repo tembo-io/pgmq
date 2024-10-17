@@ -35,6 +35,39 @@ select * from pgmq.send('my_queue', '{"hello": "world"}');
 
 ---
 
+### send_at
+
+Send a single message to a queue with delay as a timestamp.
+
+```text
+pgmq.send_at(
+    queue_name text,
+    msg jsonb,
+    delay timestamp
+)
+
+RETURNS SETOF bigint
+```
+
+**Parameters:**
+
+| Parameter      | Type | Description     |
+| :---        |    :----   |          :--- |
+| queue_name      | text       | The name of the queue   |
+| msg   | jsonb        | The message to send to the queue      |
+| delay   | timestamp        | Timestamp until the message becomes visible.      |
+
+Example:
+
+```sql
+select * from pgmq.send_at('my_queue', '{"hello": "world"}', CURRENT_TIMESTAMP);
+ send_at 
+---------
+       4
+```
+
+---
+
 ### send_batch
 
 Send 1 or more messages to a queue.
@@ -64,6 +97,40 @@ select * from pgmq.send_batch('my_queue', ARRAY[
 ------------
           1
           2
+```
+
+---
+
+### send_batch_at
+
+Send 1 or more messages to a queue with delay as a timestamp.
+
+```text
+pgmq.send_batch(
+    queue_name text,
+    msgs jsonb[],
+    delay timestamp
+)
+RETURNS SETOF bigint
+```
+**Parameters:**
+
+| Parameter      | Type | Description     |
+| :---        |    :----   |          :--- |
+| queue_name      | text       | The name of the queue   |
+| msgs   | jsonb[]       | Array of messages to send to the queue      |
+| delay   | timestamp        | Timestamp until the messages become visible.      |
+
+```sql
+select * from pgmq.send_batch_at('my_queue', ARRAY[
+    '{"hello": "world_0"}'::jsonb,
+    '{"hello": "world_1"}'::jsonb],
+    CURRENT_TIMESTAMP
+);
+ send_batch_at 
+---------------
+             1
+             2
 ```
 
 ---
