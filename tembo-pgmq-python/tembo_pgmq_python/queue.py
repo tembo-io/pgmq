@@ -96,11 +96,11 @@ class PGMQueue:
         self._execute_query(query, [queue_name], conn=conn)
 
     @transaction
-    def drop_queue(self, queue: str, partitioned: bool = False, conn=None) -> bool:
+    def drop_queue(self, queue: str, conn=None) -> bool:
         """Drop a queue."""
         self.logger.debug(f"drop_queue called with conn: {conn}")
-        query = "select pgmq.drop_queue(%s, %s);"
-        result = self._execute_query_with_result(query, [queue, partitioned], conn=conn)
+        query = "select pgmq.drop_queue(%s);"
+        result = self._execute_query_with_result(query, [queue], conn=conn)
         return result[0][0]
 
     @transaction

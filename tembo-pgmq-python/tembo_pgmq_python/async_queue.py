@@ -124,17 +124,17 @@ class PGMQueue:
             await conn.execute("SELECT pgmq.validate_queue_name($1);", queue_name)
 
     @transaction
-    async def drop_queue(self, queue: str, partitioned: bool = False, conn=None) -> bool:
+    async def drop_queue(self, queue: str, conn=None) -> bool:
         """Drop a queue."""
-        self.logger.debug(f"drop_queue called with queue='{queue}', partitioned={partitioned}, conn={conn}")
+        self.logger.debug(f"drop_queue called with queue='{queue}', conn={conn}")
         if conn is None:
             async with self.pool.acquire() as conn:
-                return await self._drop_queue_internal(queue, partitioned, conn)
+                return await self._drop_queue_internal(queue, conn)
         else:
-            return await self._drop_queue_internal(queue, partitioned, conn)
+            return await self._drop_queue_internal(queue, conn)
 
-    async def _drop_queue_internal(self, queue, partitioned, conn):
-        result = await conn.fetchrow("SELECT pgmq.drop_queue($1, $2);", queue, partitioned)
+    async def _drop_queue_internal(self, queue, conn):
+        result = await conn.fetchrow("SELECT pgmq.drop_queue($1);", queue)
         self.logger.debug(f"Queue '{queue}' dropped: {result[0]}")
         return result[0]
 
