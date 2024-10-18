@@ -114,7 +114,7 @@ SELECT pgmq.create('test_default_queue_vt');
 (1 row)
 
 -- send message with timestamp
-SELECT * from pgmq.send_at('test_default_queue_vt', '{"hello": "world"}', CURRENT_TIMESTAMP + '5 seconds'::interval);
+SELECT * from pgmq.send_at('test_default_queue_vt', '{"hello": "world"}', CAST(CURRENT_TIMESTAMP + '5 seconds'::interval AS timestamp));
  send_at 
 ---------
        1
@@ -143,6 +143,23 @@ SELECT pgmq.create('batch_queue');
 SELECT ARRAY( SELECT pgmq.send_batch(
     'batch_queue',
     ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[]
+)) = ARRAY[1, 2]::BIGINT[];
+ ?column? 
+----------
+ t
+(1 row)
+
+-- send a batch of 2 messages with timestamp
+SELECT pgmq.create('batch_queue_vt');
+ create 
+--------
+ 
+(1 row)
+
+SELECT ARRAY( SELECT pgmq.send_batch_at(
+    'batch_queue_vt',
+    ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[],
+    CAST(CURRENT_TIMESTAMP + '5 seconds'::interval AS timestamp)
 )) = ARRAY[1, 2]::BIGINT[];
  ?column? 
 ----------
@@ -195,7 +212,9 @@ SELECT pgmq.drop_queue(q.queue_name, true)
  t
  t
  t
-(4 rows)
+ t
+ t
+(6 rows)
 
 SELECT queue_name FROM pgmq.list_queues();
  queue_name 
