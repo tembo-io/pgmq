@@ -57,7 +57,8 @@ $$ LANGUAGE plpgsql;
 CREATE FUNCTION pgmq.read(
     queue_name TEXT,
     vt INTEGER,
-    qty INTEGER
+    qty INTEGER,
+    conditional JSONB DEFAULT '{}'
 )
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
@@ -70,7 +71,7 @@ BEGIN
         (
             SELECT msg_id
             FROM pgmq.%I
-            WHERE vt <= clock_timestamp()
+            WHERE vt <= clock_timestamp() AND message @> %I
             ORDER BY msg_id ASC
             LIMIT $1
             FOR UPDATE SKIP LOCKED
@@ -83,7 +84,7 @@ BEGIN
         WHERE m.msg_id = cte.msg_id
         RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
         $QUERY$,
-        qtable, qtable, make_interval(secs => vt)
+        qtable, conditional, qtable, make_interval(secs => vt)
     );
     RETURN QUERY EXECUTE sql USING qty;
 END;
@@ -96,7 +97,8 @@ CREATE FUNCTION pgmq.read_with_poll(
     vt INTEGER,
     qty INTEGER,
     max_poll_seconds INTEGER DEFAULT 5,
-    poll_interval_ms INTEGER DEFAULT 100
+    poll_interval_ms INTEGER DEFAULT 100,
+    conditional JSONB DEFAULT '{}'
 )
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
@@ -117,7 +119,7 @@ BEGIN
           (
               SELECT msg_id
               FROM pgmq.%I
-              WHERE vt <= clock_timestamp()
+              WHERE vt <= clock_timestamp() AND message @> %I
               ORDER BY msg_id ASC
               LIMIT $1
               FOR UPDATE SKIP LOCKED
@@ -130,7 +132,7 @@ BEGIN
           WHERE m.msg_id = cte.msg_id
           RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
           $QUERY$,
-          qtable, qtable, make_interval(secs => vt)
+          qtable, conditional, qtable, make_interval(secs => vt)
       );
 
       FOR r IN
