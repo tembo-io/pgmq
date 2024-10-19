@@ -8,6 +8,26 @@ The fastest way to get started is by running the Tembo docker image, where PGMQ 
 docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pgmq-pg:latest
 ```
 
+## PGXN Installation
+
+PGXN is a centralized network to make it easier to install and manage PostgreSQL extensions.
+
+You can install PGMQ directly using PGXN, the PostgreSQL Extension Network, which is a distribution system for open-source PostgreSQL extension libraries.
+
+Install PGMQ using PGXN
+
+```bash
+pgxn install pgmq
+```
+Alternatively, you can install manually using the following commands:
+
+```
+curl -LO https://api.pgxn.org/dist/pgmq/1.4.2/pgmq-1.4.2.zip
+unzip pgmq-1.4.2.zip
+cd pgmq-1.4.2
+make
+sudo make install
+```
 ## Building from source
 
 PGMQ requires the `postgres-server-dev` package to build. For example, to install
@@ -15,6 +35,57 @@ version 14 on ubuntu:
 
 ```bash
 sudo apt-get install postgres-server-dev-14
+```
+
+## Platform-Specific Installation Instructions
+
+### Windows Installation (Using WSL)
+
+For Windows users, the recommended approach is to use Windows Subsystem for Linux (WSL) to create a Linux environment where you can install PostgreSQL and build PGMQ.
+
+1. Install WSL
+```bash
+wsl --install
+```
+
+2. Update the packages and install PostgreSQL development tools:
+```bash
+sudo apt update
+sudo apt install postgresql-server-dev-all build-essential
+```
+
+3. Clone the PGMQ repository and build it:
+```bash
+git clone https://github.com/tembo-io/pgmq.git
+cd pgmq/pgmq-extension
+make
+sudo make install
+```
+
+4. Create the extension in PostgreSQL:
+```sql
+CREATE EXTENSION pgmq cascade;
+```
+
+### Mac Installation
+If you are using macOS, you can install PostgreSQL and build PGMQ using Homebrew.
+
+1. Install PostgreSQL using Homebrew:
+```bash
+brew install postgresql
+```
+
+2. Clone the PGMQ repository and build it:
+```bash
+git clone https://github.com/tembo-io/pgmq.git
+cd pgmq/pgmq-extension
+make
+sudo make install
+```
+
+3. Create the extension in PostgreSQL:
+```sql
+CREATE EXTENSION pgmq cascade;
 ```
 
 ## Installing Postgres
