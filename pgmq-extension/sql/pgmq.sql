@@ -72,6 +72,7 @@ BEGIN
             SELECT msg_id
             FROM pgmq.%I
             WHERE vt <= clock_timestamp()
+            WHERE message @> filter
             ORDER BY msg_id ASC
             LIMIT $1
             FOR UPDATE SKIP LOCKED
