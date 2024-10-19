@@ -57,7 +57,8 @@ $$ LANGUAGE plpgsql;
 CREATE FUNCTION pgmq.read(
     queue_name TEXT,
     vt INTEGER,
-    qty INTEGER
+    qty INTEGER,
+    filter JSONB DEFAULT "{}"
 )
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
