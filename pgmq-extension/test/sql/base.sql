@@ -14,6 +14,32 @@ SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message
 SELECT pgmq.create(repeat('a', 48));
 SELECT pgmq.create(repeat('a', 47));
 
+-- Test: Conditional Message Retrieval
+
+-- Creating a queue for testing
+SELECT pgmq.create('conditional_test_queue');
+
+-- Sending messages with different attributes
+SELECT pgmq.send('conditional_test_queue', '{"type": "A", "content": "Message A1"}');
+SELECT pgmq.send('conditional_test_queue', '{"type": "B", "content": "Message B1"}');
+SELECT pgmq.send('conditional_test_queue', '{"type": "A", "content": "Message A2"}');
+SELECT pgmq.send('conditional_test_queue', '{"type": "B", "content": "Message B2"}');
+
+-- Test: Retrieve messages with type 'A'
+SELECT msg_id, read_ct, message 
+FROM pgmq.read('conditional_test_queue', 2, 2, '{"type": "A"}'::jsonb);
+
+-- Test: Retrieve messages with type 'B'
+SELECT msg_id, read_ct, message 
+FROM pgmq.read('conditional_test_queue', 2, 2, '{"type": "B"}'::jsonb);
+
+-- Test: Attempt to retrieve messages with a non-existent type
+SELECT * 
+FROM pgmq.read('conditional_test_queue', 2, 2, '{"type": "C"}'::jsonb);
+
+-- Cleanup
+SELECT pgmq.drop_queue('conditional_test_queue', true);
+
 -- test_lifecycle
 -- CREATE with default retention and partition strategy
 SELECT pgmq.create('test_default_queue');

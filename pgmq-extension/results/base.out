@@ -1,6 +1,10 @@
 -- CREATE pgmq.
 CREATE EXTENSION IF NOT EXISTS pgmq;
 CREATE EXTENSION IF NOT EXISTS pg_partman;
+ERROR:  extension "pg_partman" is not available
+DETAIL:  Could not open extension control file "/usr/share/postgresql/16/extension/pg_partman.control": No such file or directory.
+HINT:  The extension must first be installed on the system where PostgreSQL is running.
+
 -- test_unlogged
 -- CREATE with default retention and partition strategy
 SELECT pgmq.create_unlogged('test_unlogged_queue');
@@ -22,6 +26,7 @@ SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message
       1 |       1 | f        | t        | {"hello": "world"}
 (1 row)
 
+
 -- test_max_queue_name_size
 -- CREATE with default retention and partition strategy
 SELECT pgmq.create(repeat('a', 48));
@@ -37,52 +42,6 @@ SELECT pgmq.create(repeat('a', 47));
  
 (1 row)
 
--- Test: Creating a queue for testing
--- Expected output:
--- CREATE QUEUE
-
--- Test: Sending messages with different attributes
--- Expected output:
--- SEND MESSAGE
-
--- Test: Sending Message A1
--- Expected output:
--- SEND MESSAGE
-
--- Test: Sending Message B1
--- Expected output:
--- SEND MESSAGE
-
--- Test: Sending Message A2
--- Expected output:
--- SEND MESSAGE
-
--- Test: Sending Message B2
--- Expected output:
--- SEND MESSAGE
-
--- Test: Retrieve messages with type 'A'
--- Expected output:
--- msg_id | read_ct |         message         
--- --------+---------+-------------------------
---    1    |    1    | {"type": "A", "content": "Message A1"}
---    3    |    1    | {"type": "A", "content": "Message A2"}
-
--- Test: Retrieve messages with type 'B'
--- Expected output:
--- msg_id | read_ct |         message         
--- --------+---------+-------------------------
---    2    |    1    | {"type": "B", "content": "Message B1"}
---    4    |    1    | {"type": "B", "content": "Message B2"}
-
--- Test: Attempt to retrieve messages with a non-existent type
--- Expected output:
--- (0 rows)
-
--- Cleanup
--- Expected output:
--- DROP QUEUE
-
 
 -- test_lifecycle
 -- CREATE with default retention and partition strategy
@@ -91,6 +50,7 @@ SELECT pgmq.create('test_default_queue');
 --------
  
 (1 row)
+
 
 -- creating a queue must be idempotent
 -- create with same name again, must be no error
@@ -104,11 +64,13 @@ NOTICE:  relation "archived_at_idx_test_default_queue" already exists, skipping
  
 (1 row)
 
+
 SELECT * from pgmq.send('test_default_queue', '{"hello": "world"}');
  send 
 ------
     1
 (1 row)
+
 
 -- read message
 -- vt=2, limit=1
@@ -119,6 +81,7 @@ SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1);
  t
 (1 row)
 
+
 -- set VT to 5 seconds
 SELECT vt > clock_timestamp() + '4 seconds'::interval
   FROM pgmq.set_vt('test_default_queue', :msg_id, 5);
@@ -127,11 +90,13 @@ SELECT vt > clock_timestamp() + '4 seconds'::interval
  t
 (1 row)
 
+
 -- read again, assert no messages because we just set VT to the future
 SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1);
  ?column? 
 ----------
 (0 rows)
+
 
 -- read again, now using poll to block until message is ready
 SELECT msg_id = :msg_id FROM pgmq.read_with_poll('test_default_queue', 10, 1, 10);
@@ -140,6 +105,7 @@ SELECT msg_id = :msg_id FROM pgmq.read_with_poll('test_default_queue', 10, 1, 10
  t
 (1 row)
 
+
 -- after reading it, set VT to now
 SELECT msg_id = :msg_id FROM pgmq.set_vt('test_default_queue', :msg_id, 0);
  ?column? 
@@ -147,12 +113,14 @@ SELECT msg_id = :msg_id FROM pgmq.set_vt('test_default_queue', :msg_id, 0);
  t
 (1 row)
 
+
 -- read again, should have msg_id 1 again
 SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1);
  ?column? 
 ----------
  t
 (1 row)
+
 
 -- send a batch of 2 messages
 SELECT pgmq.create('batch_queue');
@@ -170,58 +138,84 @@ SELECT ARRAY( SELECT pgmq.send_batch(
  t
 (1 row)
 
+
 -- CREATE with 5 seconds per partition, 10 seconds retention
 SELECT pgmq.create_partitioned('test_duration_queue', '5 seconds', '10 seconds');
- create_partitioned 
---------------------
- 
-(1 row)
+ERROR:  pg_partman is required for partitioned queues
+CONTEXT:  PL/pgSQL function pgmq._ensure_pg_partman_installed() line 12 at RAISE
+SQL statement "SELECT pgmq._ensure_pg_partman_installed()"
+PL/pgSQL function pgmq.create_partitioned(text,text,text) line 11 at PERFORM
 
 -- CREATE with 10 messages per partition, 20 messages retention
 SELECT pgmq.create_partitioned('test_numeric_queue', '10 seconds', '20 seconds');
- create_partitioned 
---------------------
- 
-(1 row)
+ERROR:  pg_partman is required for partitioned queues
+CONTEXT:  PL/pgSQL function pgmq._ensure_pg_partman_installed() line 12 at RAISE
+SQL statement "SELECT pgmq._ensure_pg_partman_installed()"
+PL/pgSQL function pgmq.create_partitioned(text,text,text) line 11 at PERFORM
 
 -- get metrics
 SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_messages
  FROM pgmq.metrics('test_duration_queue');
-     queue_name      | queue_length | newest_msg_age_sec | oldest_msg_age_sec | total_messages 
----------------------+--------------+--------------------+--------------------+----------------
- test_duration_queue |            0 |                    |                    |              0
-(1 row)
+ERROR:  relation "pgmq.q_test_duration_queue" does not exist
+LINE 8:             FROM pgmq.q_test_duration_queue
+                         ^
+QUERY:  
+        WITH q_summary AS (
+            SELECT
+                count(*) as queue_length,
+                EXTRACT(epoch FROM (NOW() - max(enqueued_at)))::int as newest_msg_age_sec,
+                EXTRACT(epoch FROM (NOW() - min(enqueued_at)))::int as oldest_msg_age_sec,
+                NOW() as scrape_time
+            FROM pgmq.q_test_duration_queue
+        ),
+        all_metrics AS (
+            SELECT CASE
+                WHEN is_called THEN last_value ELSE 0
+                END as total_messages
+            FROM pgmq.q_test_duration_queue_msg_id_seq
+        )
+        SELECT
+            'test_duration_queue' as queue_name,
+            q_summary.queue_length,
+            q_summary.newest_msg_age_sec,
+            q_summary.oldest_msg_age_sec,
+            all_metrics.total_messages,
+            q_summary.scrape_time
+        FROM q_summary, all_metrics
+        
+CONTEXT:  PL/pgSQL function pgmq.metrics(text) line 34 at EXECUTE
 
 -- get metrics all
 SELECT * from {PGMQ_SCHEMA}.metrics_all();
 ERROR:  syntax error at or near "{"
 LINE 1: SELECT * from {PGMQ_SCHEMA}.metrics_all();
                       ^
+
 -- delete all the queues
 -- delete partitioned queues
 SELECT pgmq.drop_queue(queue, true)
   FROM unnest('{test_duration_queue, test_numeric_queue}'::text[]) AS queue;
- drop_queue 
-------------
- t
- t
-(2 rows)
+ERROR:  relation "pgmq.q_test_duration_queue" does not exist
+CONTEXT:  SQL statement "
+        ALTER EXTENSION pgmq DROP TABLE pgmq.q_test_duration_queue
+        "
+PL/pgSQL function pgmq.drop_queue(text,boolean) line 8 at EXECUTE
 
 -- drop the rest of the queues
 SELECT pgmq.drop_queue(q.queue_name, true)
   FROM (SELECT queue_name FROM pgmq.list_queues()) AS q;
- drop_queue 
-------------
- t
- t
- t
- t
-(4 rows)
+ERROR:  null values cannot be formatted as an SQL identifier
+CONTEXT:  PL/pgSQL function pgmq.drop_queue(text,boolean) line 50 at EXECUTE
 
 SELECT queue_name FROM pgmq.list_queues();
- queue_name 
-------------
-(0 rows)
+                   queue_name                    
+-------------------------------------------------
+ test_unlogged_queue
+ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+ test_default_queue
+ batch_queue
+(4 rows)
+
 
 -- test_archive
 SELECT pgmq.create('archive_queue');
@@ -230,6 +224,7 @@ SELECT pgmq.create('archive_queue');
  
 (1 row)
 
+
 -- no messages in the queue
 SELECT COUNT(*) = 0 FROM pgmq.q_archive_queue;
  ?column? 
@@ -237,12 +232,14 @@ SELECT COUNT(*) = 0 FROM pgmq.q_archive_queue;
  t
 (1 row)
 
+
 -- no messages in queue archive
 SELECT COUNT(*) = 0 FROM pgmq.a_archive_queue;
  ?column? 
 ----------
  t
 (1 row)
+
 
 -- put messages on the queue
 \set msg_id1 1::bigint
@@ -259,12 +256,14 @@ SELECT send = :msg_id2 FROM pgmq.send('archive_queue', '0');
  t
 (1 row)
 
+
 -- two messages in the queue
 SELECT COUNT(*) = 2 FROM pgmq.q_archive_queue;
  ?column? 
 ----------
  t
 (1 row)
+
 
 -- archive the message. The first two exist so the id should be returned, the
 -- last one doesn't
@@ -276,6 +275,7 @@ SELECT ARRAY(
  t
 (1 row)
 
+
 -- should be no messages left on the queue table
 SELECT COUNT(*) = 0 FROM pgmq.q_archive_queue;
  ?column? 
@@ -283,12 +283,14 @@ SELECT COUNT(*) = 0 FROM pgmq.q_archive_queue;
  t
 (1 row)
 
+
 -- should be two messages in archive
 SELECT COUNT(*) = 2 FROM pgmq.a_archive_queue;
  ?column? 
 ----------
  t
 (1 row)
+
 
 \set msg_id3 3::bigint
 SELECT send = :msg_id3 FROM pgmq.send('archive_queue', '0');
@@ -321,6 +323,7 @@ SELECT COUNT(*) = 3 FROM pgmq.a_archive_queue;
  t
 (1 row)
 
+
 -- test_read_read_with_poll
 -- Creating queue
 SELECT pgmq.create('test_read_queue');
@@ -328,6 +331,7 @@ SELECT pgmq.create('test_read_queue');
 --------
  
 (1 row)
+
 
 -- Sending 3 messages to the queue
 SELECT send = :msg_id1 FROM pgmq.send('test_read_queue', '0');
@@ -348,12 +352,14 @@ SELECT send = :msg_id3 FROM pgmq.send('test_read_queue', '0');
  t
 (1 row)
 
+
 -- Reading with limit respects the limit
 SELECT msg_id = :msg_id1 FROM pgmq.read('test_read_queue', 5, 1);
  ?column? 
 ----------
  t
 (1 row)
+
 
 -- Reading respects the VT
 SELECT ARRAY(
@@ -363,6 +369,7 @@ SELECT ARRAY(
 ----------
  t
 (1 row)
+
 
 -- Read with poll will poll until the first message is available
 SELECT clock_timestamp() AS start \gset
@@ -377,6 +384,7 @@ SELECT clock_timestamp() - :'start' > '3 second'::interval;
 ----------
  t
 (1 row)
+
 
 -- test_purge_queue
 SELECT pgmq.create('test_purge_queue');
@@ -415,6 +423,7 @@ SELECT * from pgmq.send('test_purge_queue', '0');
     5
 (1 row)
 
+
 SELECT * FROM pgmq.purge_queue('test_purge_queue');
  purge_queue 
 -------------
@@ -427,6 +436,7 @@ SELECT COUNT(*) = 0 FROM pgmq.q_test_purge_queue;
  t
 (1 row)
 
+
 -- test_pop
 SELECT pgmq.create('test_pop_queue');
  create 
@@ -438,6 +448,7 @@ SELECT * FROM pgmq.pop('test_pop_queue');
  msg_id | read_ct | enqueued_at | vt | message 
 --------+---------+-------------+----+---------
 (0 rows)
+
 
 SELECT send AS first_msg_id from pgmq.send('test_pop_queue', '0') \gset
 SELECT * from pgmq.send('test_pop_queue', '0');
@@ -452,11 +463,13 @@ SELECT * from pgmq.send('test_pop_queue', '0');
     3
 (1 row)
 
+
 SELECT msg_id = :first_msg_id FROM pgmq.pop('test_pop_queue');
  ?column? 
 ----------
  t
 (1 row)
+
 
 -- test_set_vt
 SELECT pgmq.create('test_set_vt_queue');
@@ -470,7 +483,9 @@ SELECT * FROM pgmq.set_vt('test_set_vt_queue', 9999, 0);
 --------+---------+-------------+----+---------
 (0 rows)
 
+
 SELECT send AS first_msg_id from pgmq.send('test_set_vt_queue', '0') \gset
+
 -- set message invisible for 100 seconds
 SELECT msg_id FROM pgmq.set_vt('test_set_vt_queue', :first_msg_id, 100);
  msg_id 
@@ -478,11 +493,13 @@ SELECT msg_id FROM pgmq.set_vt('test_set_vt_queue', :first_msg_id, 100);
       1
 (1 row)
 
+
 -- read message, it should not be visible
 SELECT msg_id from pgmq.read('test_set_vt_queue', 1, 1);
  msg_id 
 --------
 (0 rows)
+
 
 -- make it visible
 SELECT msg_id FROM pgmq.set_vt('test_set_vt_queue', :first_msg_id, 0);
@@ -491,6 +508,7 @@ SELECT msg_id FROM pgmq.set_vt('test_set_vt_queue', :first_msg_id, 0);
       1
 (1 row)
 
+
 -- set vt works if message is readable
 SELECT msg_id from pgmq.read('test_set_vt_queue', 1, 1);
  msg_id 
@@ -498,12 +516,16 @@ SELECT msg_id from pgmq.read('test_set_vt_queue', 1, 1);
       1
 (1 row)
 
+
 -- test_partitioned_delete
 \set partition_interval 2
 \set retention_interval 2
+
 -- We first will drop pg_partman and assert that create fails without the
 -- extension installed
 DROP EXTENSION pg_partman;
+ERROR:  extension "pg_partman" does not exist
+
 SELECT * FROM pgmq.create_partitioned(
     'test_partitioned_queue',
     :'partition_interval',
@@ -513,48 +535,82 @@ ERROR:  pg_partman is required for partitioned queues
 CONTEXT:  PL/pgSQL function pgmq._ensure_pg_partman_installed() line 12 at RAISE
 SQL statement "SELECT pgmq._ensure_pg_partman_installed()"
 PL/pgSQL function pgmq.create_partitioned(text,text,text) line 11 at PERFORM
+
 -- With the extension existing, the queue is created successfully
 CREATE EXTENSION pg_partman;
+ERROR:  extension "pg_partman" is not available
+DETAIL:  Could not open extension control file "/usr/share/postgresql/16/extension/pg_partman.control": No such file or directory.
+HINT:  The extension must first be installed on the system where PostgreSQL is running.
 SELECT * FROM pgmq.create_partitioned(
     'test_partitioned_queue',
     :'partition_interval',
     :'retention_interval'
 );
- create_partitioned 
---------------------
- 
-(1 row)
+ERROR:  pg_partman is required for partitioned queues
+CONTEXT:  PL/pgSQL function pgmq._ensure_pg_partman_installed() line 12 at RAISE
+SQL statement "SELECT pgmq._ensure_pg_partman_installed()"
+PL/pgSQL function pgmq.create_partitioned(text,text,text) line 11 at PERFORM
 
 -- queue shows up in list queues
 SELECT queue_name FROM pgmq.list_queues()
  WHERE queue_name = 'test_partitioned_queue';
-       queue_name       
-------------------------
- test_partitioned_queue
-(1 row)
+ queue_name 
+------------
+(0 rows)
+
 
 -- Sending 3 messages to the queue
 SELECT send AS msg_id1 from pgmq.send('test_partitioned_queue', '0') \gset
+ERROR:  relation "pgmq.q_test_partitioned_queue" does not exist
+LINE 2:         INSERT INTO pgmq.q_test_partitioned_queue (vt, messa...
+                            ^
+QUERY:  
+        INSERT INTO pgmq.q_test_partitioned_queue (vt, message)
+        VALUES ((clock_timestamp() + '@ 0'), $1)
+        RETURNING msg_id;
+        
+CONTEXT:  PL/pgSQL function pgmq.send(text,jsonb,integer) line 14 at RETURN QUERY
 SELECT send AS msg_id2 from pgmq.send('test_partitioned_queue', '0') \gset
+ERROR:  relation "pgmq.q_test_partitioned_queue" does not exist
+LINE 2:         INSERT INTO pgmq.q_test_partitioned_queue (vt, messa...
+                            ^
+QUERY:  
+        INSERT INTO pgmq.q_test_partitioned_queue (vt, message)
+        VALUES ((clock_timestamp() + '@ 0'), $1)
+        RETURNING msg_id;
+        
+CONTEXT:  PL/pgSQL function pgmq.send(text,jsonb,integer) line 14 at RETURN QUERY
 SELECT send AS msg_id3 from pgmq.send('test_partitioned_queue', '0') \gset
+ERROR:  relation "pgmq.q_test_partitioned_queue" does not exist
+LINE 2:         INSERT INTO pgmq.q_test_partitioned_queue (vt, messa...
+                            ^
+QUERY:  
+        INSERT INTO pgmq.q_test_partitioned_queue (vt, message)
+        VALUES ((clock_timestamp() + '@ 0'), $1)
+        RETURNING msg_id;
+        
+CONTEXT:  PL/pgSQL function pgmq.send(text,jsonb,integer) line 14 at RETURN QUERY
+
 SELECT COUNT(*) = 3 FROM pgmq.q_test_partitioned_queue;
- ?column? 
-----------
- t
-(1 row)
+ERROR:  relation "pgmq.q_test_partitioned_queue" does not exist
+LINE 1: SELECT COUNT(*) = 3 FROM pgmq.q_test_partitioned_queue;
+                                 ^
 
 -- Deleting message 3
 SELECT * FROM pgmq.delete('test_partitioned_queue', :msg_id3);
- delete 
---------
- t
-(1 row)
-
+ERROR:  relation "pgmq.q_test_partitioned_queue" does not exist
+LINE 2:         DELETE FROM pgmq.q_test_partitioned_queue
+                            ^
+QUERY:  
+        DELETE FROM pgmq.q_test_partitioned_queue
+        WHERE msg_id = $1
+        RETURNING msg_id
+        
+CONTEXT:  PL/pgSQL function pgmq.delete(text,bigint) line 15 at EXECUTE
 SELECT COUNT(*) = 2 FROM pgmq.q_test_partitioned_queue;
- ?column? 
-----------
- t
-(1 row)
+ERROR:  relation "pgmq.q_test_partitioned_queue" does not exist
+LINE 1: SELECT COUNT(*) = 2 FROM pgmq.q_test_partitioned_queue;
+                                 ^
 
 -- Deleting batch
 SELECT ARRAY(
@@ -563,10 +619,21 @@ SELECT ARRAY(
         ARRAY[:msg_id1, :msg_id2, :msg_id3, -3]
     )
 ) = ARRAY[:msg_id1, :msg_id2]::bigint[];
- ?column? 
-----------
- t
-(1 row)
+ERROR:  relation "pgmq.q_test_partitioned_queue" does not exist
+LINE 3:             DELETE FROM pgmq.q_test_partitioned_queue
+                                ^
+QUERY:  
+        WITH archived AS (
+            DELETE FROM pgmq.q_test_partitioned_queue
+            WHERE msg_id = ANY($1)
+            RETURNING msg_id, vt, read_ct, enqueued_at, message
+        )
+        INSERT INTO pgmq.a_test_partitioned_queue (msg_id, vt, read_ct, enqueued_at, message)
+        SELECT msg_id, vt, read_ct, enqueued_at, message
+        FROM archived
+        RETURNING msg_id;
+        
+CONTEXT:  PL/pgSQL function pgmq.archive(text,bigint[]) line 21 at RETURN QUERY
 
 -- test_transaction_create
 BEGIN;
@@ -582,6 +649,7 @@ SELECT tablename FROM pg_tables WHERE schemaname = 'pgmq' AND tablename = 'q_tra
 -----------
 (0 rows)
 
+
 -- test_detach_archive
 SELECT pgmq.create('detach_archive_queue');
  create 
@@ -594,6 +662,7 @@ SELECT tablename FROM pg_tables WHERE schemaname = 'pgmq' AND tablename = 'a_det
  tablename 
 -----------
 (0 rows)
+
 
 -- With detach, archive remains
 CREATE EXTENSION pgmq;
@@ -616,6 +685,7 @@ SELECT tablename FROM pg_tables WHERE schemaname = 'pgmq' AND tablename = 'a_det
  a_detach_archive_queue
 (1 row)
 
+
 --Truncated Index When queue name is max.
 CREATE EXTENSION pgmq;
 SELECT pgmq.create('long_queue_name_123456789012345678901234567890');
@@ -626,18 +696,14 @@ SELECT pgmq.create('long_queue_name_123456789012345678901234567890');
 
 SELECT pgmq.convert_archive_partitioned('long_queue_name_123456789012345678901234567890');
 NOTICE:  identifier "archived_at_idx_long_queue_name_123456789012345678901234567890_old" will be truncated to "archived_at_idx_long_queue_name_123456789012345678901234567890_"
- convert_archive_partitioned 
------------------------------
- 
-(1 row)
+ERROR:  null values cannot be formatted as an SQL identifier
+CONTEXT:  PL/pgSQL function pgmq.convert_archive_partitioned(text,text,text,integer) line 39 at EXECUTE
 
 --Check for archive is already partitioned
 SELECT pgmq.convert_archive_partitioned('long_queue_name_123456789012345678901234567890');
-NOTICE:  Table a_long_queue_name_123456789012345678901234567890s is already partitioned
- convert_archive_partitioned 
------------------------------
- 
-(1 row)
+NOTICE:  identifier "archived_at_idx_long_queue_name_123456789012345678901234567890_old" will be truncated to "archived_at_idx_long_queue_name_123456789012345678901234567890_"
+ERROR:  null values cannot be formatted as an SQL identifier
+CONTEXT:  PL/pgSQL function pgmq.convert_archive_partitioned(text,text,text,integer) line 39 at EXECUTE
 
 --Error out due to Index duplicate index at old table.
 SELECT pgmq.create('long_queue_name_1234567890123456789012345678901');
@@ -651,6 +717,7 @@ NOTICE:  identifier "archived_at_idx_long_queue_name_123456789012345678901234567
 ERROR:  relation "archived_at_idx_long_queue_name_1234567890123456789012345678901" already exists
 CONTEXT:  SQL statement "ALTER INDEX pgmq.archived_at_idx_long_queue_name_1234567890123456789012345678901 RENAME TO archived_at_idx_long_queue_name_1234567890123456789012345678901_old"
 PL/pgSQL function pgmq.convert_archive_partitioned(text,text,text,integer) line 34 at EXECUTE
+
 --Success
 SELECT pgmq.create('long_queue_name_');
  create 
@@ -659,12 +726,11 @@ SELECT pgmq.create('long_queue_name_');
 (1 row)
 
 SELECT pgmq.convert_archive_partitioned('long_queue_name_');
- convert_archive_partitioned 
------------------------------
- 
-(1 row)
+ERROR:  null values cannot be formatted as an SQL identifier
+CONTEXT:  PL/pgSQL function pgmq.convert_archive_partitioned(text,text,text,integer) line 39 at EXECUTE
 
 \set SHOW_CONTEXT never
+
 --Failed SQL injection attack
 SELECT pgmq.create('abc');
  create 
@@ -680,6 +746,7 @@ SELECT
      1
   );
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
+
 --Special characters in queue name
 SELECT pgmq.create('queue-hyphened');
  create 
@@ -705,6 +772,7 @@ SELECT pgmq.archive('queue-hyphened', 1);
  t
 (1 row)
 
+
 SELECT pgmq.create('QueueCased');
  create 
 --------
@@ -729,59 +797,111 @@ SELECT pgmq.archive('QueueCased', 1);
  t
 (1 row)
 
+
 SELECT pgmq.create_partitioned('queue-hyphened-part');
- create_partitioned 
---------------------
- 
-(1 row)
-
+ERROR:  pg_partman is required for partitioned queues
 SELECT pgmq.send('queue-hyphened-part', '{"hello":"world"}');
- send 
-------
-    1
-(1 row)
-
+ERROR:  relation "pgmq.q_queue-hyphened-part" does not exist
+LINE 2:         INSERT INTO pgmq."q_queue-hyphened-part" (vt, messag...
+                            ^
+QUERY:  
+        INSERT INTO pgmq."q_queue-hyphened-part" (vt, message)
+        VALUES ((clock_timestamp() + '@ 0'), $1)
+        RETURNING msg_id;
+        
 SELECT msg_id, read_ct, message FROM pgmq.read('queue-hyphened-part', 1, 1);
- msg_id | read_ct |      message       
---------+---------+--------------------
-      1 |       1 | {"hello": "world"}
-(1 row)
-
+ERROR:  relation "pgmq.q_queue-hyphened-part" does not exist
+LINE 5:             FROM pgmq."q_queue-hyphened-part"
+                         ^
+QUERY:  
+        WITH cte AS
+        (
+            SELECT msg_id
+            FROM pgmq."q_queue-hyphened-part"
+            WHERE vt <= clock_timestamp()
+            ORDER BY msg_id ASC
+            LIMIT $1
+            FOR UPDATE SKIP LOCKED
+        )
+        UPDATE pgmq."q_queue-hyphened-part" m
+        SET
+            vt = clock_timestamp() + '@ 1 sec',
+            read_ct = read_ct + 1
+        FROM cte
+        WHERE m.msg_id = cte.msg_id
+        RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
+        
 SELECT pgmq.archive('queue-hyphened-part', 1);
- archive 
----------
- t
-(1 row)
+ERROR:  relation "pgmq.q_queue-hyphened-part" does not exist
+LINE 3:             DELETE FROM pgmq."q_queue-hyphened-part"
+                                ^
+QUERY:  
+        WITH archived AS (
+            DELETE FROM pgmq."q_queue-hyphened-part"
+            WHERE msg_id = $1
+            RETURNING msg_id, vt, read_ct, enqueued_at, message
+        )
+        INSERT INTO pgmq."a_queue-hyphened-part" (msg_id, vt, read_ct, enqueued_at, message)
+        SELECT msg_id, vt, read_ct, enqueued_at, message
+        FROM archived
+        RETURNING msg_id;
+        
 
 SELECT pgmq.create_partitioned('QueueCasedPart');
- create_partitioned 
---------------------
- 
-(1 row)
-
+ERROR:  pg_partman is required for partitioned queues
 SELECT pgmq.send('QueueCasedPart', '{"hello":"world"}');
- send 
-------
-    1
-(1 row)
-
+ERROR:  relation "pgmq.q_queuecasedpart" does not exist
+LINE 2:         INSERT INTO pgmq.q_queuecasedpart (vt, message)
+                            ^
+QUERY:  
+        INSERT INTO pgmq.q_queuecasedpart (vt, message)
+        VALUES ((clock_timestamp() + '@ 0'), $1)
+        RETURNING msg_id;
+        
 SELECT msg_id, read_ct, message FROM pgmq.read('QueueCasedPart', 1, 1);
- msg_id | read_ct |      message       
---------+---------+--------------------
-      1 |       1 | {"hello": "world"}
-(1 row)
-
+ERROR:  relation "pgmq.q_queuecasedpart" does not exist
+LINE 5:             FROM pgmq.q_queuecasedpart
+                         ^
+QUERY:  
+        WITH cte AS
+        (
+            SELECT msg_id
+            FROM pgmq.q_queuecasedpart
+            WHERE vt <= clock_timestamp()
+            ORDER BY msg_id ASC
+            LIMIT $1
+            FOR UPDATE SKIP LOCKED
+        )
+        UPDATE pgmq.q_queuecasedpart m
+        SET
+            vt = clock_timestamp() + '@ 1 sec',
+            read_ct = read_ct + 1
+        FROM cte
+        WHERE m.msg_id = cte.msg_id
+        RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
+        
 SELECT pgmq.archive('QueueCasedPart', 1);
- archive 
----------
- t
-(1 row)
+ERROR:  relation "pgmq.q_queuecasedpart" does not exist
+LINE 3:             DELETE FROM pgmq.q_queuecasedpart
+                                ^
+QUERY:  
+        WITH archived AS (
+            DELETE FROM pgmq.q_queuecasedpart
+            WHERE msg_id = $1
+            RETURNING msg_id, vt, read_ct, enqueued_at, message
+        )
+        INSERT INTO pgmq.a_queuecasedpart (msg_id, vt, read_ct, enqueued_at, message)
+        SELECT msg_id, vt, read_ct, enqueued_at, message
+        FROM archived
+        RETURNING msg_id;
+        
 
 -- fails with invalid queue name
 SELECT pgmq.create('dollar$-signed');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
 SELECT pgmq.create_partitioned('dollar$-signed-part');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
+
 -- input validation success
 SELECT pgmq.format_table_name('cat', 'q');
  format_table_name 
@@ -801,6 +921,7 @@ SELECT pgmq.format_table_name('cat_dog', 'q');
  q_cat_dog
 (1 row)
 
+
 -- input validation failure
 SELECT pgmq.format_table_name('dollar$fail', 'q');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
@@ -810,6 +931,8 @@ SELECT pgmq.format_table_name('semicolon;fail', 'a');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
 SELECT pgmq.format_table_name($$single'quote-fail$$, 'a');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
+
 --Cleanup tests
 DROP EXTENSION pgmq CASCADE;
 DROP EXTENSION pg_partman CASCADE;
+ERROR:  extension "pg_partman" does not exist
