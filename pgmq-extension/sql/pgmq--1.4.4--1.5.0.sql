@@ -1,3 +1,4 @@
+DROP FUNCTION IF EXISTS pgmq.drop_queue(TEXT, BOOLEAN);
 CREATE OR REPLACE FUNCTION pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN)
 RETURNS BOOLEAN AS $$
 DECLARE
