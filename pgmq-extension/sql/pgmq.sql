@@ -123,7 +123,6 @@ BEGIN
             FROM cte
             WHERE m.msg_id = cte.msg_id
             RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;';
-
     -- Return the result set using EXECUTE
     RETURN QUERY EXECUTE sql USING qty;
 END;
