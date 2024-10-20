@@ -94,7 +94,7 @@ CREATE FUNCTION pgmq.read(
     queue_name TEXT,
     vt INTEGER,
     qty INTEGER,
-    conditions JSONB DEFAULT NULL
+    conditions JSONB
 )
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
