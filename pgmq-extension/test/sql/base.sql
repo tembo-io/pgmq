@@ -45,11 +45,30 @@ SELECT msg_id = :msg_id FROM pgmq.set_vt('test_default_queue', :msg_id, 0);
 -- read again, should have msg_id 1 again
 SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1);
 
+SELECT pgmq.create('test_default_queue_vt');
+
+-- send message with timestamp
+SELECT * from pgmq.send_at('test_default_queue_vt', '{"hello": "world"}', CAST(CURRENT_TIMESTAMP + '5 seconds'::interval AS timestamp));
+
+-- read, assert no messages because we set timestamp to the future
+SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue_vt', 2, 1);
+
+-- read again, now using poll to block until message is ready
+SELECT msg_id = :msg_id FROM pgmq.read_with_poll('test_default_queue_vt', 10, 1, 10);
+
 -- send a batch of 2 messages
 SELECT pgmq.create('batch_queue');
 SELECT ARRAY( SELECT pgmq.send_batch(
     'batch_queue',
     ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[]
+)) = ARRAY[1, 2]::BIGINT[];
+
+-- send a batch of 2 messages with timestamp
+SELECT pgmq.create('batch_queue_vt');
+SELECT ARRAY( SELECT pgmq.send_batch_at(
+    'batch_queue_vt',
+    ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[],
+    CAST(CURRENT_TIMESTAMP + '5 seconds'::interval AS timestamp)
 )) = ARRAY[1, 2]::BIGINT[];
 
 -- CREATE with 5 seconds per partition, 10 seconds retention
