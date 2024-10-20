@@ -12,14 +12,17 @@ docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io
 
 PGXN is a centralized network to make it easier to install and manage PostgreSQL extensions.
 
-You can install PGMQ directly using PGXN, the PostgreSQL Extension Network, which is a distribution system for open-source PostgreSQL extension libraries.
+Install PGXN Client:
+
+You can install the PGXN client by following the instructions provided in the [PGXN Client Installation Guide](https://pgxn.github.io/pgxnclient/install.html)
 
 Install PGMQ using PGXN
 
 ```bash
 pgxn install pgmq
 ```
-Alternatively, you can install manually using the following commands:
+
+Alternatively, you can manually install PGMQ by downloading and building from the source using the following commands:
 
 ```
 curl -LO https://api.pgxn.org/dist/pgmq/1.4.2/pgmq-1.4.2.zip
@@ -28,6 +31,7 @@ cd pgmq-1.4.2
 make
 sudo make install
 ```
+
 ## Building from source
 
 PGMQ requires the `postgres-server-dev` package to build. For example, to install
@@ -39,43 +43,60 @@ sudo apt-get install postgres-server-dev-14
 
 ## Platform-Specific Installation Instructions
 
-### Windows Installation (Using WSL)
+### Windows Installation
 
-For Windows users, the recommended approach is to use Windows Subsystem for Linux (WSL) to create a Linux environment where you can install PostgreSQL and build PGMQ.
+If you're working on native Windows, follow these steps to install and build pgmq:
 
-1. Install WSL
+1. Install PostgreSQL for Windows
+
+- Download the official PostgreSQL installer from [PostgreSQL Windows Downloads](https://www.postgresql.org/download/windows/).
+
+- Follow the installation process, ensuring you include pgAdmin and Command Line Tools
+
+- After installation, add the PostgreSQL binary directory (typically `C:\Program Files\PostgreSQL\<version>\bin`) to your system's `PATH` environment variable. This will allow access to PostgreSQL tools like `pg_config`.
+
+2. Install Build Tools (MinGW)
+
+- Download and install [MinGW]() from MinGW. Select the GCC compiler for C/C++
+- During installation, ensure the binaries are added to the `PATH`. MinGW is essential for compiling the `pgmq` extension on Windows.
+
+3.  Install `pgmq` from Source
+
+- Download the `pgmq` source:
+
 ```bash
-wsl --install
+curl -LO https://api.pgxn.org/dist/pgmq/1.4.2/pgmq-1.4.2.zip
+unzip pgmq-1.4.2.zip
+cd pgmq-1.4.2
 ```
 
-2. Update the packages and install PostgreSQL development tools:
+- Build and install `pgmq`: Use the following commands to compile and install pgmq using MinGW:
+
 ```bash
-sudo apt update
-sudo apt install postgresql-server-dev-all build-essential
+make PG_CONFIG="C:/Program Files/PostgreSQL/<version>/bin/pg_config"
+make install
 ```
 
-3. Clone the PGMQ repository and build it:
-```bash
-git clone https://github.com/tembo-io/pgmq.git
-cd pgmq/pgmq-extension
-make
-sudo make install
-```
+4. Create the pgmq Extension
 
-4. Create the extension in PostgreSQL:
+- After installation, connect to PostgreSQL and create the pgmq extension:
+
 ```sql
 CREATE EXTENSION pgmq cascade;
 ```
 
 ### Mac Installation
+
 If you are using macOS, you can install PostgreSQL and build PGMQ using Homebrew.
 
 1. Install PostgreSQL using Homebrew:
+
 ```bash
 brew install postgresql
 ```
 
 2. Clone the PGMQ repository and build it:
+
 ```bash
 git clone https://github.com/tembo-io/pgmq.git
 cd pgmq/pgmq-extension
@@ -84,6 +105,7 @@ sudo make install
 ```
 
 3. Create the extension in PostgreSQL:
+
 ```sql
 CREATE EXTENSION pgmq cascade;
 ```
@@ -93,8 +115,8 @@ CREATE EXTENSION pgmq cascade;
 If you already have Postgres installed locally, you can skip to [Install PGMQ to Postgres](#install-pgmq-to-postgres).
 
 If you need to install Postgres or want to set up a new environment for PGMQ development, [pgenv](https://github.com/theory/pgenv/) is a command line utility that makes it very easy to install and manage multiple versions of Postgres.
- Follow the [installation instructions](https://github.com/theory/pgenv/?tab=readme-ov-file#installation) to install it.
- If you are on MacOS, you may need link `brew link icu4c --force` in order to successfully build Postgres.
+Follow the [installation instructions](https://github.com/theory/pgenv/?tab=readme-ov-file#installation) to install it.
+If you are on MacOS, you may need link `brew link icu4c --force` in order to successfully build Postgres.
 
 Install Postgres 16.3
 
