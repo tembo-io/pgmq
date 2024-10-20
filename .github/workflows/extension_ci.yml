@@ -104,6 +104,7 @@ jobs:
         shell: bash
         run: |
           set -xe
+          sudo apt-get update && sudo apt-get intall -y wget
           wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
           mv stoml_linux_amd64 stoml
           chmod +x stoml
