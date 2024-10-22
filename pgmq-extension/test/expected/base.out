@@ -154,6 +154,7 @@ LINE 1: SELECT * from {PGMQ_SCHEMA}.metrics_all();
 -- delete partitioned queues
 SELECT pgmq.drop_queue(queue, true)
   FROM unnest('{test_numeric_queue}'::text[]) AS queue;
+WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
  drop_queue 
 ------------
  t
@@ -170,6 +171,10 @@ SELECT pgmq.drop_queue(queue)
 -- drop the rest of the queues
 SELECT pgmq.drop_queue(q.queue_name, true)
   FROM (SELECT queue_name FROM pgmq.list_queues()) AS q;
+WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
+WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
+WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
+WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
  drop_queue 
 ------------
  t
