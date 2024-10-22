@@ -474,6 +474,30 @@ DECLARE
     atable TEXT := pgmq.format_table_name(queue_name, 'a');
     fq_atable TEXT := 'pgmq.' || atable;
 BEGIN
+    RAISE WARNING "drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead.";
+
+    PERFORM pgmq.drop_queue(queue_name);
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE FUNCTION pgmq.drop_queue(queue_name TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+    qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+    fq_qtable TEXT := 'pgmq.' || qtable;
+    atable TEXT := pgmq.format_table_name(queue_name, 'a');
+    fq_atable TEXT := 'pgmq.' || atable;
+    partitioned BOOLEAN;
+BEGIN
+    EXECUTE FORMAT(
+        $QUERY$
+        SELECT is_partitioned FROM pgmq.meta WHERE queue_name = %L
+        $QUERY$,
+        queue_name
+    ) INTO partitioned;
+
     EXECUTE FORMAT(
         $QUERY$
         ALTER EXTENSION pgmq DROP TABLE pgmq.%I
@@ -523,28 +547,6 @@ BEGIN
           pgmq._get_pg_partman_schema(), fq_qtable, fq_atable
         );
      END IF;
-
-    RETURN TRUE;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE FUNCTION pgmq.drop_queue(queue_name TEXT)
-RETURNS BOOLEAN AS $$
-DECLARE
-    qtable TEXT := pgmq.format_table_name(queue_name, 'q');
-    fq_qtable TEXT := 'pgmq.' || qtable;
-    atable TEXT := pgmq.format_table_name(queue_name, 'a');
-    fq_atable TEXT := 'pgmq.' || atable;
-    partitioned BOOLEAN;
-BEGIN
-    EXECUTE FORMAT(
-        $QUERY$
-        SELECT is_partitioned FROM pgmq.meta WHERE queue_name = %L
-        $QUERY$,
-        queue_name
-    ) INTO partitioned;
-
-    PERFORM pgmq.drop_queue(queue_name, partitioned);
 
     RETURN TRUE;
 END;
