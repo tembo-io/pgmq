@@ -94,6 +94,8 @@ BEGIN
         PERFORM pg_sleep(poll_interval_ms / 1000);
       END IF;
     END LOOP;
+END;
+$$ LANGUAGE plpgsql;
 
 DROP FUNCTION IF EXISTS pgmq.drop_queue(TEXT, BOOLEAN);
 
