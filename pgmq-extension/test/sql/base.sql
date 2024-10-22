@@ -78,7 +78,11 @@ SELECT * from {PGMQ_SCHEMA}.metrics_all();
 -- delete all the queues
 -- delete partitioned queues
 SELECT pgmq.drop_queue(queue, true)
-  FROM unnest('{test_duration_queue, test_numeric_queue}'::text[]) AS queue;
+  FROM unnest('{test_numeric_queue}'::text[]) AS queue;
+
+-- test automatic partitioned status checking
+SELECT pgmq.drop_queue(queue)
+  FROM unnest('{test_duration_queue}'::text[]) AS queue;
 
 -- drop the rest of the queues
 SELECT pgmq.drop_queue(q.queue_name, true)
