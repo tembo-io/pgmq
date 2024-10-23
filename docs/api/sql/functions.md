@@ -106,7 +106,7 @@ select * from pgmq.send_batch('my_queue', ARRAY[
 Send 1 or more messages to a queue with delay as a timestamp.
 
 ```text
-pgmq.send_batch(
+pgmq.send_batch_at(
     queue_name text,
     msgs jsonb[],
     delay timestamp
