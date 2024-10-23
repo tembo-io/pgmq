@@ -25,9 +25,9 @@ SELECT pgmq.create('test_default_queue');
 SELECT * from pgmq.send('test_default_queue', '{"hello": "world"}');
 
 -- read message
--- vt=2, limit=1
+-- vt=0, limit=1
 \set msg_id 1
-SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1);
+SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 0, 1);
 
 -- read message using conditional
 SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1, '{"hello": "world"}');

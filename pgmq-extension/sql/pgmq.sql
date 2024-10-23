@@ -71,7 +71,10 @@ BEGIN
         (
             SELECT msg_id
             FROM pgmq.%I
-            WHERE vt <= clock_timestamp() AND (message @> %L OR (%L = '{}'::jsonb AND message IS NULL))
+            WHERE vt <= clock_timestamp() AND CASE
+                WHEN %L != '{}'::jsonb THEN (message @> %2$L)::integer
+                ELSE 1
+            END = 1
             ORDER BY msg_id ASC
             LIMIT $1
             FOR UPDATE SKIP LOCKED
@@ -84,7 +87,7 @@ BEGIN
         WHERE m.msg_id = cte.msg_id
         RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
         $QUERY$,
-        qtable, conditional, conditional, qtable, make_interval(secs => vt)
+        qtable, conditional, qtable, make_interval(secs => vt)
     );
     RETURN QUERY EXECUTE sql USING qty;
 END;
@@ -119,7 +122,10 @@ BEGIN
           (
               SELECT msg_id
               FROM pgmq.%I
-              WHERE vt <= clock_timestamp() AND (message @> %L OR (%L = '{}'::jsonb AND message IS NULL))
+              WHERE vt <= clock_timestamp() AND CASE
+                  WHEN %L != '{}'::jsonb THEN (message @> %2$L)::integer
+                  ELSE 1
+              END = 1
               ORDER BY msg_id ASC
               LIMIT $1
               FOR UPDATE SKIP LOCKED
@@ -132,7 +138,7 @@ BEGIN
           WHERE m.msg_id = cte.msg_id
           RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
           $QUERY$,
-          qtable, conditional, conditional, qtable, make_interval(secs => vt)
+          qtable, conditional, qtable, make_interval(secs => vt)
       );
 
       FOR r IN
