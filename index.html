@@ -1,0 +1,1027 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-7.3.6">
+    
+    
+      
+        <title>PGMQ</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.a57b2b03.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.3f5d1f46.min.css">
+        
+      
+    
+    
+    
+      
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>:root{--md-text-font-family:"Roboto";--md-code-font-family:"Roboto Mono"}</style>
+      
+    
+    
+    
+      <link rel="stylesheet" href="assets/_mkdocstrings.css">
+    
+    
+      
+
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="">
+  
+    
+    <script>function __prefix(e){return new URL(".",location).pathname+"."+e}function __get(e,t=localStorage){return JSON.parse(t.getItem(__prefix(e)))}</script>
+    
+      <script>var palette=__get("__palette");if(null!==palette&&"object"==typeof palette.color)for(var key in palette.color)document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#postgres-message-queue-pgmq" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="PGMQ" class="md-header__button md-logo" aria-label="PGMQ" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PGMQ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              PGMQ
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      <form class="md-header__option" data-md-component="palette">
+        
+          
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent=""  aria-label="dark mode"  type="radio" name="__palette" id="__palette_1">
+          
+            <label class="md-header__button md-icon" title="dark mode" for="__palette_2" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3 3.19.09m3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95 2.06.05m-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31z"/></svg>
+            </label>
+          
+        
+          
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent=""  aria-label="light mode"  type="radio" name="__palette" id="__palette_2">
+          
+            <label class="md-header__button md-icon" title="light mode" for="__palette_1" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5c-.84 0-1.65.15-2.39.42L12 2M3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29L3.34 7m.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14L3.36 17M20.65 7l-1.77 3.79a7.023 7.023 0 0 0-2.38-4.15l4.15.36m-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29L20.64 17M12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44L12 22z"/></svg>
+            </label>
+          
+        
+      </form>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="PGMQ" class="md-nav__button md-logo" aria-label="PGMQ" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    PGMQ
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          PGMQ
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        PGMQ
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    Features
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    Table of Contents
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#updating" class="md-nav__link">
+    Updating
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#client-libraries" class="md-nav__link">
+    Client Libraries
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sql-examples" class="md-nav__link">
+    SQL Examples
+  </a>
+  
+    <nav class="md-nav" aria-label="SQL Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-queue" class="md-nav__link">
+    Creating a queue
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#send-two-messages" class="md-nav__link">
+    Send two messages
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#read-messages" class="md-nav__link">
+    Read messages
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pop-a-message" class="md-nav__link">
+    Pop a message
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#archive-a-message" class="md-nav__link">
+    Archive a message
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-a-message" class="md-nav__link">
+    Delete a message
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#drop-a-queue" class="md-nav__link">
+    Drop a queue
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    Configuration
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#partitioned-queues" class="md-nav__link">
+    Partitioned Queues
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visibility-timeout-vt" class="md-nav__link">
+    Visibility Timeout (vt)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-uses-pgmq" class="md-nav__link">
+    Who uses pgmq?
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contributors" class="md-nav__link">
+    ✨ Contributors
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_2" type="checkbox" id="__nav_2" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2">
+          API
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="API" data-md-level="1">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          API
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_2_1" type="checkbox" id="__nav_2_1" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_1">
+          SQL
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="SQL" data-md-level="2">
+        <label class="md-nav__title" for="__nav_2_1">
+          <span class="md-nav__icon md-icon"></span>
+          SQL
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/sql/types/" class="md-nav__link">
+        Types
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/sql/functions/" class="md-nav__link">
+        Functions
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    Features
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    Table of Contents
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#updating" class="md-nav__link">
+    Updating
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#client-libraries" class="md-nav__link">
+    Client Libraries
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sql-examples" class="md-nav__link">
+    SQL Examples
+  </a>
+  
+    <nav class="md-nav" aria-label="SQL Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-queue" class="md-nav__link">
+    Creating a queue
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#send-two-messages" class="md-nav__link">
+    Send two messages
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#read-messages" class="md-nav__link">
+    Read messages
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pop-a-message" class="md-nav__link">
+    Pop a message
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#archive-a-message" class="md-nav__link">
+    Archive a message
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-a-message" class="md-nav__link">
+    Delete a message
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#drop-a-queue" class="md-nav__link">
+    Drop a queue
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    Configuration
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#partitioned-queues" class="md-nav__link">
+    Partitioned Queues
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visibility-timeout-vt" class="md-nav__link">
+    Visibility Timeout (vt)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-uses-pgmq" class="md-nav__link">
+    Who uses pgmq?
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contributors" class="md-nav__link">
+    ✨ Contributors
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                
+                <h1 id="postgres-message-queue-pgmq">Postgres Message Queue (PGMQ)<a class="headerlink" href="#postgres-message-queue-pgmq" title="Permanent link">&para;</a></h1>
+<p>A lightweight message queue. Like <a href="https://aws.amazon.com/sqs/">AWS SQS</a> and <a href="https://github.com/smrchy/rsmq">RSMQ</a> but on Postgres.</p>
+<p><a href="https://cloud.tembo.io/sign-up"><img alt="Tembo Cloud Try Free" src="https://tembo.io/tryFreeButton.svg" /></a></p>
+<p><a href="https://join.slack.com/t/tembocommunity/shared_invite/zt-293gc1k0k-3K8z~eKW1SEIfrqEI~5_yw"><img alt="Static Badge" src="https://img.shields.io/badge/%40tembo-community?logo=slack&amp;label=slack" /></a>
+<a href="https://ossrank.com/p/3809"><img alt="OSSRank" src="https://shields.io/endpoint?url=https://ossrank.com/shield/3809" /></a>
+<a href="https://pgxn.org/dist/pgmq/"><img alt="PGXN version" src="https://badge.fury.io/pg/pgmq.svg" /></a></p>
+<p><strong>Documentation</strong>: https://tembo.io/pgmq/</p>
+<p><strong>Source</strong>: https://github.com/tembo-io/pgmq</p>
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Lightweight - No background worker or external dependencies, just Postgres functions packaged in an extension</li>
+<li>Guaranteed "exactly once" delivery of messages to a consumer within a visibility timeout</li>
+<li>API parity with <a href="https://aws.amazon.com/sqs/">AWS SQS</a> and <a href="https://github.com/smrchy/rsmq">RSMQ</a></li>
+<li>Messages stay in the queue until explicitly removed</li>
+<li>Messages can be archived, instead of deleted, for long-term retention and replayability</li>
+</ul>
+<p>Supported on Postgres 14-17.</p>
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="#postgres-message-queue-pgmq">Postgres Message Queue (PGMQ)</a></li>
+<li><a href="#features">Features</a></li>
+<li><a href="#table-of-contents">Table of Contents</a></li>
+<li><a href="#installation">Installation</a><ul>
+<li><a href="#updating">Updating</a></li>
+</ul>
+</li>
+<li><a href="#client-libraries">Client Libraries</a></li>
+<li><a href="#sql-examples">SQL Examples</a><ul>
+<li><a href="#creating-a-queue">Creating a queue</a></li>
+<li><a href="#send-two-messages">Send two messages</a></li>
+<li><a href="#read-messages">Read messages</a></li>
+<li><a href="#pop-a-message">Pop a message</a></li>
+<li><a href="#archive-a-message">Archive a message</a></li>
+<li><a href="#delete-a-message">Delete a message</a></li>
+<li><a href="#drop-a-queue">Drop a queue</a></li>
+</ul>
+</li>
+<li><a href="#configuration">Configuration</a><ul>
+<li><a href="#partitioned-queues">Partitioned Queues</a></li>
+</ul>
+</li>
+<li><a href="#visibility-timeout-vt">Visibility Timeout (vt)</a></li>
+<li><a href="#who-uses-pgmq">Who uses pgmq?</a></li>
+<li><a href="#-contributors">✨ Contributors</a></li>
+</ul>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<p>The fastest way to get started is by running the Tembo Docker image, where PGMQ comes pre-installed in Postgres.</p>
+<div class="codehilite"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>--name<span class="w"> </span>pgmq-postgres<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span>postgres<span class="w"> </span>-p<span class="w"> </span><span class="m">5432</span>:5432<span class="w"> </span>quay.io/tembo/pg17-pgmq:latest
+</code></pre></div>
+
+<p>If you'd like to build from source, you can follow the instructions in <a href="CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
+<h3 id="updating">Updating<a class="headerlink" href="#updating" title="Permanent link">&para;</a></h3>
+<p>To update PGMQ versions, follow the instructions in <a href="pgmq-extension/UPDATING.md">UPDATING.md</a>.</p>
+<h2 id="client-libraries">Client Libraries<a class="headerlink" href="#client-libraries" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://github.com/tembo-io/pgmq/tree/main/pgmq-rs">Rust</a></li>
+<li><a href="https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python">Python (only for psycopg3)</a></li>
+</ul>
+<p>Community</p>
+<ul>
+<li><a href="https://github.com/Ofceab-Studio/dart_pgmq">Dart</a></li>
+<li><a href="https://github.com/craigpastro/pgmq-go">Go</a></li>
+<li><a href="https://github.com/v0idpwn/pgmq-elixir">Elixir</a></li>
+<li><a href="https://github.com/v0idpwn/off_broadway_pgmq">Elixir + Broadway</a></li>
+<li><a href="https://github.com/adamalexandru4/pgmq-spring">Java (Spring Boot)</a></li>
+<li><a href="https://github.com/vdsirotkin/pgmq-kotlin-jvm">Kotlin JVM (JDBC)</a></li>
+<li><a href="https://github.com/Muhammad-Magdi/pgmq-js">Javascript (NodeJs)</a></li>
+<li><a href="https://github.com/waitingsong/pgmq-js/tree/main/packages/pgmq-js">TypeScript (NodeJs</a> + <a href="https://midwayjs.org/">Midway.js</a>)</li>
+<li><a href="https://github.com/tmountain/deno-pgmq">TypeScript (Deno)</a></li>
+<li><a href="https://github.com/brianpursley/Npgmq">.NET</a></li>
+<li><a href="https://github.com/jason810496/pgmq-sqlalchemy">Python (with SQLAlchemy)</a></li>
+</ul>
+<h2 id="sql-examples">SQL Examples<a class="headerlink" href="#sql-examples" title="Permanent link">&para;</a></h2>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Connect to Postgres</span>
+psql<span class="w"> </span>postgres://postgres:postgres@0.0.0.0:5432/postgres
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="c1">-- create the extension in the &quot;pgmq&quot; schema</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="n">pgmq</span><span class="p">;</span>
+</code></pre></div>
+
+<h3 id="creating-a-queue">Creating a queue<a class="headerlink" href="#creating-a-queue" title="Permanent link">&para;</a></h3>
+<p>Every queue is its own table in the <code>pgmq</code> schema. The table name is the queue name prefixed with <code>q_</code>.
+For example, <code>pgmq.q_my_queue</code> is the table for the queue <code>my_queue</code>.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1">-- creates the queue</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="k">create</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> create
+-------------
+
+(1 row)
+</code></pre></div>
+
+<h3 id="send-two-messages">Send two messages<a class="headerlink" href="#send-two-messages" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1">-- messages are sent as JSON</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">send</span><span class="p">(</span>
+<span class="w">  </span><span class="n">queue_name</span><span class="w">  </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="n">msg</span><span class="w">         </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;{&quot;foo&quot;: &quot;bar1&quot;}&#39;</span>
+<span class="p">);</span>
+</code></pre></div>
+
+<p>The message id is returned from the send function.</p>
+<div class="codehilite"><pre><span></span><code> send
+-----------
+         1
+(1 row)
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="c1">-- Optionally provide a delay</span>
+<span class="c1">-- this message will be on the queue but unable to be consumed for 5 seconds</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">send</span><span class="p">(</span>
+<span class="w">  </span><span class="n">queue_name</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="n">msg</span><span class="w">        </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;{&quot;foo&quot;: &quot;bar2&quot;}&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="n">delay</span><span class="w">      </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">5</span>
+<span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> send
+-----------
+         2
+(1 row)
+</code></pre></div>
+
+<h3 id="read-messages">Read messages<a class="headerlink" href="#read-messages" title="Permanent link">&para;</a></h3>
+<p>Read <code>2</code> message from the queue. Make them invisible for <code>30</code> seconds.
+If the messages are not deleted or archived within 30 seconds, they will become visible again
+and can be read by another consumer.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="k">read</span><span class="p">(</span>
+<span class="w">  </span><span class="n">queue_name</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="n">vt</span><span class="w">         </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span>
+<span class="w">  </span><span class="n">qty</span><span class="w">        </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">2</span>
+<span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> msg_id | read_ct |          enqueued_at          |              vt               |     message
+--------+---------+-------------------------------+-------------------------------+-----------------
+      1 |       1 | 2023-08-16 08:37:54.567283-05 | 2023-08-16 08:38:29.989841-05 | {&quot;foo&quot;: &quot;bar1&quot;}
+      2 |       1 | 2023-08-16 08:37:54.572933-05 | 2023-08-16 08:38:29.989841-05 | {&quot;foo&quot;: &quot;bar2&quot;}
+</code></pre></div>
+
+<p>If the queue is empty, or if all messages are currently invisible, no rows will be returned.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="k">read</span><span class="p">(</span>
+<span class="w">  </span><span class="n">queue_name</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="n">vt</span><span class="w">         </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span>
+<span class="w">  </span><span class="n">qty</span><span class="w">        </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">1</span>
+<span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> msg_id | read_ct | enqueued_at | vt | message
+--------+---------+-------------+----+---------
+</code></pre></div>
+
+<h3 id="pop-a-message">Pop a message<a class="headerlink" href="#pop-a-message" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1">-- Read a message and immediately delete it from the queue. Returns an empty record if the queue is empty or all messages are invisible.</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> msg_id | read_ct |          enqueued_at          |              vt               |     message
+--------+---------+-------------------------------+-------------------------------+-----------------
+      1 |       1 | 2023-08-16 08:37:54.567283-05 | 2023-08-16 08:38:29.989841-05 | {&quot;foo&quot;: &quot;bar1&quot;}
+</code></pre></div>
+
+<h3 id="archive-a-message">Archive a message<a class="headerlink" href="#archive-a-message" title="Permanent link">&para;</a></h3>
+<p>Archiving a message removes it from the queue and inserts it to the archive table.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1">-- Archive message with msg_id=2.</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">archive</span><span class="p">(</span>
+<span class="w">  </span><span class="n">queue_name</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="n">msg_id</span><span class="w">     </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">2</span>
+<span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> archive
+--------------
+ t
+(1 row)
+</code></pre></div>
+
+<p>Or archive several messages in one operation using <code>msg_ids</code> (plural) parameter:</p>
+<p>First, send a batch of messages</p>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">send_batch</span><span class="p">(</span>
+<span class="w">  </span><span class="n">queue_name</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="n">msgs</span><span class="w">       </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">ARRAY</span><span class="p">[</span><span class="s1">&#39;{&quot;foo&quot;: &quot;bar3&quot;}&#39;</span><span class="p">,</span><span class="s1">&#39;{&quot;foo&quot;: &quot;bar4&quot;}&#39;</span><span class="p">,</span><span class="s1">&#39;{&quot;foo&quot;: &quot;bar5&quot;}&#39;</span><span class="p">]::</span><span class="n">jsonb</span><span class="p">[]</span>
+<span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> send_batch 
+------------
+          3
+          4
+          5
+(3 rows)
+</code></pre></div>
+
+<p>Then archive them by using the msg_ids (plural) parameter.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">archive</span><span class="p">(</span>
+<span class="w">  </span><span class="n">queue_name</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="n">msg_ids</span><span class="w">    </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">ARRAY</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">]</span>
+<span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> archive 
+---------
+       3
+       4
+       5
+(3 rows)
+</code></pre></div>
+
+<p>Archive tables can be inspected directly with SQL.
+ Archive tables have the prefix <code>a_</code> in the <code>pgmq</code> schema.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">a_my_queue</span><span class="p">;</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> msg_id | read_ct |          enqueued_at          |          archived_at          |              vt               |     message     
+--------+---------+-------------------------------+-------------------------------+-------------------------------+-----------------
+      2 |       0 | 2024-08-06 16:03:41.531556+00 | 2024-08-06 16:03:52.811063+00 | 2024-08-06 16:03:46.532246+00 | {&quot;foo&quot;: &quot;bar2&quot;}
+      3 |       0 | 2024-08-06 16:03:58.586444+00 | 2024-08-06 16:04:02.85799+00  | 2024-08-06 16:03:58.587272+00 | {&quot;foo&quot;: &quot;bar3&quot;}
+      4 |       0 | 2024-08-06 16:03:58.586444+00 | 2024-08-06 16:04:02.85799+00  | 2024-08-06 16:03:58.587508+00 | {&quot;foo&quot;: &quot;bar4&quot;}
+      5 |       0 | 2024-08-06 16:03:58.586444+00 | 2024-08-06 16:04:02.85799+00  | 2024-08-06 16:03:58.587543+00 | {&quot;foo&quot;: &quot;bar5&quot;}
+</code></pre></div>
+
+<h3 id="delete-a-message">Delete a message<a class="headerlink" href="#delete-a-message" title="Permanent link">&para;</a></h3>
+<p>Send another message, so that we can delete it.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;{&quot;foo&quot;: &quot;bar6&quot;}&#39;</span><span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> send
+-----------
+        6
+(1 row)
+</code></pre></div>
+
+<p>Delete the message with id <code>6</code> from the queue named <code>my_queue</code>.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="k">delete</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">6</span><span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> delete
+-------------
+ t
+(1 row)
+</code></pre></div>
+
+<h3 id="drop-a-queue">Drop a queue<a class="headerlink" href="#drop-a-queue" title="Permanent link">&para;</a></h3>
+<p>Delete the queue <code>my_queue</code>.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">drop_queue</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code> drop_queue
+-----------------
+ t
+(1 row)
+</code></pre></div>
+
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="partitioned-queues">Partitioned Queues<a class="headerlink" href="#partitioned-queues" title="Permanent link">&para;</a></h3>
+<p>You will need to install <a href="https://github.com/pgpartman/pg_partman/">pg_partman</a> if you want to use <code>pgmq</code> partitioned queues.</p>
+<p><code>pgmq</code> queue tables can be created as a partitioned table by using <code>pgmq.create_partitioned()</code>. <a href="https://github.com/pgpartman/pg_partman/">pg_partman</a>
+handles all maintenance of queue tables. This includes creating new partitions and dropping old partitions.</p>
+<p>Partitions behavior is configured at the time queues are created, via <code>pgmq.create_partitioned()</code>. This function has three parameters:</p>
+<p><code>queue_name: text</code>: The name of the queue. Queues are Postgres tables prepended with <code>q_</code>. For example, <code>q_my_queue</code>. The archive is instead prefixed by <code>a_</code>, for example <code>a_my_queue</code>.</p>
+<p><code>partition_interval: text</code> - The interval at which partitions are created. This can be either any valid Postgres <code>Duration</code> supported by pg_partman, or an integer value. When it is a duration, queues are partitioned by the time at which messages are sent to the table (<code>enqueued_at</code>). A value of <code>'daily'</code> would create a new partition each day. When it is an integer value, queues are partitioned by the <code>msg_id</code>. A value of <code>'100'</code> will create a new partition every 100 messages. The value must agree with <code>retention_interval</code> (time based or numeric). The default value is <code>daily</code>. For archive table, when interval is an integer value, then it will be partitioned by <code>msg_id</code>. In case of duration it will be partitioned on <code>archived_at</code> unlike queue table.</p>
+<p><code>retention_interval: text</code> - The interval for retaining partitions. This can be either any valid Postgres <code>Duration</code> supported by pg_partman, or an integer value. When it is a duration, partitions containing data greater than the duration will be dropped. When it is an integer value, any messages that have a <code>msg_id</code> less than <code>max(msg_id) - retention_interval</code> will be dropped. For example, if the max <code>msg_id</code> is 100 and the <code>retention_interval</code> is 60, any partitions with <code>msg_id</code> values less than 40 will be dropped. The value must agree with <code>partition_interval</code> (time based or numeric). The default is <code>'5 days'</code>. Note: <code>retention_interval</code> does not apply to messages that have been deleted via <code>pgmq.delete()</code> or archived with <code>pgmq.archive()</code>. <code>pgmq.delete()</code> removes messages forever and <code>pgmq.archive()</code> moves messages to the corresponding archive table forever (for example, <code>a_my_queue</code>).</p>
+<p>In order for automatic partition maintenance to take place, several settings must be added to the <code>postgresql.conf</code> file, which is typically located in the postgres <code>DATADIR</code>.
+<code>pg_partman_bgw.interval</code>
+in <code>postgresql.conf</code>. Below are the default configuration values set in Tembo docker images.</p>
+<p>Add the following to <code>postgresql.conf</code>. Note, changing <code>shared_preload_libraries</code> requires a restart of Postgres.</p>
+<p><code>pg_partman_bgw.interval</code> sets the interval at which <code>pg_partman</code> conducts maintenance. This creates new partitions and dropping of partitions falling out of the <code>retention_interval</code>. By default, <code>pg_partman</code> will keep 4 partitions "ahead" of the currently active partition.</p>
+<div class="codehilite"><pre><span></span><code>shared_preload_libraries = &#39;pg_partman_bgw&#39; # requires restart of Postgres
+pg_partman_bgw.interval = 60
+pg_partman_bgw.role = &#39;postgres&#39;
+pg_partman_bgw.dbname = &#39;postgres&#39;
+</code></pre></div>
+
+<h2 id="visibility-timeout-vt">Visibility Timeout (vt)<a class="headerlink" href="#visibility-timeout-vt" title="Permanent link">&para;</a></h2>
+<p>pgmq guarantees exactly once delivery of a message within a visibility timeout. The visibility timeout is the amount of time a message is invisible to other consumers after it has been read by a consumer. If the message is NOT deleted or archived within the visibility timeout, it will become visible again and can be read by another consumer. The visibility timeout is set when a message is read from the queue, via <code>pgmq.read()</code>. It is recommended to set a <code>vt</code> value that is greater than the expected time it takes to process a message. After the application successfully processes the message, it should call <code>pgmq.delete()</code> to completely remove the message from the queue or <code>pgmq.archive()</code> to move it to the archive table for the queue.</p>
+<h2 id="who-uses-pgmq">Who uses pgmq?<a class="headerlink" href="#who-uses-pgmq" title="Permanent link">&para;</a></h2>
+<p>As the pgmq community grows, we'd love to see who is using it. Please send a PR with your company name and @githubhandle.</p>
+<p>Currently, officially using pgmq:</p>
+<ol>
+<li><a href="https://tembo.io">Tembo</a> [<a href="https://github.com/ChuckHend">@ChuckHend</a>]</li>
+</ol>
+<h2 id="contributors">✨ Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h2>
+<p>Thanks goes to these incredible people:</p>
+<p><a href="https://github.com/tembo-io/pgmq/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=tembo-io/pgmq" />
+</a></p>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+        
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
+      
+      
+        
+        <a href="api/sql/types/" class="md-footer__link md-footer__link--next" aria-label="Next: Types" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Types
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        
+          Made with
+          <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+            Material for MkDocs
+          </a>
+        
+        
+      </div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": ".", "features": [], "search": "assets/javascripts/workers/search.fcfe8b6d.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.b1047164.min.js"></script>
+      
+    
+  </body>
+</html>

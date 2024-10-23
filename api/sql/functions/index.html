@@ -1,0 +1,1696 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-7.3.6">
+    
+    
+      
+        <title>Functions - PGMQ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.a57b2b03.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.3f5d1f46.min.css">
+        
+      
+    
+    
+    
+      
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>:root{--md-text-font-family:"Roboto";--md-code-font-family:"Roboto Mono"}</style>
+      
+    
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+    
+      
+
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="">
+  
+    
+    <script>function __prefix(e){return new URL("../../..",location).pathname+"."+e}function __get(e,t=localStorage){return JSON.parse(t.getItem(__prefix(e)))}</script>
+    
+      <script>var palette=__get("__palette");if(null!==palette&&"object"==typeof palette.color)for(var key in palette.color)document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#functions" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="PGMQ" class="md-header__button md-logo" aria-label="PGMQ" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PGMQ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Functions
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      <form class="md-header__option" data-md-component="palette">
+        
+          
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent=""  aria-label="dark mode"  type="radio" name="__palette" id="__palette_1">
+          
+            <label class="md-header__button md-icon" title="dark mode" for="__palette_2" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3 3.19.09m3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95 2.06.05m-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31z"/></svg>
+            </label>
+          
+        
+          
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent=""  aria-label="light mode"  type="radio" name="__palette" id="__palette_2">
+          
+            <label class="md-header__button md-icon" title="light mode" for="__palette_1" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5c-.84 0-1.65.15-2.39.42L12 2M3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29L3.34 7m.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14L3.36 17M20.65 7l-1.77 3.79a7.023 7.023 0 0 0-2.38-4.15l4.15.36m-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29L20.64 17M12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44L12 22z"/></svg>
+            </label>
+          
+        
+      </form>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="PGMQ" class="md-nav__button md-logo" aria-label="PGMQ" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    PGMQ
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        PGMQ
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_2" type="checkbox" id="__nav_2" checked>
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2">
+          API
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="API" data-md-level="1">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          API
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_2_1" type="checkbox" id="__nav_2_1" checked>
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_1">
+          SQL
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="SQL" data-md-level="2">
+        <label class="md-nav__title" for="__nav_2_1">
+          <span class="md-nav__icon md-icon"></span>
+          SQL
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../types/" class="md-nav__link">
+        Types
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Functions
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Functions
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#sending-messages" class="md-nav__link">
+    Sending Messages
+  </a>
+  
+    <nav class="md-nav" aria-label="Sending Messages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#send" class="md-nav__link">
+    send
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#send_batch" class="md-nav__link">
+    send_batch
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-messages" class="md-nav__link">
+    Reading Messages
+  </a>
+  
+    <nav class="md-nav" aria-label="Reading Messages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#read" class="md-nav__link">
+    read
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#read_with_poll" class="md-nav__link">
+    read_with_poll
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pop" class="md-nav__link">
+    pop
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deletingarchiving-messages" class="md-nav__link">
+    Deleting/Archiving Messages
+  </a>
+  
+    <nav class="md-nav" aria-label="Deleting/Archiving Messages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#delete-single" class="md-nav__link">
+    delete (single)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-batch" class="md-nav__link">
+    delete (batch)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#purge_queue" class="md-nav__link">
+    purge_queue
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#archive-single" class="md-nav__link">
+    archive (single)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#archive-batch" class="md-nav__link">
+    archive (batch)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#queue-management" class="md-nav__link">
+    Queue Management
+  </a>
+  
+    <nav class="md-nav" aria-label="Queue Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create" class="md-nav__link">
+    create
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create_partitioned" class="md-nav__link">
+    create_partitioned
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create_unlogged" class="md-nav__link">
+    create_unlogged
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detach_archive" class="md-nav__link">
+    detach_archive
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#drop_queue" class="md-nav__link">
+    drop_queue
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utilities" class="md-nav__link">
+    Utilities
+  </a>
+  
+    <nav class="md-nav" aria-label="Utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#set_vt" class="md-nav__link">
+    set_vt
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list_queues" class="md-nav__link">
+    list_queues
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metrics_all" class="md-nav__link">
+    metrics_all
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#sending-messages" class="md-nav__link">
+    Sending Messages
+  </a>
+  
+    <nav class="md-nav" aria-label="Sending Messages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#send" class="md-nav__link">
+    send
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#send_batch" class="md-nav__link">
+    send_batch
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-messages" class="md-nav__link">
+    Reading Messages
+  </a>
+  
+    <nav class="md-nav" aria-label="Reading Messages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#read" class="md-nav__link">
+    read
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#read_with_poll" class="md-nav__link">
+    read_with_poll
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pop" class="md-nav__link">
+    pop
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deletingarchiving-messages" class="md-nav__link">
+    Deleting/Archiving Messages
+  </a>
+  
+    <nav class="md-nav" aria-label="Deleting/Archiving Messages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#delete-single" class="md-nav__link">
+    delete (single)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-batch" class="md-nav__link">
+    delete (batch)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#purge_queue" class="md-nav__link">
+    purge_queue
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#archive-single" class="md-nav__link">
+    archive (single)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#archive-batch" class="md-nav__link">
+    archive (batch)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#queue-management" class="md-nav__link">
+    Queue Management
+  </a>
+  
+    <nav class="md-nav" aria-label="Queue Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create" class="md-nav__link">
+    create
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create_partitioned" class="md-nav__link">
+    create_partitioned
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create_unlogged" class="md-nav__link">
+    create_unlogged
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detach_archive" class="md-nav__link">
+    detach_archive
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#drop_queue" class="md-nav__link">
+    drop_queue
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utilities" class="md-nav__link">
+    Utilities
+  </a>
+  
+    <nav class="md-nav" aria-label="Utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#set_vt" class="md-nav__link">
+    set_vt
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list_queues" class="md-nav__link">
+    list_queues
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metrics_all" class="md-nav__link">
+    metrics_all
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                
+                <h1 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h1>
+<h2 id="sending-messages">Sending Messages<a class="headerlink" href="#sending-messages" title="Permanent link">&para;</a></h2>
+<h3 id="send">send<a class="headerlink" href="#send" title="Permanent link">&para;</a></h3>
+<p>Send a single message to a queue.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.send(
+    queue_name text,
+    msg jsonb,
+    delay integer DEFAULT 0
+)
+
+RETURNS SETOF bigint
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">msg</td>
+<td style="text-align: left;">jsonb</td>
+<td style="text-align: left;">The message to send to the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">delay</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">Time in seconds before the message becomes visible. Defaults to 0.</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;{&quot;hello&quot;: &quot;world&quot;}&#39;</span><span class="p">);</span>
+<span class="w"> </span><span class="n">send</span><span class="w"> </span>
+<span class="c1">------</span>
+<span class="w">    </span><span class="mi">4</span>
+</code></pre></div>
+
+<hr />
+<h3 id="send_batch">send_batch<a class="headerlink" href="#send_batch" title="Permanent link">&para;</a></h3>
+<p>Send 1 or more messages to a queue.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.send_batch(
+    queue_name text,
+    msgs jsonb[],
+    delay integer DEFAULT 0
+)
+RETURNS SETOF bigint
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">msgs</td>
+<td style="text-align: left;">jsonb[]</td>
+<td style="text-align: left;">Array of messages to send to the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">delay</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">Time in seconds before the messages becomes visible. Defaults to 0.</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">send_batch</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="nb">ARRAY</span><span class="p">[</span>
+<span class="w">    </span><span class="s1">&#39;{&quot;hello&quot;: &quot;world_0&quot;}&#39;</span><span class="p">::</span><span class="n">jsonb</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;{&quot;hello&quot;: &quot;world_1&quot;}&#39;</span><span class="p">::</span><span class="n">jsonb</span><span class="p">]</span>
+<span class="p">);</span>
+<span class="w"> </span><span class="n">send_batch</span><span class="w"> </span>
+<span class="c1">------------</span>
+<span class="w">          </span><span class="mi">1</span>
+<span class="w">          </span><span class="mi">2</span>
+</code></pre></div>
+
+<hr />
+<h2 id="reading-messages">Reading Messages<a class="headerlink" href="#reading-messages" title="Permanent link">&para;</a></h2>
+<h3 id="read">read<a class="headerlink" href="#read" title="Permanent link">&para;</a></h3>
+<p>Read 1 or more messages from a queue. The VT specifies the amount of time in seconds that the message will be invisible to other consumers after reading.</p>
+<pre>
+ <code>
+pgmq.read(
+    queue_name text,
+    vt integer,
+    qty integer,
+    conditional jsonb DEFAULT '{}')
+
+RETURNS SETOF <a href="../types/#message_record">pgmq.message_record</a>
+ </code>
+</pre>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">vt</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">Time in seconds that the message become invisible after reading</td>
+</tr>
+<tr>
+<td style="text-align: left;">qty</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">The number of messages to read from the queue. Defaults to 1</td>
+</tr>
+<tr>
+<td style="text-align: left;">conditional</td>
+<td style="text-align: left;">jsonb</td>
+<td style="text-align: left;">Filters the messages by their json content. Defaults to '{}' - no filtering</td>
+</tr>
+</tbody>
+</table>
+<p>Examples:</p>
+<p>Read messages from a queue</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="k">read</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<span class="w"> </span><span class="n">msg_id</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">read_ct</span><span class="w"> </span><span class="o">|</span><span class="w">          </span><span class="n">enqueued_at</span><span class="w">          </span><span class="o">|</span><span class="w">              </span><span class="n">vt</span><span class="w">               </span><span class="o">|</span><span class="w">       </span><span class="n">message</span><span class="w">        </span>
+<span class="c1">--------+---------+-------------------------------+-------------------------------+----------------------</span>
+<span class="w">      </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w">       </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span><span class="mi">47</span><span class="p">.</span><span class="mi">356595</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">08</span><span class="p">.</span><span class="mi">608922</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;hello&quot;</span><span class="p">:</span><span class="w"> </span><span class="ss">&quot;world_0&quot;</span><span class="err">}</span>
+<span class="w">      </span><span class="mi">2</span><span class="w"> </span><span class="o">|</span><span class="w">       </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span><span class="mi">47</span><span class="p">.</span><span class="mi">356595</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">08</span><span class="p">.</span><span class="mi">608974</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;hello&quot;</span><span class="p">:</span><span class="w"> </span><span class="ss">&quot;world_1&quot;</span><span class="err">}</span>
+<span class="p">(</span><span class="mi">2</span><span class="w"> </span><span class="k">rows</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Read a message from a queue with message filtering</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="k">read</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;{&quot;hello&quot;: &quot;world_1&quot;}&#39;</span><span class="p">);</span>
+<span class="w"> </span><span class="n">msg_id</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">read_ct</span><span class="w"> </span><span class="o">|</span><span class="w">          </span><span class="n">enqueued_at</span><span class="w">          </span><span class="o">|</span><span class="w">              </span><span class="n">vt</span><span class="w">               </span><span class="o">|</span><span class="w">       </span><span class="n">message</span><span class="w">        </span>
+<span class="c1">--------+---------+-------------------------------+-------------------------------+----------------------</span>
+<span class="w">      </span><span class="mi">2</span><span class="w"> </span><span class="o">|</span><span class="w">       </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span><span class="mi">47</span><span class="p">.</span><span class="mi">356595</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">08</span><span class="p">.</span><span class="mi">608974</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;hello&quot;</span><span class="p">:</span><span class="w"> </span><span class="ss">&quot;world_1&quot;</span><span class="err">}</span>
+<span class="p">(</span><span class="mi">1</span><span class="w"> </span><span class="k">row</span><span class="p">)</span>
+</code></pre></div>
+
+<hr />
+<h3 id="read_with_poll">read_with_poll<a class="headerlink" href="#read_with_poll" title="Permanent link">&para;</a></h3>
+<p>Same as read(). Also provides convenient long-poll functionality.
+ When there are no messages in the queue, the function call will wait for <code>max_poll_seconds</code> in duration before returning.
+ If messages reach the queue during that duration, they will be read and returned immediately.</p>
+<pre>
+ <code>
+ pgmq.read_with_poll(
+    queue_name text,
+    vt integer,
+    qty integer,
+    max_poll_seconds integer DEFAULT 5,
+    poll_interval_ms integer DEFAULT 100,
+    conditional jsonb DEFAULT '{}'
+)
+RETURNS SETOF <a href="../types/#message_record">pgmq.message_record</a>
+ </code>
+</pre>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">vt</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">Time in seconds that the message become invisible after reading.</td>
+</tr>
+<tr>
+<td style="text-align: left;">qty</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">The number of messages to read from the queue. Defaults to 1.</td>
+</tr>
+<tr>
+<td style="text-align: left;">max_poll_seconds</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">Time in seconds to wait for new messages to reach the queue. Defaults to 5.</td>
+</tr>
+<tr>
+<td style="text-align: left;">poll_interval_ms</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">Milliseconds between the internal poll operations. Defaults to 100.</td>
+</tr>
+<tr>
+<td style="text-align: left;">conditional</td>
+<td style="text-align: left;">jsonb</td>
+<td style="text-align: left;">Filters the messages by their json content. Defaults to '{}' - no filtering</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">read_with_poll</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">100</span><span class="p">);</span>
+<span class="w"> </span><span class="n">msg_id</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">read_ct</span><span class="w"> </span><span class="o">|</span><span class="w">          </span><span class="n">enqueued_at</span><span class="w">          </span><span class="o">|</span><span class="w">              </span><span class="n">vt</span><span class="w">               </span><span class="o">|</span><span class="w">      </span><span class="n">message</span><span class="w">       </span>
+<span class="c1">--------+---------+-------------------------------+-------------------------------+--------------------</span>
+<span class="w">      </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w">       </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">09</span><span class="p">:</span><span class="mi">09</span><span class="p">.</span><span class="mi">177756</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">27</span><span class="p">:</span><span class="mi">00</span><span class="p">.</span><span class="mi">337929</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;hello&quot;</span><span class="p">:</span><span class="w"> </span><span class="ss">&quot;world&quot;</span><span class="err">}</span>
+</code></pre></div>
+
+<hr />
+<h3 id="pop">pop<a class="headerlink" href="#pop" title="Permanent link">&para;</a></h3>
+<p>Reads a single message from a queue and deletes it upon read.</p>
+<p>Note: utilization of pop() results in at-most-once delivery semantics if the consuming application does not guarantee processing of the message.</p>
+<pre>
+ <code>
+pgmq.pop(queue_name text)
+RETURNS SETOF <a href="../types/#message_record">pgmq.message_record</a>
+ </code>
+</pre>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">pgmq</span><span class="o">=#</span><span class="w"> </span><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">);</span>
+<span class="w"> </span><span class="n">msg_id</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">read_ct</span><span class="w"> </span><span class="o">|</span><span class="w">          </span><span class="n">enqueued_at</span><span class="w">          </span><span class="o">|</span><span class="w">              </span><span class="n">vt</span><span class="w">               </span><span class="o">|</span><span class="w">      </span><span class="n">message</span><span class="w">       </span>
+<span class="c1">--------+---------+-------------------------------+-------------------------------+--------------------</span>
+<span class="w">      </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w">       </span><span class="mi">2</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">09</span><span class="p">:</span><span class="mi">09</span><span class="p">.</span><span class="mi">177756</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">27</span><span class="p">:</span><span class="mi">00</span><span class="p">.</span><span class="mi">337929</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;hello&quot;</span><span class="p">:</span><span class="w"> </span><span class="ss">&quot;world&quot;</span><span class="err">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="deletingarchiving-messages">Deleting/Archiving Messages<a class="headerlink" href="#deletingarchiving-messages" title="Permanent link">&para;</a></h2>
+<h3 id="delete-single">delete (single)<a class="headerlink" href="#delete-single" title="Permanent link">&para;</a></h3>
+<p>Deletes a single message from a queue.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.delete (queue_name text, msg_id: bigint)
+RETURNS boolean
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">msg_id</td>
+<td style="text-align: left;">bigint</td>
+<td style="text-align: left;">Message ID of the message to delete</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="k">delete</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">);</span>
+<span class="w"> </span><span class="k">delete</span><span class="w"> </span>
+<span class="c1">--------</span>
+<span class="w"> </span><span class="n">t</span>
+</code></pre></div>
+
+<hr />
+<h3 id="delete-batch">delete (batch)<a class="headerlink" href="#delete-batch" title="Permanent link">&para;</a></h3>
+<p>Delete one or many messages from a queue.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.delete (queue_name text, msg_ids: bigint[])
+RETURNS SETOF bigint
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">msg_ids</td>
+<td style="text-align: left;">bigint[]</td>
+<td style="text-align: left;">Array of message IDs to delete</td>
+</tr>
+</tbody>
+</table>
+<p>Examples:</p>
+<p>Delete two messages that exist.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="k">delete</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="nb">ARRAY</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">]);</span>
+<span class="w"> </span><span class="k">delete</span><span class="w"> </span>
+<span class="c1">--------</span>
+<span class="w">      </span><span class="mi">2</span>
+<span class="w">      </span><span class="mi">3</span>
+</code></pre></div>
+
+<p>Delete two messages, one that exists and one that does not. Message <code>999</code> does not exist.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="k">delete</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="nb">ARRAY</span><span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="w"> </span><span class="mi">999</span><span class="p">]);</span>
+<span class="w"> </span><span class="k">delete</span><span class="w"> </span>
+<span class="c1">--------</span>
+<span class="w">      </span><span class="mi">6</span>
+</code></pre></div>
+
+<hr />
+<h3 id="purge_queue">purge_queue<a class="headerlink" href="#purge_queue" title="Permanent link">&para;</a></h3>
+<p>Permanently deletes all messages in a queue. Returns the number of messages that were deleted.</p>
+<div class="codehilite"><pre><span></span><code>purge_queue(queue_name text)
+RETURN bigint
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<p>Purge the queue when it contains 8 messages;</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">purge_queue</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">);</span><span class="w">                                                                                                        </span>
+<span class="w"> </span><span class="n">purge_queue</span><span class="w"> </span>
+<span class="c1">-------------</span>
+<span class="w">           </span><span class="mi">8</span>
+</code></pre></div>
+
+<hr />
+<h3 id="archive-single">archive (single)<a class="headerlink" href="#archive-single" title="Permanent link">&para;</a></h3>
+<p>Removes a single requested message from the specified queue and inserts it into the queue's archive.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.archive(queue_name text, msg_id bigint)
+RETURNS boolean
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">msg_id</td>
+<td style="text-align: left;">bigint</td>
+<td style="text-align: left;">Message ID of the message to archive</td>
+</tr>
+</tbody>
+</table>
+<p>Returns
+Boolean value indicating success or failure of the operation.</p>
+<p>Example; remove message with ID 1 from queue <code>my_queue</code> and archive it:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">archive</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="w"> </span><span class="n">archive</span><span class="w"> </span>
+<span class="c1">---------</span>
+<span class="w">       </span><span class="n">t</span>
+</code></pre></div>
+
+<hr />
+<h3 id="archive-batch">archive (batch)<a class="headerlink" href="#archive-batch" title="Permanent link">&para;</a></h3>
+<p>Deletes a batch of requested messages from the specified queue and inserts them into the queue's archive.
+ Returns an ARRAY of message ids that were successfully archived.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.archive(queue_name text, msg_ids bigint[])
+RETURNS SETOF bigint
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">msg_ids</td>
+<td style="text-align: left;">bigint[]</td>
+<td style="text-align: left;">Array of message IDs to archive</td>
+</tr>
+</tbody>
+</table>
+<p>Examples:</p>
+<p>Delete messages with ID 1 and 2 from queue <code>my_queue</code> and move to the archive.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">archive</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="nb">ARRAY</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">]);</span>
+<span class="w"> </span><span class="n">archive</span><span class="w"> </span>
+<span class="c1">---------</span>
+<span class="w">       </span><span class="mi">1</span>
+<span class="w">       </span><span class="mi">2</span>
+</code></pre></div>
+
+<p>Delete messages 4, which exists and 999, which does not exist.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">archive</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="nb">ARRAY</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">999</span><span class="p">]);</span>
+<span class="w"> </span><span class="n">archive</span><span class="w"> </span>
+<span class="c1">---------</span>
+<span class="w">       </span><span class="mi">4</span>
+</code></pre></div>
+
+<hr />
+<h2 id="queue-management">Queue Management<a class="headerlink" href="#queue-management" title="Permanent link">&para;</a></h2>
+<h3 id="create">create<a class="headerlink" href="#create" title="Permanent link">&para;</a></h3>
+<p>Create a new queue.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.create(queue_name text)
+RETURNS VOID
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="k">create</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">);</span>
+<span class="w"> </span><span class="k">create</span><span class="w"> </span>
+<span class="c1">--------</span>
+</code></pre></div>
+
+<hr />
+<h3 id="create_partitioned">create_partitioned<a class="headerlink" href="#create_partitioned" title="Permanent link">&para;</a></h3>
+<p>Create a partitioned queue.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.create_partitioned (
+    queue-ue_name text,
+    partition_interval text DEFAULT &#39;10000&#39;::text,
+    retention_interval text DEFAULT &#39;100000&#39;::text
+)
+RETURNS void
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">partition_interval</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">retention_interval</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<p>Create a queue with 100,000 messages per partition, and will retain 10,000,000 messages on old partitions. Partitions greater than this will be deleted.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">create_partitioned</span><span class="p">(</span>
+<span class="w">    </span><span class="s1">&#39;my_partitioned_queue&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;100000&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;10000000&#39;</span>
+<span class="p">);</span>
+<span class="w"> </span><span class="n">create_partitioned</span><span class="w"> </span>
+<span class="c1">--------------------</span>
+</code></pre></div>
+
+<hr />
+<h3 id="create_unlogged">create_unlogged<a class="headerlink" href="#create_unlogged" title="Permanent link">&para;</a></h3>
+<p>Creates an unlogged table. This is useful when write throughput is more important that durability. 
+See Postgres documentation for <a href="https://www.postgresql.org/docs/current/sql-createtable.html#SQL-CREATETABLE-UNLOGGED">unlogged tables</a> for more information.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.create_unlogged(queue_name text)
+RETURNS void
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">create_unlogged</span><span class="p">(</span><span class="s1">&#39;my_unlogged&#39;</span><span class="p">);</span>
+<span class="w"> </span><span class="n">create_unlogged</span><span class="w"> </span>
+<span class="c1">-----------------</span>
+</code></pre></div>
+
+<hr />
+<h3 id="detach_archive">detach_archive<a class="headerlink" href="#detach_archive" title="Permanent link">&para;</a></h3>
+<p>Drop the queue's archive table as a member of the PGMQ extension. Useful for preventing the queue's archive table from being drop when <code>DROP EXTENSION pgmq</code> is executed.
+ This does not prevent the further archives() from appending to the archive table.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.detach_archive(queue_name text)
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">detach_archive</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">);</span>
+<span class="w"> </span><span class="n">detach_archive</span><span class="w"> </span>
+<span class="c1">----------------</span>
+</code></pre></div>
+
+<hr />
+<h3 id="drop_queue">drop_queue<a class="headerlink" href="#drop_queue" title="Permanent link">&para;</a></h3>
+<p>Deletes a queue and its archive table.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.drop_queue(queue_name text)
+RETURNS boolean
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">drop_queue</span><span class="p">(</span><span class="s1">&#39;my_unlogged&#39;</span><span class="p">);</span>
+<span class="w"> </span><span class="n">drop_queue</span><span class="w"> </span>
+<span class="c1">------------</span>
+<span class="w"> </span><span class="n">t</span>
+</code></pre></div>
+
+<h2 id="utilities">Utilities<a class="headerlink" href="#utilities" title="Permanent link">&para;</a></h2>
+<h3 id="set_vt">set_vt<a class="headerlink" href="#set_vt" title="Permanent link">&para;</a></h3>
+<p>Sets the visibility timeout of a message to a specified time duration in the future. Returns the record of the message that was updated.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.set_vt(
+    queue_name text,
+    msg_id bigint,
+    vt_offset integer
+)
+RETURNS pgmq.message_record
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">msg_id</td>
+<td style="text-align: left;">bigint</td>
+<td style="text-align: left;">ID of the message to set visibility time</td>
+</tr>
+<tr>
+<td style="text-align: left;">vt_offset</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: left;">Duration from now, in seconds, that the message's VT should be set to</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<p>Set the visibility timeout of message 1 to 30 seconds from now.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">set_vt</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">11</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">);</span>
+<span class="w"> </span><span class="n">msg_id</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">read_ct</span><span class="w"> </span><span class="o">|</span><span class="w">          </span><span class="n">enqueued_at</span><span class="w">          </span><span class="o">|</span><span class="w">              </span><span class="n">vt</span><span class="w">               </span><span class="o">|</span><span class="w">       </span><span class="n">message</span><span class="w">        </span>
+<span class="c1">--------+---------+-------------------------------+-------------------------------+----------------------</span>
+<span class="w">     </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w">       </span><span class="mi">0</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mi">21</span><span class="p">.</span><span class="mi">778741</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">59</span><span class="p">:</span><span class="mi">34</span><span class="p">.</span><span class="mi">286462</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="err">{</span><span class="ss">&quot;hello&quot;</span><span class="p">:</span><span class="w"> </span><span class="ss">&quot;world_0&quot;</span><span class="err">}</span>
+</code></pre></div>
+
+<hr />
+<h3 id="list_queues">list_queues<a class="headerlink" href="#list_queues" title="Permanent link">&para;</a></h3>
+<p>List all the queues that currently exist.</p>
+<div class="codehilite"><pre><span></span><code><span class="n">list_queues</span><span class="p">()</span>
+<span class="k">RETURNS</span><span class="w"> </span><span class="k">TABLE</span><span class="p">(</span>
+<span class="w">    </span><span class="n">queue_name</span><span class="w"> </span><span class="nb">text</span><span class="p">,</span>
+<span class="w">    </span><span class="n">created_at</span><span class="w"> </span><span class="k">timestamp</span><span class="w"> </span><span class="k">with</span><span class="w"> </span><span class="k">time</span><span class="w"> </span><span class="k">zone</span><span class="p">,</span>
+<span class="w">    </span><span class="n">is_partitioned</span><span class="w"> </span><span class="nb">boolean</span><span class="p">,</span>
+<span class="w">    </span><span class="n">is_unlogged</span><span class="w"> </span><span class="nb">boolean</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">list_queues</span><span class="p">();</span>
+<span class="w">      </span><span class="n">queue_name</span><span class="w">      </span><span class="o">|</span><span class="w">          </span><span class="n">created_at</span><span class="w">           </span><span class="o">|</span><span class="w"> </span><span class="n">is_partitioned</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">is_unlogged</span><span class="w"> </span>
+<span class="c1">----------------------+-------------------------------+----------------+-------------</span>
+<span class="w"> </span><span class="n">my_queue</span><span class="w">             </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">14</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span><span class="mi">17</span><span class="p">.</span><span class="mi">092576</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">f</span><span class="w">              </span><span class="o">|</span><span class="w"> </span><span class="n">f</span>
+<span class="w"> </span><span class="n">my_partitioned_queue</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">19</span><span class="p">:</span><span class="mi">47</span><span class="p">:</span><span class="mi">37</span><span class="p">.</span><span class="mi">098692</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">t</span><span class="w">              </span><span class="o">|</span><span class="w"> </span><span class="n">f</span>
+<span class="w"> </span><span class="n">my_unlogged</span><span class="w">          </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">20</span><span class="p">:</span><span class="mi">02</span><span class="p">:</span><span class="mi">30</span><span class="p">.</span><span class="mi">976109</span><span class="o">-</span><span class="mi">05</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">f</span><span class="w">              </span><span class="o">|</span><span class="w"> </span><span class="n">t</span>
+</code></pre></div>
+
+<hr />
+<h3 id="metrics">metrics<a class="headerlink" href="#metrics" title="Permanent link">&para;</a></h3>
+<p>Get metrics for a specific queue.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.metrics(queue_name: text)
+RETURNS TABLE(
+    queue_name text,
+    queue_length bigint,
+    newest_msg_age_sec integer,
+    oldest_msg_age_sec integer,
+    total_messages bigint,
+    scrape_time timestamp with time zone
+)
+</code></pre></div>
+
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Attribute</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">queue_length</td>
+<td style="text-align: left;">bigint</td>
+<td style="text-align: left;">Number of messages currently in the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">newest_msg_age_sec</td>
+<td style="text-align: left;">integer | null</td>
+<td style="text-align: left;">Age of the newest message in the queue, in seconds</td>
+</tr>
+<tr>
+<td style="text-align: left;">oldest_msg_age_sec</td>
+<td style="text-align: left;">integer | null</td>
+<td style="text-align: left;">Age of the oldest message in the queue, in seconds</td>
+</tr>
+<tr>
+<td style="text-align: left;">total_messages</td>
+<td style="text-align: left;">bigint</td>
+<td style="text-align: left;">Total number of messages that have passed through the queue over all time</td>
+</tr>
+<tr>
+<td style="text-align: left;">scrape_time</td>
+<td style="text-align: left;">timestamp with time zone</td>
+<td style="text-align: left;">The current timestamp</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">metrics</span><span class="p">(</span><span class="s1">&#39;my_queue&#39;</span><span class="p">);</span>
+<span class="w"> </span><span class="n">queue_name</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">queue_length</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">newest_msg_age_sec</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">oldest_msg_age_sec</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">total_messages</span><span class="w"> </span><span class="o">|</span><span class="w">          </span><span class="n">scrape_time</span><span class="w">          </span>
+<span class="c1">------------+--------------+--------------------+--------------------+----------------+-------------------------------</span>
+<span class="w"> </span><span class="n">my_queue</span><span class="w">   </span><span class="o">|</span><span class="w">           </span><span class="mi">16</span><span class="w"> </span><span class="o">|</span><span class="w">               </span><span class="mi">2445</span><span class="w"> </span><span class="o">|</span><span class="w">               </span><span class="mi">2447</span><span class="w"> </span><span class="o">|</span><span class="w">             </span><span class="mi">35</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">20</span><span class="p">:</span><span class="mi">23</span><span class="p">:</span><span class="mi">08</span><span class="p">.</span><span class="mi">406259</span><span class="o">-</span><span class="mi">05</span>
+</code></pre></div>
+
+<hr />
+<h3 id="metrics_all">metrics_all<a class="headerlink" href="#metrics_all" title="Permanent link">&para;</a></h3>
+<p>Get metrics for all existing queues.</p>
+<div class="codehilite"><pre><span></span><code>pgmq.metrics_all()
+RETURNS TABLE(
+    queue_name text,
+    queue_length bigint,
+    newest_msg_age_sec integer,
+    oldest_msg_age_sec integer,
+    total_messages bigint,
+    scrape_time timestamp with time zone
+)
+</code></pre></div>
+
+<p><strong>Returns:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Attribute</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">queue_name</td>
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">The name of the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">queue_length</td>
+<td style="text-align: left;">bigint</td>
+<td style="text-align: left;">Number of messages currently in the queue</td>
+</tr>
+<tr>
+<td style="text-align: left;">newest_msg_age_sec</td>
+<td style="text-align: left;">integer | null</td>
+<td style="text-align: left;">Age of the newest message in the queue, in seconds</td>
+</tr>
+<tr>
+<td style="text-align: left;">oldest_msg_age_sec</td>
+<td style="text-align: left;">integer | null</td>
+<td style="text-align: left;">Age of the oldest message in the queue, in seconds</td>
+</tr>
+<tr>
+<td style="text-align: left;">total_messages</td>
+<td style="text-align: left;">bigint</td>
+<td style="text-align: left;">Total number of messages that have passed through the queue over all time</td>
+</tr>
+<tr>
+<td style="text-align: left;">scrape_time</td>
+<td style="text-align: left;">timestamp with time zone</td>
+<td style="text-align: left;">The current timestamp</td>
+</tr>
+</tbody>
+</table>
+<div class="codehilite"><pre><span></span><code><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">pgmq</span><span class="p">.</span><span class="n">metrics_all</span><span class="p">();</span>
+<span class="w">      </span><span class="n">queue_name</span><span class="w">      </span><span class="o">|</span><span class="w"> </span><span class="n">queue_length</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">newest_msg_age_sec</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">oldest_msg_age_sec</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">total_messages</span><span class="w"> </span><span class="o">|</span><span class="w">          </span><span class="n">scrape_time</span><span class="w">          </span>
+<span class="c1">----------------------+--------------+--------------------+--------------------+----------------+-------------------------------</span>
+<span class="w"> </span><span class="n">my_queue</span><span class="w">             </span><span class="o">|</span><span class="w">           </span><span class="mi">16</span><span class="w"> </span><span class="o">|</span><span class="w">               </span><span class="mi">2563</span><span class="w"> </span><span class="o">|</span><span class="w">               </span><span class="mi">2565</span><span class="w"> </span><span class="o">|</span><span class="w">             </span><span class="mi">35</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">20</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span><span class="mi">07</span><span class="p">.</span><span class="mi">016413</span><span class="o">-</span><span class="mi">05</span>
+<span class="w"> </span><span class="n">my_partitioned_queue</span><span class="w"> </span><span class="o">|</span><span class="w">            </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w">                 </span><span class="mi">11</span><span class="w"> </span><span class="o">|</span><span class="w">                 </span><span class="mi">11</span><span class="w"> </span><span class="o">|</span><span class="w">              </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">20</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span><span class="mi">07</span><span class="p">.</span><span class="mi">016413</span><span class="o">-</span><span class="mi">05</span>
+<span class="w"> </span><span class="n">my_unlogged</span><span class="w">          </span><span class="o">|</span><span class="w">            </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w">                  </span><span class="mi">3</span><span class="w"> </span><span class="o">|</span><span class="w">                  </span><span class="mi">3</span><span class="w"> </span><span class="o">|</span><span class="w">              </span><span class="mi">1</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mi">2023</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">28</span><span class="w"> </span><span class="mi">20</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span><span class="mi">07</span><span class="p">.</span><span class="mi">016413</span><span class="o">-</span><span class="mi">05</span>
+</code></pre></div>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+        
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
+      
+        
+        <a href="../types/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Types" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Types
+            </div>
+          </div>
+        </a>
+      
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        
+          Made with
+          <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+            Material for MkDocs
+          </a>
+        
+        
+      </div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.fcfe8b6d.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.b1047164.min.js"></script>
+      
+    
+  </body>
+</html>
