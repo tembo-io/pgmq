@@ -64,9 +64,16 @@ SELECT * from pgmq.send('test_default_queue', '{"hello": "world"}');
 (1 row)
 
 -- read message
--- vt=2, limit=1
+-- vt=0, limit=1
 \set msg_id 1
-SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1);
+SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 0, 1);
+ ?column? 
+----------
+ t
+(1 row)
+
+-- read message using conditional
+SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1, '{"hello": "world"}');
  ?column? 
 ----------
  t
@@ -88,6 +95,21 @@ SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1);
 
 -- read again, now using poll to block until message is ready
 SELECT msg_id = :msg_id FROM pgmq.read_with_poll('test_default_queue', 10, 1, 10);
+ ?column? 
+----------
+ t
+(1 row)
+
+-- set VT to 5 seconds again for another read_with_poll test
+SELECT vt > clock_timestamp() + '4 seconds'::interval
+  FROM pgmq.set_vt('test_default_queue', :msg_id, 5);
+ ?column? 
+----------
+ t
+(1 row)
+
+-- read again, now using poll to block until message is ready
+SELECT msg_id = :msg_id FROM pgmq.read_with_poll('test_default_queue', 10, 1, 10, 100, '{"hello": "world"}');
  ?column? 
 ----------
  t
