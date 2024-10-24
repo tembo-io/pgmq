@@ -797,6 +797,25 @@ SELECT pgmq.format_table_name('semicolon;fail', 'a');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
 SELECT pgmq.format_table_name($$single'quote-fail$$, 'a');
 ERROR:  queue name contains invalid characters: $, ;, --, or \'
+-- test null message
+SELECT pgmq.create('null_message_queue');
+ create 
+--------
+ 
+(1 row)
+
+SELECT pgmq.send('null_message_queue', NULL);
+ send 
+------
+    1
+(1 row)
+
+SELECT msg_id, read_ct, message FROM pgmq.read('null_message_queue', 1, 1);
+ msg_id | read_ct | message 
+--------+---------+---------
+      1 |       1 | 
+(1 row)
+
 --Cleanup tests
 DROP EXTENSION pgmq CASCADE;
 DROP EXTENSION pg_partman CASCADE;
