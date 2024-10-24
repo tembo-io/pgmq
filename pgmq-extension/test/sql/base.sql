@@ -315,6 +315,11 @@ SELECT pgmq.format_table_name('double--hyphen-fail', 'a');
 SELECT pgmq.format_table_name('semicolon;fail', 'a');
 SELECT pgmq.format_table_name($$single'quote-fail$$, 'a');
 
+-- test null message
+SELECT pgmq.create('null_message_queue');
+SELECT pgmq.send('null_message_queue', NULL);
+SELECT msg_id, read_ct, message FROM pgmq.read('null_message_queue', 1, 1);
+
 --Cleanup tests
 DROP EXTENSION pgmq CASCADE;
 DROP EXTENSION pg_partman CASCADE;
