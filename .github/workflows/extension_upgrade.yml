@@ -102,3 +102,7 @@ jobs:
           set -x
           echo "=========="
           cat results/base.out
+          echo "=========="
+          cat ~/.pgrx/16.log         
+          echo "=========="
+          psql postgres://$USER:postgres@localhost:28816/pgmq -c "select installed_version from pg_available_extensions where name = 'pgmq';"
