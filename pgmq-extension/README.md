@@ -49,7 +49,7 @@ Supported on Postgres 14-17.
 The fastest way to get started is by running the Tembo Docker image, where PGMQ comes pre-installed in Postgres.
 
 ```bash
-docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pg17-pgmq:latest
+docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 tembo.docker.scarf.sh/tembo/pg17-pgmq:latest
 ```
 
 If you'd like to build from source, you can follow the instructions in [CONTRIBUTING.md](CONTRIBUTING.md).
