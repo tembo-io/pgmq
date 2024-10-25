@@ -320,7 +320,8 @@ CREATE TYPE pgmq.metrics_result AS (
     newest_msg_age_sec int,
     oldest_msg_age_sec int,
     total_messages bigint,
-    scrape_time timestamp with time zone
+    scrape_time timestamp with time zone,
+    queue_visible_length bigint
 );
 
 -- get metrics for a single queue
@@ -336,6 +337,7 @@ BEGIN
         WITH q_summary AS (
             SELECT
                 count(*) as queue_length,
+                count(CASE WHEN vt <= NOW() THEN 1 END) as queue_visible_length,
                 EXTRACT(epoch FROM (NOW() - max(enqueued_at)))::int as newest_msg_age_sec,
                 EXTRACT(epoch FROM (NOW() - min(enqueued_at)))::int as oldest_msg_age_sec,
                 NOW() as scrape_time
@@ -353,7 +355,8 @@ BEGIN
             q_summary.newest_msg_age_sec,
             q_summary.oldest_msg_age_sec,
             all_metrics.total_messages,
-            q_summary.scrape_time
+            q_summary.scrape_time,
+            q_summary.queue_visible_length
         FROM q_summary, all_metrics
         $QUERY$,
         qtable, qtable || '_msg_id_seq', queue_name
