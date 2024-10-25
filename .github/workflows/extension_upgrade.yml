@@ -101,4 +101,4 @@ jobs:
           set +e
           set -x
           echo "=========="
-          cat operator-output.txt
+          cat results/base.out
