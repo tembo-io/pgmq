@@ -15,6 +15,7 @@ on:
   push:
     branches:
       - main
+      - debug/ci
     paths:
       - "pgmq-extension/**"
       - ".github/workflows/extension_upgrade.yml"
@@ -94,3 +95,10 @@ jobs:
           make installcheck || status=$?
           [ $status != 0 ] && find . -name regression.diffs -exec cat {} +
           exit $status
+      - name: debug
+        if: always()
+        run: |
+          set +e
+          set -x
+          echo "=========="
+          cat operator-output.txt
