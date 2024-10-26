@@ -68,12 +68,19 @@ SELECT pgmq.create_partitioned('test_duration_queue', '5 seconds', '10 seconds')
 -- CREATE with 10 messages per partition, 20 messages retention
 SELECT pgmq.create_partitioned('test_numeric_queue', '10 seconds', '20 seconds');
 
--- get metrics
-SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_messages
- FROM pgmq.metrics('test_duration_queue');
+-- create a queue for metrics
+SELECT pgmq.create('test_metrics_queue');
+
+-- doing some operations to get some numbers in
+SELECT pgmq.send_batch('test_metrics_queue', ARRAY['1', '2', '3', '4', '5']::jsonb[]);
+SELECT pgmq.send_batch('test_metrics_queue', ARRAY['6', '7']::jsonb[], 10);
+SELECT pgmq.archive('test_metrics_queue', 1);
+
+-- actually reading metrics
+SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_messages, queue_visible_length FROM pgmq.metrics('test_metrics_queue');
 
 -- get metrics all
-SELECT * from {PGMQ_SCHEMA}.metrics_all();
+SELECT COUNT(1) from pgmq.metrics_all();
 
 -- delete all the queues
 -- delete partitioned queues

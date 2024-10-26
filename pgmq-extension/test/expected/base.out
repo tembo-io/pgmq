@@ -159,19 +159,51 @@ SELECT pgmq.create_partitioned('test_numeric_queue', '10 seconds', '20 seconds')
  
 (1 row)
 
--- get metrics
-SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_messages
- FROM pgmq.metrics('test_duration_queue');
-     queue_name      | queue_length | newest_msg_age_sec | oldest_msg_age_sec | total_messages 
----------------------+--------------+--------------------+--------------------+----------------
- test_duration_queue |            0 |                    |                    |              0
+-- create a queue for metrics
+SELECT pgmq.create('test_metrics_queue');
+ create 
+--------
+ 
+(1 row)
+
+-- doing some operations to get some numbers in
+SELECT pgmq.send_batch('test_metrics_queue', ARRAY['1', '2', '3', '4', '5']::jsonb[]);
+ send_batch 
+------------
+          1
+          2
+          3
+          4
+          5
+(5 rows)
+
+SELECT pgmq.send_batch('test_metrics_queue', ARRAY['6', '7']::jsonb[], 10);
+ send_batch 
+------------
+          6
+          7
+(2 rows)
+
+SELECT pgmq.archive('test_metrics_queue', 1);
+ archive 
+---------
+ t
+(1 row)
+
+-- actually reading metrics
+SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_messages, queue_visible_length FROM pgmq.metrics('test_metrics_queue');
+     queue_name     | queue_length | newest_msg_age_sec | oldest_msg_age_sec | total_messages | queue_visible_length 
+--------------------+--------------+--------------------+--------------------+----------------+----------------------
+ test_metrics_queue |            6 |                  0 |                  0 |              7 |                    4
 (1 row)
 
 -- get metrics all
-SELECT * from {PGMQ_SCHEMA}.metrics_all();
-ERROR:  syntax error at or near "{"
-LINE 1: SELECT * from {PGMQ_SCHEMA}.metrics_all();
-                      ^
+SELECT COUNT(1) from pgmq.metrics_all();
+ count 
+-------
+     7
+(1 row)
+
 -- delete all the queues
 -- delete partitioned queues
 SELECT pgmq.drop_queue(queue, true)
@@ -197,13 +229,15 @@ WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed 
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
+WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
  drop_queue 
 ------------
  t
  t
  t
  t
-(4 rows)
+ t
+(5 rows)
 
 SELECT queue_name FROM pgmq.list_queues();
  queue_name 

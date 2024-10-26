@@ -190,3 +190,48 @@ BEGIN
     RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
+
+ALTER TYPE pgmq.metrics_result ADD ATTRIBUTE queue_visible_length bigint;
+
+DROP FUNCTION pgmq.metrics(queue_name TEXT);
+
+CREATE FUNCTION pgmq.metrics(queue_name TEXT)
+RETURNS pgmq.metrics_result AS $$
+DECLARE
+    result_row pgmq.metrics_result;
+    query TEXT;
+    qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+BEGIN
+    query := FORMAT(
+        $QUERY$
+        WITH q_summary AS (
+            SELECT
+                count(*) as queue_length,
+                count(CASE WHEN vt <= NOW() THEN 1 END) as queue_visible_length,
+                EXTRACT(epoch FROM (NOW() - max(enqueued_at)))::int as newest_msg_age_sec,
+                EXTRACT(epoch FROM (NOW() - min(enqueued_at)))::int as oldest_msg_age_sec,
+                NOW() as scrape_time
+            FROM pgmq.%I
+        ),
+        all_metrics AS (
+            SELECT CASE
+                WHEN is_called THEN last_value ELSE 0
+                END as total_messages
+            FROM pgmq.%I
+        )
+        SELECT
+            %L as queue_name,
+            q_summary.queue_length,
+            q_summary.newest_msg_age_sec,
+            q_summary.oldest_msg_age_sec,
+            all_metrics.total_messages,
+            q_summary.scrape_time,
+            q_summary.queue_visible_length
+        FROM q_summary, all_metrics
+        $QUERY$,
+        qtable, qtable || '_msg_id_seq', queue_name
+    );
+    EXECUTE query INTO result_row;
+    RETURN result_row;
+END;
+$$ LANGUAGE plpgsql;
