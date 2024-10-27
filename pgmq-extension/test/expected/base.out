@@ -114,8 +114,8 @@ SELECT pgmq.create('test_default_queue_vt');
 (1 row)
 
 -- send message with timestamp
-SELECT * from pgmq.send_at('test_default_queue_vt', '{"hello": "world"}', CAST(CURRENT_TIMESTAMP + '5 seconds'::interval AS timestamp));
- send_at 
+SELECT * from pgmq.send_at('test_default_queue_vt', '{"hello": "world"}', CURRENT_TIMESTAMP + '5 seconds'::interval);
+ send 
 ---------
        1
 (1 row)

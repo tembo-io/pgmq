@@ -48,7 +48,7 @@ SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1);
 SELECT pgmq.create('test_default_queue_vt');
 
 -- send message with timestamp
-SELECT * from pgmq.send_at('test_default_queue_vt', '{"hello": "world"}', CAST(CURRENT_TIMESTAMP + '5 seconds'::interval AS timestamp));
+SELECT * from pgmq.send('test_default_queue_vt', '{"hello": "world"}', CURRENT_TIMESTAMP + '5 seconds'::interval);
 
 -- read, assert no messages because we set timestamp to the future
 SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue_vt', 2, 1);
