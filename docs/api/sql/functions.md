@@ -146,7 +146,8 @@ Read 1 or more messages from a queue. The VT specifies the amount of time in sec
 pgmq.read(
     queue_name text,
     vt integer,
-    qty integer)
+    qty integer,
+    conditional jsonb DEFAULT '{}')
 
 RETURNS SETOF <a href="../types/#message_record">pgmq.message_record</a>
  </code>
@@ -159,8 +160,11 @@ RETURNS SETOF <a href="../types/#message_record">pgmq.message_record</a>
 | queue_name  | text     | The name of the queue   |
 | vt          | integer  | Time in seconds that the message become invisible after reading |
 | qty         | integer  | The number of messages to read from the queue. Defaults to 1 |
+| conditional | jsonb    | Filters the messages by their json content. Defaults to '{}' - no filtering |
 
-Example:
+Examples:
+
+Read messages from a queue
 
 ```sql
 select * from pgmq.read('my_queue', 10, 2);
@@ -169,6 +173,16 @@ select * from pgmq.read('my_queue', 10, 2);
       1 |       1 | 2023-10-28 19:14:47.356595-05 | 2023-10-28 19:17:08.608922-05 | {"hello": "world_0"}
       2 |       1 | 2023-10-28 19:14:47.356595-05 | 2023-10-28 19:17:08.608974-05 | {"hello": "world_1"}
 (2 rows)
+```
+
+Read a message from a queue with message filtering
+
+```sql
+select * from pgmq.read('my_queue', 10, 2, '{"hello": "world_1"}');
+ msg_id | read_ct |          enqueued_at          |              vt               |       message        
+--------+---------+-------------------------------+-------------------------------+----------------------
+      2 |       1 | 2023-10-28 19:14:47.356595-05 | 2023-10-28 19:17:08.608974-05 | {"hello": "world_1"}
+(1 row)
 ```
 
 ---
@@ -186,7 +200,8 @@ Same as read(). Also provides convenient long-poll functionality.
     vt integer,
     qty integer,
     max_poll_seconds integer DEFAULT 5,
-    poll_interval_ms integer DEFAULT 100
+    poll_interval_ms integer DEFAULT 100,
+    conditional jsonb DEFAULT '{}'
 )
 RETURNS SETOF <a href="../types/#message_record">pgmq.message_record</a>
  </code>
@@ -201,6 +216,7 @@ RETURNS SETOF <a href="../types/#message_record">pgmq.message_record</a>
 | qty   | integer        | The number of messages to read from the queue. Defaults to 1.      |
 | max_poll_seconds   | integer        | Time in seconds to wait for new messages to reach the queue. Defaults to 5.      |
 | poll_interval_ms   | integer        | Milliseconds between the internal poll operations. Defaults to 100.      |
+| conditional | jsonb    | Filters the messages by their json content. Defaults to '{}' - no filtering |
 
 Example:
 

@@ -57,7 +57,8 @@ $$ LANGUAGE plpgsql;
 CREATE FUNCTION pgmq.read(
     queue_name TEXT,
     vt INTEGER,
-    qty INTEGER
+    qty INTEGER,
+    conditional JSONB DEFAULT '{}'
 )
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
@@ -70,7 +71,10 @@ BEGIN
         (
             SELECT msg_id
             FROM pgmq.%I
-            WHERE vt <= clock_timestamp()
+            WHERE vt <= clock_timestamp() AND CASE
+                WHEN %L != '{}'::jsonb THEN (message @> %2$L)::integer
+                ELSE 1
+            END = 1
             ORDER BY msg_id ASC
             LIMIT $1
             FOR UPDATE SKIP LOCKED
@@ -83,7 +87,7 @@ BEGIN
         WHERE m.msg_id = cte.msg_id
         RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
         $QUERY$,
-        qtable, qtable, make_interval(secs => vt)
+        qtable, conditional, qtable, make_interval(secs => vt)
     );
     RETURN QUERY EXECUTE sql USING qty;
 END;
@@ -96,7 +100,8 @@ CREATE FUNCTION pgmq.read_with_poll(
     vt INTEGER,
     qty INTEGER,
     max_poll_seconds INTEGER DEFAULT 5,
-    poll_interval_ms INTEGER DEFAULT 100
+    poll_interval_ms INTEGER DEFAULT 100,
+    conditional JSONB DEFAULT '{}'
 )
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
@@ -117,7 +122,10 @@ BEGIN
           (
               SELECT msg_id
               FROM pgmq.%I
-              WHERE vt <= clock_timestamp()
+              WHERE vt <= clock_timestamp() AND CASE
+                  WHEN %L != '{}'::jsonb THEN (message @> %2$L)::integer
+                  ELSE 1
+              END = 1
               ORDER BY msg_id ASC
               LIMIT $1
               FOR UPDATE SKIP LOCKED
@@ -130,7 +138,7 @@ BEGIN
           WHERE m.msg_id = cte.msg_id
           RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
           $QUERY$,
-          qtable, qtable, make_interval(secs => vt)
+          qtable, conditional, qtable, make_interval(secs => vt)
       );
 
       FOR r IN
@@ -336,7 +344,8 @@ CREATE TYPE pgmq.metrics_result AS (
     newest_msg_age_sec int,
     oldest_msg_age_sec int,
     total_messages bigint,
-    scrape_time timestamp with time zone
+    scrape_time timestamp with time zone,
+    queue_visible_length bigint
 );
 
 -- get metrics for a single queue
@@ -352,6 +361,7 @@ BEGIN
         WITH q_summary AS (
             SELECT
                 count(*) as queue_length,
+                count(CASE WHEN vt <= NOW() THEN 1 END) as queue_visible_length,
                 EXTRACT(epoch FROM (NOW() - max(enqueued_at)))::int as newest_msg_age_sec,
                 EXTRACT(epoch FROM (NOW() - min(enqueued_at)))::int as oldest_msg_age_sec,
                 NOW() as scrape_time
@@ -369,7 +379,8 @@ BEGIN
             q_summary.newest_msg_age_sec,
             q_summary.oldest_msg_age_sec,
             all_metrics.total_messages,
-            q_summary.scrape_time
+            q_summary.scrape_time,
+            q_summary.queue_visible_length
         FROM q_summary, all_metrics
         $QUERY$,
         qtable, qtable || '_msg_id_seq', queue_name

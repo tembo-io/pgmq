@@ -25,9 +25,12 @@ SELECT pgmq.create('test_default_queue');
 SELECT * from pgmq.send('test_default_queue', '{"hello": "world"}');
 
 -- read message
--- vt=2, limit=1
+-- vt=0, limit=1
 \set msg_id 1
-SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1);
+SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 0, 1);
+
+-- read message using conditional
+SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1, '{"hello": "world"}');
 
 -- set VT to 5 seconds
 SELECT vt > clock_timestamp() + '4 seconds'::interval
@@ -38,6 +41,13 @@ SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue', 2, 1);
 
 -- read again, now using poll to block until message is ready
 SELECT msg_id = :msg_id FROM pgmq.read_with_poll('test_default_queue', 10, 1, 10);
+
+-- set VT to 5 seconds again for another read_with_poll test
+SELECT vt > clock_timestamp() + '4 seconds'::interval
+  FROM pgmq.set_vt('test_default_queue', :msg_id, 5);
+
+-- read again, now using poll to block until message is ready
+SELECT msg_id = :msg_id FROM pgmq.read_with_poll('test_default_queue', 10, 1, 10, 100, '{"hello": "world"}');
 
 -- after reading it, set VT to now
 SELECT msg_id = :msg_id FROM pgmq.set_vt('test_default_queue', :msg_id, 0);
@@ -77,12 +87,19 @@ SELECT pgmq.create_partitioned('test_duration_queue', '5 seconds', '10 seconds')
 -- CREATE with 10 messages per partition, 20 messages retention
 SELECT pgmq.create_partitioned('test_numeric_queue', '10 seconds', '20 seconds');
 
--- get metrics
-SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_messages
- FROM pgmq.metrics('test_duration_queue');
+-- create a queue for metrics
+SELECT pgmq.create('test_metrics_queue');
+
+-- doing some operations to get some numbers in
+SELECT pgmq.send_batch('test_metrics_queue', ARRAY['1', '2', '3', '4', '5']::jsonb[]);
+SELECT pgmq.send_batch('test_metrics_queue', ARRAY['6', '7']::jsonb[], 10);
+SELECT pgmq.archive('test_metrics_queue', 1);
+
+-- actually reading metrics
+SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_messages, queue_visible_length FROM pgmq.metrics('test_metrics_queue');
 
 -- get metrics all
-SELECT * from {PGMQ_SCHEMA}.metrics_all();
+SELECT COUNT(1) from pgmq.metrics_all();
 
 -- delete all the queues
 -- delete partitioned queues
@@ -323,6 +340,11 @@ SELECT pgmq.format_table_name('dollar$fail', 'q');
 SELECT pgmq.format_table_name('double--hyphen-fail', 'a');
 SELECT pgmq.format_table_name('semicolon;fail', 'a');
 SELECT pgmq.format_table_name($$single'quote-fail$$, 'a');
+
+-- test null message
+SELECT pgmq.create('null_message_queue');
+SELECT pgmq.send('null_message_queue', NULL);
+SELECT msg_id, read_ct, message FROM pgmq.read('null_message_queue', 1, 1);
 
 --Cleanup tests
 DROP EXTENSION pgmq CASCADE;

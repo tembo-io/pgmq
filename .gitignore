@@ -10,8 +10,8 @@ docker/**
 poetry.lock
 site
 *.zip
-sql/pgmq--*.sql
-!sql/pgmq--*--*.sql
+pgmq-extension/sql/pgmq--*.sql
+!pgmq-extension/sql/pgmq--*--*.sql
 images/pgmq-pg/Dockerfile
 META.json
 Trunk.toml
