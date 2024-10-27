@@ -136,10 +136,10 @@ SELECT pgmq.create('test_default_queue_vt');
 (1 row)
 
 -- send message with timestamp
-SELECT * from pgmq.send_at('test_default_queue_vt', '{"hello": "world"}', CURRENT_TIMESTAMP + '5 seconds'::interval);
+SELECT * from pgmq.send('test_default_queue_vt', '{"hello": "world"}', CURRENT_TIMESTAMP + '5 seconds'::interval);
  send 
----------
-       1
+------
+    1
 (1 row)
 
 -- read, assert no messages because we set timestamp to the future
@@ -178,10 +178,10 @@ SELECT pgmq.create('batch_queue_vt');
  
 (1 row)
 
-SELECT ARRAY( SELECT pgmq.send_batch_at(
+SELECT ARRAY( SELECT pgmq.send_batch(
     'batch_queue_vt',
     ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[],
-    CAST(CURRENT_TIMESTAMP + '5 seconds'::interval AS timestamp)
+    CURRENT_TIMESTAMP + '5 seconds'::interval
 )) = ARRAY[1, 2]::BIGINT[];
  ?column? 
 ----------
@@ -244,7 +244,7 @@ SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_m
 SELECT COUNT(1) from pgmq.metrics_all();
  count 
 -------
-     7
+     9
 (1 row)
 
 -- delete all the queues
@@ -273,7 +273,8 @@ WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed 
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
-
+WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
+WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
  drop_queue 
 ------------
  t
@@ -281,7 +282,9 @@ WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed 
  t
  t
  t
-(5 rows)
+ t
+ t
+(7 rows)
 
 SELECT queue_name FROM pgmq.list_queues();
  queue_name 

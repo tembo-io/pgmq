@@ -75,10 +75,10 @@ SELECT ARRAY( SELECT pgmq.send_batch(
 
 -- send a batch of 2 messages with timestamp
 SELECT pgmq.create('batch_queue_vt');
-SELECT ARRAY( SELECT pgmq.send_batch_at(
+SELECT ARRAY( SELECT pgmq.send_batch(
     'batch_queue_vt',
     ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[],
-    CAST(CURRENT_TIMESTAMP + '5 seconds'::interval AS timestamp)
+    CURRENT_TIMESTAMP + '5 seconds'::interval
 )) = ARRAY[1, 2]::BIGINT[];
 
 -- CREATE with 5 seconds per partition, 10 seconds retention

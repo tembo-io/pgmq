@@ -310,7 +310,7 @@ CREATE FUNCTION pgmq.send_batch(
     delay INTEGER DEFAULT 0
 ) RETURNS SETOF BIGINT AS $$
 BEGIN
-    RETURN QUERY EXECUTE pgmq.send_batch(queue_name, msgs, clock_timestamp() + make_interval(secs => delay));
+    RETURN QUERY SELECT * FROM pgmq.send_batch(queue_name, msgs, clock_timestamp() + make_interval(secs => delay));
 END;
 $$ LANGUAGE plpgsql;
 
