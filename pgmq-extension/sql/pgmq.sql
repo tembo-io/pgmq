@@ -274,6 +274,18 @@ CREATE FUNCTION pgmq.send(
     msg JSONB,
     delay INTEGER DEFAULT 0
 ) RETURNS SETOF BIGINT AS $$
+BEGIN
+    RETURN QUERY SELECT * FROM pgmq.send(queue_name, msg, clock_timestamp() + make_interval(secs => delay));
+END;
+$$ LANGUAGE plpgsql;
+
+-- send_at
+-- sends a message to a queue, with a delay as a timestamp
+CREATE FUNCTION pgmq.send(
+    queue_name TEXT,
+    msg JSONB,
+    delay TIMESTAMP WITH TIME ZONE
+) RETURNS SETOF BIGINT AS $$
 DECLARE
     sql TEXT;
     qtable TEXT := pgmq.format_table_name(queue_name, 'q');
@@ -281,12 +293,12 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         INSERT INTO pgmq.%I (vt, message)
-        VALUES ((clock_timestamp() + %L), $1)
+        VALUES ($2, $1)
         RETURNING msg_id;
         $QUERY$,
-        qtable, make_interval(secs => delay)
+        qtable
     );
-    RETURN QUERY EXECUTE sql USING msg;
+    RETURN QUERY EXECUTE sql USING msg, delay;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -297,6 +309,18 @@ CREATE FUNCTION pgmq.send_batch(
     msgs JSONB[],
     delay INTEGER DEFAULT 0
 ) RETURNS SETOF BIGINT AS $$
+BEGIN
+    RETURN QUERY SELECT * FROM pgmq.send_batch(queue_name, msgs, clock_timestamp() + make_interval(secs => delay));
+END;
+$$ LANGUAGE plpgsql;
+
+-- send_batch_at
+-- sends an array of list of messages to a queue, with a delay as a timestamp
+CREATE FUNCTION pgmq.send_batch(
+    queue_name TEXT,
+    msgs JSONB[],
+    delay TIMESTAMP WITH TIME ZONE
+) RETURNS SETOF BIGINT AS $$
 DECLARE
     sql TEXT;
     qtable TEXT := pgmq.format_table_name(queue_name, 'q');
@@ -304,12 +328,12 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         INSERT INTO pgmq.%I (vt, message)
-        SELECT clock_timestamp() + %L, unnest($1)
+        SELECT $2, unnest($1)
         RETURNING msg_id;
         $QUERY$,
-        qtable, make_interval(secs => delay)
+        qtable
     );
-    RETURN QUERY EXECUTE sql USING msgs;
+    RETURN QUERY EXECUTE sql USING msgs, delay;
 END;
 $$ LANGUAGE plpgsql;
 
