@@ -20,12 +20,6 @@ config :pgmq_admin, PgmqAdminWeb.Endpoint,
   secret_key_base: "m65//s1Ff5Qx0srETzjrDFKE7sRxxdIJFycJgS2vJ+cDPM7cBIDEF00v/cBRBKLq",
   server: false
 
-# In test we don't send emails.
-config :pgmq_admin, PgmqAdmin.Mailer, adapter: Swoosh.Adapters.Test
-
-# Disable swoosh api client as it is only required for production adapters.
-config :swoosh, :api_client, false
-
 # Print only warnings and errors during test
 config :logger, level: :warning
 

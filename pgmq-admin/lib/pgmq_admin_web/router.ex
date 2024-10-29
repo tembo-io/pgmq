@@ -31,8 +31,6 @@ defmodule PgmqAdminWeb.Router do
       pipe_through :browser
 
       live_dashboard "/dashboard", metrics: PgmqAdminWeb.Telemetry
-
-      forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end
 end
