@@ -65,7 +65,7 @@ defmodule PgmqAdmin.Queues do
 
   defp get_archive_length(queue) do
     %Postgrex.Result{rows: [[size]]} =
-      PgmqAdmin.Repo.query!("SELECT COUNT(1) FROM pgmq.a_#{queue}")
+      PgmqAdmin.Repo.query!("SELECT COUNT(1) FROM pgmq.\"a_#{queue}\"")
 
     size
   end
@@ -90,7 +90,7 @@ defmodule PgmqAdmin.Queues do
   def peek_queue_messages(%Queue{name: name}, count) do
     %Postgrex.Result{rows: rows} =
       PgmqAdmin.Repo.query!(
-        "SELECT * FROM pgmq.q_#{name} ORDER BY read_ct DESC, msg_id ASC LIMIT #{count}"
+        "SELECT * FROM pgmq.\"q_#{name}\" ORDER BY read_ct DESC, msg_id ASC LIMIT #{count}"
       )
 
     rows
@@ -108,7 +108,7 @@ defmodule PgmqAdmin.Queues do
   def peek_archive_messages(%Queue{name: name}, count) do
     %Postgrex.Result{rows: rows} =
       PgmqAdmin.Repo.query!(
-        "SELECT msg_id, read_ct, message FROM pgmq.a_#{name} ORDER BY msg_id DESC LIMIT #{count}"
+        "SELECT msg_id, read_ct, message FROM pgmq.\"a_#{name}\" ORDER BY msg_id DESC LIMIT #{count}"
       )
 
     rows
@@ -155,7 +155,7 @@ defmodule PgmqAdmin.Queues do
 
   def delete_message_from_archive(queue, msg_id) do
     %Postgrex.Result{num_rows: 1} =
-      PgmqAdmin.Repo.query!("DELETE from pgmq.a_#{queue} WHERE msg_id = $1", [msg_id])
+      PgmqAdmin.Repo.query!("DELETE from pgmq.\"a_#{queue}\" WHERE msg_id = $1", [msg_id])
 
     :ok
   end
