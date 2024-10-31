@@ -23,13 +23,14 @@ pgxn install pgmq
 ```
 
 Alternatively, you can manually install PGMQ by downloading and building from the source using the following commands:
+> **Note:** Run these commands as the user who owns the PostgreSQL installation (often `root` on Unix-based systems) or use `sudo` if necessary.
 
 ```
 curl -LO https://api.pgxn.org/dist/pgmq/1.4.2/pgmq-1.4.2.zip
 unzip pgmq-1.4.2.zip
 cd pgmq-1.4.2
 make
-sudo make install
+make install
 ```
 
 ## Building from source
