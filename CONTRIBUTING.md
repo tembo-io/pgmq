@@ -57,7 +57,7 @@ If you're working on native Windows, follow these steps to install and build pgm
 
 2. Install Build Tools (MinGW)
 
-- Download and install [MinGW]() from MinGW. Select the GCC compiler for C/C++
+- Download and install [MinGW](https://sourceforge.net/projects/mingw/) from MinGW. Select the GCC compiler for C/C++
 - During installation, ensure the binaries are added to the `PATH`. MinGW is essential for compiling the `pgmq` extension on Windows.
 
 3.  Install `pgmq` from Source
