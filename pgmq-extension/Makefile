@@ -8,7 +8,7 @@ EXTRA_CLEAN   = $(EXTENSION)-$(EXTVERSION).zip sql/$(EXTENSION)--$(EXTVERSION).s
 PG_PARTMAN_VER = 5.1.0
 
 # pg_isolation_regress available in v14 and higher.
-ifeq ($(shell test $$(pg_config --version | awk '{print $$2}' | awk 'BEGIN { FS = "." }; { print $$1 }') -ge 14; echo $$?),0)
+ifeq ($(shell test $$($(PG_CONFIG) --version | awk '{print $$2}' | awk 'BEGIN { FS = "." }; { print $$1 }') -ge 14; echo $$?),0)
 ISOLATION   = $(patsubst test/specs/%.spec,%,$(wildcard test/specs/*.spec))
 ISOLATION_OPTS = $(REGRESS_OPTS)
 endif
