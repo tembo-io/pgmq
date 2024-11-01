@@ -6,14 +6,13 @@ REGRESS       = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS ?= --inputdir=test
 EXTRA_CLEAN   = $(EXTENSION)-$(EXTVERSION).zip sql/$(EXTENSION)--$(EXTVERSION).sql META.json Trunk.toml
 PG_PARTMAN_VER = 5.1.0
+PG_CONFIG   ?= pg_config
 
 # pg_isolation_regress available in v14 and higher.
-ifeq ($(shell test $$(pg_config --version | awk '{print $$2}' | awk 'BEGIN { FS = "." }; { print $$1 }') -ge 14; echo $$?),0)
+ifeq ($(shell test $$($(PG_CONFIG) --version | awk '{print $$2}' | awk 'BEGIN { FS = "." }; { print $$1 }' | sed -E 's/[^0-9]//g') -ge 14; echo $$?),0)
 ISOLATION   = $(patsubst test/specs/%.spec,%,$(wildcard test/specs/*.spec))
 ISOLATION_OPTS = $(REGRESS_OPTS)
 endif
-
-PG_CONFIG   ?= pg_config
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
