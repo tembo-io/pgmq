@@ -395,7 +395,7 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         INSERT INTO pgmq.%I (vt, message, headers)
-        SELECT $2, unnest($1), unnest($2)
+        SELECT $2, unnest($1), unnest(coalesce($3, ARRAY[]::jsonb[]))
         RETURNING msg_id;
         $QUERY$,
         qtable

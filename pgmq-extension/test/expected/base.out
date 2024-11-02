@@ -503,8 +503,8 @@ SELECT pgmq.create('test_pop_queue');
 (1 row)
 
 SELECT * FROM pgmq.pop('test_pop_queue');
- msg_id | read_ct | enqueued_at | vt | message 
---------+---------+-------------+----+---------
+ msg_id | read_ct | enqueued_at | vt | message | headers 
+--------+---------+-------------+----+---------+---------
 (0 rows)
 
 SELECT send AS first_msg_id from pgmq.send('test_pop_queue', '0') \gset
@@ -534,8 +534,8 @@ SELECT pgmq.create('test_set_vt_queue');
 (1 row)
 
 SELECT * FROM pgmq.set_vt('test_set_vt_queue', 9999, 0);
- msg_id | read_ct | enqueued_at | vt | message 
---------+---------+-------------+----+---------
+ msg_id | read_ct | enqueued_at | vt | message | headers 
+--------+---------+-------------+----+---------+---------
 (0 rows)
 
 SELECT send AS first_msg_id from pgmq.send('test_set_vt_queue', '0') \gset
