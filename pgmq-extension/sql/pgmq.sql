@@ -268,8 +268,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- send
--- sends a message to a queue, optionally with a delay
+-- send: 2 args, no delay or headers
 CREATE FUNCTION pgmq.send(
     queue_name TEXT,
     msg JSONB
@@ -277,23 +276,34 @@ CREATE FUNCTION pgmq.send(
     SELECT * FROM pgmq.send(queue_name, msg, NULL, clock_timestamp());
 $$ LANGUAGE sql;
 
+-- send: 3 args with headers
 CREATE FUNCTION pgmq.send(
     queue_name TEXT,
     msg JSONB,
-    delay_or_headers anyelement
+    headers JSONB
 ) RETURNS SETOF BIGINT AS $$
-BEGIN
-    IF pg_typeof(delay_or_headers) = 'jsonb'::regtype THEN
-        RETURN QUERY SELECT * FROM pgmq.send(queue_name, msg, delay_or_headers, clock_timestamp());
-    ELSIF pg_typeof(delay_or_headers) = 'integer'::regtype OR pg_typeof(delay_or_headers) = 'timestamptz'::regtype THEN
-        RETURN QUERY SELECT * FROM pgmq.send(queue_name, msg, NULL, delay_or_headers);
-    ELSE
-        RAISE EXCEPTION 'Invalid delay_or_headers type: %. Expected integer, timestamptz, or jsonb', pg_typeofof(p_input);
-    END IF;
-END;
-$$ LANGUAGE plpgsql;
+    SELECT * FROM pgmq.send(queue_name, msg, headers, clock_timestamp());
+$$ LANGUAGE sql;
 
--- sends a message to a queue, with headers and with a delay as a integer
+-- send: 3 args with integer delay
+CREATE FUNCTION pgmq.send(
+    queue_name TEXT,
+    msg JSONB,
+    delay INTEGER
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send(queue_name, msg, NULL, clock_timestamp() + make_interval(secs => delay));
+$$ LANGUAGE sql;
+
+-- send: 3 args with timestamp
+CREATE FUNCTION pgmq.send(
+    queue_name TEXT,
+    msg JSONB,
+    delay TIMESTAMP WITH TIME ZONE
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send(queue_name, msg, NULL, delay);
+$$ LANGUAGE sql;
+
+-- send: 4 args with integer delay
 CREATE FUNCTION pgmq.send(
     queue_name TEXT,
     msg JSONB,
@@ -303,7 +313,7 @@ CREATE FUNCTION pgmq.send(
     SELECT * FROM pgmq.send(queue_name, msg, headers, clock_timestamp() + make_interval(secs => delay));
 $$ LANGUAGE sql;
 
--- sends a message to a queue, with headers and with a delay as a timestamp
+-- send: actual implementation
 CREATE FUNCTION pgmq.send(
     queue_name TEXT,
     msg JSONB,
@@ -326,32 +336,42 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- send batch: 2 args
+CREATE FUNCTION pgmq.send_batch(
+    queue_name TEXT,
+    msgs JSONB[]
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send_batch(queue_name, msgs, NULL, clock_timestamp());
+$$ LANGUAGE sql;
+
+-- send batch: 3 args with headers
+CREATE FUNCTION pgmq.send_batch(
+    queue_name TEXT,
+    msgs JSONB[],
+    headers JSONB[]
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send_batch(queue_name, msgs, headers, clock_timestamp());
+$$ LANGUAGE sql;
+
+-- send batch: 3 args with integer delay
 CREATE FUNCTION pgmq.send_batch(
     queue_name TEXT,
     msgs JSONB[],
     delay INTEGER
 ) RETURNS SETOF BIGINT AS $$
-    SELECT * FROM pgmq.send_batch(queue_name, msgs, NULL, clock_timestamp());
+    SELECT * FROM pgmq.send_batch(queue_name, msgs, NULL, clock_timestamp() + make_interval(secs => delay));
 $$ LANGUAGE sql;
 
+-- send batch: 3 args with timestamp
 CREATE FUNCTION pgmq.send_batch(
     queue_name TEXT,
     msgs JSONB[],
-    delay_or_headers ANYELEMENT
+    delay TIMESTAMP WITH TIME ZONE
 ) RETURNS SETOF BIGINT AS $$
-BEGIN
-    IF pg_typeof(delay_or_headers) = 'jsonb[]'::regtype THEN
+    SELECT * FROM pgmq.send_batch(queue_name, msgs, NULL, delay);
+$$ LANGUAGE sql;
 
-    ELSIF pg_typeof(delay_or_headers) = 'integer'::regtype OR pg_typeof(delay_or_headers) = 'timestamptz'::regtype THEN
-        RETURN QUERY SELECT * FROM pgmq.send_batch(queue_name, msg, NULL, delay_or_headers);
-    ELSE
-        RAISE EXCEPTION 'Invalid delay_or_headers type: %. Expected integer, timestamptz, or jsonb[]', pg_typeofof(p_input);
-    END IF;
-END;
-$$ LANGUAGE plpgsql;
-
--- send_batch
--- sends an array of list of messages to a queue, optionally with a delay
+-- send_batch: 4 args with integer delay
 CREATE FUNCTION pgmq.send_batch(
     queue_name TEXT,
     msgs JSONB[],
@@ -361,11 +381,11 @@ CREATE FUNCTION pgmq.send_batch(
     SELECT * FROM pgmq.send_batch(queue_name, msgs, headers, clock_timestamp() + make_interval(secs => delay));
 $$ LANGUAGE sql;
 
--- send_batch_at
--- sends an array of list of messages to a queue, with a delay as a timestamp
+-- send_batch: actual implementation
 CREATE FUNCTION pgmq.send_batch(
     queue_name TEXT,
     msgs JSONB[],
+    headers JSONB[],
     delay TIMESTAMP WITH TIME ZONE
 ) RETURNS SETOF BIGINT AS $$
 DECLARE
@@ -374,13 +394,13 @@ DECLARE
 BEGIN
     sql := FORMAT(
         $QUERY$
-        INSERT INTO pgmq.%I (vt, message)
-        SELECT $2, unnest($1)
+        INSERT INTO pgmq.%I (vt, message, headers)
+        SELECT $2, unnest($1), unnest($2)
         RETURNING msg_id;
         $QUERY$,
         qtable
     );
-    RETURN QUERY EXECUTE sql USING msgs, delay;
+    RETURN QUERY EXECUTE sql USING msgs, delay, headers;
 END;
 $$ LANGUAGE plpgsql;
 
