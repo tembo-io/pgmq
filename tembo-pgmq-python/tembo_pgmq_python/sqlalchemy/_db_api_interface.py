@@ -52,9 +52,7 @@ class DBAPICursor(Protocol):
     ) -> object:
         ...
 
-    def executemany(
-        self, operation: str, seq_of_parameters: Sequence[Sequence[Any]], /
-    ) -> object:
+    def executemany(self, operation: str, seq_of_parameters: Sequence[Sequence[Any]], /) -> object:
         ...
 
     def fetchone(self) -> Union[Sequence[Any], None]:
@@ -70,9 +68,7 @@ class DBAPICursor(Protocol):
     # def nextset(self) -> None | Literal[True]: ...
     arraysize: int
 
-    def setinputsizes(
-        self, sizes: Sequence[Union[DBAPITypeCode, int, None]], /
-    ) -> object:
+    def setinputsizes(self, sizes: Sequence[Union[DBAPITypeCode, int, None]], /) -> object:
         ...
 
     def setoutputsize(self, size: int, column: int = ..., /) -> object:

@@ -12,9 +12,7 @@ def check_pg_partman_ext() -> STATEMENT_TYPE:
 def create_queue(queue_name: str, unlogged: bool = False) -> STATEMENT_TYPE:
     """Create a new queue."""
     if unlogged:
-        return text("select pgmq.create_unlogged(:queue_name);"), {
-            "queue_name": queue_name
-        }
+        return text("select pgmq.create_unlogged(:queue_name);"), {"queue_name": queue_name}
     else:
         return text("select pgmq.create(:queue_name);"), {"queue_name": queue_name}
 
@@ -24,9 +22,7 @@ def create_partitioned_queue(
 ) -> STATEMENT_TYPE:
     """Create a new partitioned queue."""
     return (
-        text(
-            "select pgmq.create_partitioned(:queue_name, :partition_interval, :retention_interval);"
-        ),
+        text("select pgmq.create_partitioned(:queue_name, :partition_interval, :retention_interval);"),
         {
             "queue_name": queue_name,
             "partition_interval": partition_interval,
@@ -37,9 +33,7 @@ def create_partitioned_queue(
 
 def validate_queue_name(queue_name: str) -> STATEMENT_TYPE:
     """Validate the length of a queue name."""
-    return text("select pgmq.validate_queue_name(:queue_name);"), {
-        "queue_name": queue_name
-    }
+    return text("select pgmq.validate_queue_name(:queue_name);"), {"queue_name": queue_name}
 
 
 def drop_queue(queue: str, partitioned: bool = False) -> STATEMENT_TYPE:
@@ -82,14 +76,10 @@ def read_batch(queue_name: str, vt: int, batch_size: int) -> STATEMENT_TYPE:
     }
 
 
-def read_with_poll(
-    queue_name: str, vt: int, qty: int, max_poll_seconds: int, poll_interval_ms: int
-) -> STATEMENT_TYPE:
+def read_with_poll(queue_name: str, vt: int, qty: int, max_poll_seconds: int, poll_interval_ms: int) -> STATEMENT_TYPE:
     """Read messages from a queue with polling."""
     return (
-        text(
-            "select * from pgmq.read_with_poll(:queue_name, :vt, :qty, :max_poll_seconds, :poll_interval_ms);"
-        ),
+        text("select * from pgmq.read_with_poll(:queue_name, :vt, :qty, :max_poll_seconds, :poll_interval_ms);"),
         {
             "queue_name": queue_name,
             "vt": vt,

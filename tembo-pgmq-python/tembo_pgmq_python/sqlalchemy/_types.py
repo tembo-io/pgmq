@@ -11,12 +11,13 @@ ENGINE_TYPE = Union[Engine, AsyncEngine]
 SESSION_TYPE = Union[Session, AsyncSession]
 PARAM_STYLE_TYPE = Literal["qmark", "numeric", "named", "format", "pyformat"]
 DIALECTS_TYPE = Literal[
-    'sqlalchemy',
-    'asyncpg',
-    'psycopg2',
-    'psycopg3',
+    "sqlalchemy",
+    "asyncpg",
+    "psycopg2",
+    "psycopg3",
 ]
 STATEMENT_TYPE = Union[Tuple[TextClause, Dict[str, Any]], TextClause]
+
 
 class AsyncDBAPICursor(DBAPICursor):
     async def execute(
