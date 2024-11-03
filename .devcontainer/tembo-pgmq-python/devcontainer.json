@@ -1,0 +1,29 @@
+{
+    "name": "Python 3.9+ Development Container",
+    "dockerComposeFile": [
+        "../../docker-compose.devcontainer.yml"
+    ],
+    "containerEnv": {
+        "POSTGRES_PASSWORD": "postgres",
+        "SQLALCHEMY_HOST": "pgmq-postgres"
+    },
+    "service": "tembo-pgmq-python",
+    "mounts": [
+        "source=${localWorkspaceFolder}/tembo-pgmq-python,target=/workspace/tembo-pgmq-python,type=bind,consistency=cached"
+    ],
+    "workspaceFolder": "/workspace/tembo-pgmq-python",
+    "postCreateCommand": "poetry install --all-extras",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance"
+            ]
+        },
+        "settings": {
+            "terminal.integrated.shell.*": "/bin/bash",
+            "terminal.integrated.defaultProfile.linux": "bash"
+        }
+    },
+    "remoteUser": "vscode"
+}
