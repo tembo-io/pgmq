@@ -1,14 +1,17 @@
 import asyncio
-from typing import List, Optional
+from typing import List, Union, Optional
 import logging
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 from tembo_pgmq_python.messages import Message, QueueMetrics
 from tembo_pgmq_python.sqlalchemy._types import ENGINE_TYPE, DIALECTS_TYPE
-from tembo_pgmq_python.sqlalchemy._decorators import inject_session, inject_async_session
+from tembo_pgmq_python.sqlalchemy._decorators import (
+    inject_session,
+    inject_async_session,
+)
 from tembo_pgmq_python.sqlalchemy._utils import (
     get_session_type,
     is_async_session_maker,
@@ -16,10 +19,12 @@ from tembo_pgmq_python.sqlalchemy._utils import (
     encode_dict_to_psql,
     encode_list_to_psql,
 )
-
+import tembo_pgmq_python.sqlalchemy._statement as _statement
 
 
 class PGMQueue:
+    transaction_mode: bool = False
+
     engine: ENGINE_TYPE = None
     session_maker: sessionmaker = None
     delay: int = 0
@@ -31,6 +36,8 @@ class PGMQueue:
 
     def __init__(
         self,
+        # transaction options
+        transaction_mode: bool = False,
         # for sqlalchemy
         dsn: Optional[str] = None,
         engine: Optional[ENGINE_TYPE] = None,
@@ -44,7 +51,7 @@ class PGMQueue:
         database: Optional[str] = None,
         # for logging
         verbose: bool = False,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
     ) -> None:
         """
 
@@ -94,7 +101,7 @@ class PGMQueue:
         .. code-block:: python
 
             from pgmq_sqlalchemy import PGMQueue
-            
+
             pgmq_client = PGMQueue(
                 dialect='psycopg',
                 host='localhost',
@@ -109,12 +116,31 @@ class PGMQueue:
             | ``PGMQueue`` will **auto create** the ``pgmq`` extension ( and ``pg_partman`` extension if the method is related with **partitioned_queue** ) if it does not exist in the Postgres.
             | But you must make sure that the ``pgmq`` extension ( or ``pg_partman`` extension ) already **installed** in the Postgres.
         """
-        self._initialize_sqlalchemy(dsn, engine, session_maker, dialect, host, port, user, password, database)
         self._initialize_logging(verbose, logger)
+        self.transaction_mode = transaction_mode
+
+        if transaction_mode:
+            return
+
+        # no need to create new sqlalchemy session if transaction_mode is True
+        self._initialize_sqlalchemy(
+            dsn, engine, session_maker, dialect, host, port, user, password, database
+        )
         # create pgmq extension if not exists
         self._check_pgmq_ext()
 
-    def _initialize_sqlalchemy(self, dsn: str, engine: ENGINE_TYPE, session_maker: sessionmaker,dialect: DIALECTS_TYPE, host: str, port: int, user: str, password: str, database: str) -> None:
+    def _initialize_sqlalchemy(
+        self,
+        dsn: str,
+        engine: ENGINE_TYPE,
+        session_maker: sessionmaker,
+        dialect: DIALECTS_TYPE,
+        host: str,
+        port: int,
+        user: str,
+        password: str,
+        database: str,
+    ) -> None:
         if not dsn and not engine and not session_maker:
             # check if the connection is specified directly
             if not all([dialect, host, port, user, password, database]):
@@ -122,7 +148,7 @@ class PGMQueue:
                     "Must provide either dsn, engine, or session_maker or specify the connection directly"
                 )
             dsn = f"postgresql+{dialect}://{user}:{password}@{host}:{port}/{database}"
-            
+
         # initialize the engine and session_maker
         if session_maker:
             self.session_maker = session_maker
@@ -131,7 +157,7 @@ class PGMQueue:
             self.engine = engine
             self.is_async = self.engine.dialect.is_async
             self.session_maker = sessionmaker(
-                bind=self.engine, class_=get_session_type(self.engine)
+                bind=self.engine, class_=get_session_
             )
         else:
             self.engine = (
@@ -145,7 +171,9 @@ class PGMQueue:
         if self.is_async:
             self.loop = asyncio.new_event_loop()
 
-    def _initialize_logging(self, verbose: bool, logger: Optional[logging.Logger]) -> None:
+    def _initialize_logging(
+        self, verbose: bool, logger: Optional[logging.Logger]
+    ) -> None:
         """Initialize the logger."""
         if logger:
             self.logger = logger
@@ -157,17 +185,19 @@ class PGMQueue:
         else:
             self.logger.setLevel(logging.INFO)
 
-    async def _check_pgmq_ext_async(self) -> None:
+    @inject_async_session
+    async def _check_pgmq_ext_async(
+        self, session: Optional[AsyncSession] = None
+    ) -> None:
         """Check if the pgmq extension exists."""
-        async with self.session_maker() as session:
-            await session.execute(text("create extension if not exists pgmq cascade;"))
-            await session.commit()
+        await session.execute(*_statement.check_pg_partman_ext())
+        await session.commit()
 
-    def _check_pgmq_ext_sync(self) -> None:
+    @inject_session
+    def _check_pgmq_ext_sync(self, session: Optional[Session] = None) -> None:
         """Check if the pgmq extension exists."""
-        with self.session_maker() as session:
-            session.execute(text("create extension if not exists pgmq cascade;"))
-            session.commit()
+        session.execute(*_statement.check_pg_partman_ext())
+        session.commit()
 
     def _check_pgmq_ext(self) -> None:
         """Check if the pgmq extension exists."""
@@ -175,59 +205,65 @@ class PGMQueue:
             return self.loop.run_until_complete(self._check_pgmq_ext_async())
         return self._check_pgmq_ext_sync()
 
-    async def _check_pg_partman_ext_async(self) -> None:
+    @inject_async_session
+    async def _check_pg_partman_ext_async(
+        self, session: Optional[AsyncSession] = None
+    ) -> None:
         """Check if the pg_partman extension exists."""
-        async with self.session_maker() as session:
-            await session.execute(
-                text("create extension if not exists pg_partman cascade;")
-            )
-            await session.commit()
+        await session.execute(
+            text("create extension if not exists pg_partman cascade;")
+        )
+        await session.commit()
 
-    def _check_pg_partman_ext_sync(self) -> None:
+    @inject_session
+    def _check_pg_partman_ext_sync(self, session: Optional[Session] = None) -> None:
         """Check if the pg_partman extension exists."""
-        with self.session_maker() as session:
-            session.execute(text("create extension if not exists pg_partman cascade;"))
-            session.commit()
+        session.execute(text("create extension if not exists pg_partman cascade;"))
+        session.commit()
 
     def _check_pg_partman_ext(self) -> None:
         """Check if the pg_partman extension exists."""
         if self.is_pg_partman_ext_checked:
             return
-        self.is_pg_partman_ext_checked
+        self.is_pg_partman_ext_checked = True
 
         if self.is_async:
             return self.loop.run_until_complete(self._check_pg_partman_ext_async())
         return self._check_pg_partman_ext_sync()
 
-    def _create_queue_sync(self, queue_name: str, unlogged: bool = False) -> None:
-        """ """
-        with self.session_maker() as session:
-            if unlogged:
-                session.execute(
-                    text("select pgmq.create_unlogged(:queue);"), {"queue": queue_name}
-                )
-            else:
-                session.execute(
-                    text("select pgmq.create(:queue);"), {"queue": queue_name}
-                )
-            session.commit()
-
-    async def _create_queue_async(
-        self, queue_name: str, unlogged: bool = False
+    @inject_session
+    def _create_queue_sync(
+        self,
+        queue_name: str,
+        unlogged: bool = False,
+        session: Optional[Session] = None,
+        commit: bool = True,
     ) -> None:
         """Create a new queue."""
-        async with self.session_maker() as session:
-            if unlogged:
-                await session.execute(
-                    text("select pgmq.create_unlogged(:queue);"), {"queue": queue_name}
-                )
-            else:
-                await session.execute(
-                    text("select pgmq.create(:queue);"), {"queue": queue_name}
-                )
+        session.execute(*_statement.create_queue(queue_name, unlogged))
+        if commit:
+            session.commit()
+
+    @inject_async_session
+    async def _create_queue_async(
+        self,
+        queue_name: str,
+        unlogged: bool = False,
+        session: Optional[AsyncSession] = None,
+        commit: bool = True,
+    ) -> None:
+        """Create a new queue."""
+        await session.execute(*_statement.create_queue(queue_name, unlogged))
+        if commit:
             await session.commit()
 
-    def create_queue(self, queue_name: str, unlogged: bool = False) -> None:
+    def create_queue(
+        self,
+        queue_name: str,
+        unlogged: bool = False,
+        session: Optional[Union[Session, AsyncSession]] = None,
+        commit: bool = True,
+    ) -> None:
         """
         .. _unlogged_table: https://www.postgresql.org/docs/current/sql-createtable.html#SQL-CREATETABLE-UNLOGGED
         .. |unlogged_table| replace:: **UNLOGGED TABLE**
@@ -246,48 +282,51 @@ class PGMQueue:
         """
         if self.is_async:
             return self.loop.run_until_complete(
-                self._create_queue_async(queue_name, unlogged)
+                self._create_queue_async(
+                    queue_name=queue_name,
+                    unlogged=unlogged,
+                    session=session,
+                    commit=commit,
+                )
             )
-        return self._create_queue_sync(queue_name, unlogged)
+        return self._create_queue_sync(
+            queue_name=queue_name, unlogged=unlogged, session=session, commit=commit
+        )
 
+    @inject_session
     def _create_partitioned_queue_sync(
         self,
         queue_name: str,
         partition_interval: str,
         retention_interval: str,
+        session: Optional[Session] = None,
+        commit: bool = True,
     ) -> None:
         """Create a new partitioned queue."""
-        with self.session_maker() as session:
-            session.execute(
-                text(
-                    "select pgmq.create_partitioned(:queue_name, :partition_interval, :retention_interval);"
-                ),
-                {
-                    "queue_name": queue_name,
-                    "partition_interval": partition_interval,
-                    "retention_interval": retention_interval,
-                },
+        session.execute(
+            *_statement.create_partitioned_queue(
+                queue_name, partition_interval, retention_interval
             )
+        )
+        if commit:
             session.commit()
 
+    @inject_async_session
     async def _create_partitioned_queue_async(
         self,
         queue_name: str,
         partition_interval: str,
         retention_interval: str,
+        session: Optional[AsyncSession] = None,
+        commit: bool = True,
     ) -> None:
         """Create a new partitioned queue."""
-        async with self.session_maker() as session:
-            await session.execute(
-                text(
-                    "select pgmq.create_partitioned(:queue_name, :partition_interval, :retention_interval);"
-                ),
-                {
-                    "queue_name": queue_name,
-                    "partition_interval": partition_interval,
-                    "retention_interval": retention_interval,
-                },
+        await session.execute(
+            *_statement.create_partitioned_queue(
+                queue_name, partition_interval, retention_interval
             )
+        )
+        if commit:
             await session.commit()
 
     def create_partitioned_queue(
@@ -295,6 +334,8 @@ class PGMQueue:
         queue_name: str,
         partition_interval: int = 10000,
         retention_interval: int = 100000,
+        session: Optional[Union[Session, AsyncSession]] = None,
+        commit: bool = True,
     ) -> None:
         """Create a new **partitioned** queue.
 
@@ -327,62 +368,74 @@ class PGMQueue:
         if self.is_async:
             return self.loop.run_until_complete(
                 self._create_partitioned_queue_async(
-                    queue_name, str(partition_interval), str(retention_interval)
+                    queue_name=queue_name,
+                    partition_interval=str(partition_interval),
+                    retention_interval=str(retention_interval),
+                    session=session,
+                    commit=commit,
                 )
             )
         return self._create_partitioned_queue_sync(
-            queue_name, str(partition_interval), str(retention_interval)
+            queue_name=queue_name,
+            partition_interval=str(partition_interval),
+            retention_interval=str(retention_interval),
+            session=session,
+            commit=commit,
         )
 
-    def _validate_queue_name_sync(self, queue_name: str) -> None:
+    @inject_session
+    def _validate_queue_name_sync(self, queue_name: str, session: Optional[Session] = None):
         """Validate the length of a queue name."""
-        with self.session_maker() as session:
-            session.execute(
-                text("select pgmq.validate_queue_name(:queue);"), {"queue": queue_name}
-            )
-            session.commit()
+        session.execute(
+            *_statement.validate_queue_name(queue_name)
+        )
 
-    async def _validate_queue_name_async(self, queue_name: str) -> None:
+    @inject_async_session
+    async def _validate_queue_name_async(self, queue_name: str, session: Optional[AsyncSession] = None):
         """Validate the length of a queue name."""
-        async with self.session_maker() as session:
-            await session.execute(
-                text("select pgmq.validate_queue_name(:queue);"), {"queue": queue_name}
-            )
-            await session.commit()
+        await session.execute(
+            *_statement.validate_queue_name(queue_name)
+        )
 
-    def validate_queue_name(self, queue_name: str) -> None:
+    def validate_queue_name(self, queue_name: str, session: Optional[Union[Session, AsyncSession]] = None):
         """
         * Will raise an error if the ``queue_name`` is more than 48 characters.
         """
         if self.is_async:
             return self.loop.run_until_complete(
-                self._validate_queue_name_async(queue_name)
-            )
-        return self._validate_queue_name_sync(queue_name)
-
-    def _drop_queue_sync(self, queue: str, partitioned: bool = False) -> bool:
-        """Drop a queue."""
-        with self.session_maker() as session:
-            row = session.execute(
-                text("select pgmq.drop_queue(:queue, :partitioned);"),
-                {"queue": queue, "partitioned": partitioned},
-            ).fetchone()
-            session.commit()
-            return row[0]
-
-    async def _drop_queue_async(self, queue: str, partitioned: bool = False) -> bool:
-        """Drop a queue."""
-        async with self.session_maker() as session:
-            row = (
-                await session.execute(
-                    text("select pgmq.drop_queue(:queue, :partitioned);"),
-                    {"queue": queue, "partitioned": partitioned},
+                self._validate_queue_name_async(
+                    queue_name=queue_name,
+                    session=session,
                 )
-            ).fetchone()
-            await session.commit()
-            return row[0]
+            )
+        return self._validate_queue_name_sync(
+            queue_name=queue_name,
+            session=session,
+        )
 
-    def drop_queue(self, queue: str, partitioned: bool = False) -> bool:
+    @inject_session
+    def _drop_queue_sync(self, queue_name: str, partitioned: bool = False, session: Optional[Session] = None,commit: bool = True) -> bool:
+        """Drop a queue."""
+        row = session.execute(
+            *_statement.drop_queue(queue_name, partitioned)
+        ).fetchone()
+        if commit:
+            session.commit()
+        return row[0]
+
+    @inject_async_session
+    async def _drop_queue_async(self, queue_name: str, partitioned: bool = False, session: Optional[AsyncSession] = None, commit: bool = True) -> bool:
+        """Drop a queue."""
+        row = (
+            await session.execute(
+                *_statement.drop_queue(queue_name, partitioned)
+            )
+        ).fetchone()
+        if commit:
+            await session.commit()
+        return row[0]
+
+    def drop_queue(self, queue_name: str, partitioned: bool = False, session: Optional[Union[Session, AsyncSession]] = None, commit: bool = True) -> bool:
         """Drop a queue.
 
         .. _drop_queue_method: ref:`pgmq_sqlalchemy.PGMQueue.drop_queue`
@@ -406,31 +459,39 @@ class PGMQueue:
 
         if self.is_async:
             return self.loop.run_until_complete(
-                self._drop_queue_async(queue, partitioned)
-            )
-        return self._drop_queue_sync(queue, partitioned)
-
-    def _list_queues_sync(self) -> List[str]:
-        """List all queues."""
-        with self.session_maker() as session:
-            rows = session.execute(
-                text("select queue_name from pgmq.list_queues();")
-            ).fetchall()
-            session.commit()
-            return [row[0] for row in rows]
-
-    async def _list_queues_async(self) -> List[str]:
-        """List all queues."""
-        async with self.session_maker() as session:
-            rows = (
-                await session.execute(
-                    text("select queue_name from pgmq.list_queues();")
+                self._drop_queue_async(
+                    queue_name=queue_name,
+                    partitioned=partitioned,
+                    session=session,
+                    commit=commit,
                 )
-            ).fetchall()
-            await session.commit()
-            return [row[0] for row in rows]
+            )
+        return self._drop_queue_sync(
+            queue_name=queue_name,
+            partitioned=partitioned,
+            session=session,
+            commit=commit,
+        )
 
-    def list_queues(self) -> List[str]:
+    @inject_session
+    def _list_queues_sync(self, session: Optional[Session] = None ) -> List[str]:
+        """List all queues."""
+        rows = session.execute(
+            text("select queue_name from pgmq.list_queues();")
+        ).fetchall()
+        return [row[0] for row in rows]
+
+    @inject_async_session
+    async def _list_queues_async(self,session: Optional[AsyncSession] = None) -> List[str]:
+        """List all queues."""
+        rows = (
+            await session.execute(
+                text("select queue_name from pgmq.list_queues();")
+            )
+        ).fetchall()
+        return [row[0] for row in rows]
+
+    def list_queues(self, session: Optional[Union[Session, AsyncSession]] = None) -> List[str]:
         """List all queues.
 
         .. code-block:: python
@@ -439,30 +500,36 @@ class PGMQueue:
             print(queue_list)
         """
         if self.is_async:
-            return self.loop.run_until_complete(self._list_queues_async())
-        return self._list_queues_sync()
+            return self.loop.run_until_complete(self._list_queues_async(
+                session=session
+            ))
+        return self._list_queues_sync(
+            session=session
+        )
 
-    def _send_sync(self, queue_name: str, message: str, delay: int = 0) -> int:
-        with self.session_maker() as session:
-            row = (
-                session.execute(
-                    text(f"select * from pgmq.send('{queue_name}',{message},{delay});")
-                )
-            ).fetchone()
+    @inject_session
+    def _send_sync(self, queue_name: str, message: str, delay: int = 0, session: Optional[Session] = None, commit: bool = True) -> int:
+        row = (
+            session.execute(
+                _statement.send(queue_name, message, delay)
+            )
+        ).fetchone()
+        if commit:
             session.commit()
         return row[0]
 
-    async def _send_async(self, queue_name: str, message: str, delay: int = 0) -> int:
-        async with self.session_maker() as session:
-            row = (
-                await session.execute(
-                    text(f"select * from pgmq.send('{queue_name}',{message},{delay});")
-                )
-            ).fetchone()
+    @inject_async_session
+    async def _send_async(self, queue_name: str, message: str, delay: int = 0, session: Optional[AsyncSession] = None, commit: bool = True) -> int:
+        row = (
+            await session.execute(
+                _statement.send(queue_name, message, delay)
+            )
+        ).fetchone()
+        if commit:
             await session.commit()
         return row[0]
 
-    def send(self, queue_name: str, message: dict, delay: int = 0) -> int:
+    def send(self, queue_name: str, message: dict, delay: int = 0, session: Optional[Union[Session, AsyncSession]] = None, commit: bool = True) -> int:
         """Send a message to a queue.
 
         .. code-block:: python
@@ -483,40 +550,50 @@ class PGMQueue:
         """
         if self.is_async:
             return self.loop.run_until_complete(
-                self._send_async(queue_name, encode_dict_to_psql(message), delay)
-            )
-        return self._send_sync(queue_name, encode_dict_to_psql(message), delay)
-
-    def _send_batch_sync(
-        self, queue_name: str, messages: str, delay: int = 0
-    ) -> List[int]:
-        with self.session_maker() as session:
-            rows = (
-                session.execute(
-                    text(
-                        f"select * from pgmq.send_batch('{queue_name}',{messages},{delay});"
-                    )
+                self._send_async(
+                    queue_name=queue_name,
+                    message=encode_dict_to_psql(message),
+                    delay=delay,
+                    session=session,
+                    commit=commit,
                 )
-            ).fetchall()
+            )
+        return self._send_sync(
+            queue_name=queue_name,
+            message=encode_dict_to_psql(message),
+            delay=delay,
+            session=session,
+            commit=commit,
+        )
+
+    @inject_session
+    def _send_batch_sync(
+        self, queue_name: str, messages: str, delay: int = 0 , session: Optional[Session] = None, commit: bool = True
+    ) -> List[int]:
+        rows = (
+            session.execute(
+                _statement.send_batch(queue_name, messages, delay)
+            )
+        ).fetchall()
+        if commit:
             session.commit()
         return [row[0] for row in rows]
 
+    @inject_async_session
     async def _send_batch_async(
-        self, queue_name: str, messages: str, delay: int = 0
+        self, queue_name: str, messages: str, delay: int = 0, session: Optional[AsyncSession] = None, commit: bool = True
     ) -> List[int]:
-        async with self.session_maker() as session:
-            rows = (
-                await session.execute(
-                    text(
-                        f"select * from pgmq.send_batch('{queue_name}',{messages},{delay});"
-                    )
-                )
-            ).fetchall()
+        rows = (
+            await session.execute(
+                _statement.send_batch(queue_name, messages, delay)
+            )
+        ).fetchall()
+        if commit:
             await session.commit()
         return [row[0] for row in rows]
 
     def send_batch(
-        self, queue_name: str, messages: List[dict], delay: int = 0
+        self, queue_name: str, messages: List[dict], delay: int = 0, session: Optional[Union[Session, AsyncSession]] = None, commit: bool = True
     ) -> List[int]:
         """
         Send a batch of messages to a queue.
@@ -532,16 +609,28 @@ class PGMQueue:
         """
         if self.is_async:
             return self.loop.run_until_complete(
-                self._send_batch_async(queue_name, encode_list_to_psql(messages), delay)
+                self._send_batch_async(
+                    queue_name=queue_name,
+                    messages=encode_list_to_psql(messages),
+                    delay=delay,
+                    session=session,
+                    commit=commit,
+                )
             )
-        return self._send_batch_sync(queue_name, encode_list_to_psql(messages), delay)
+        return self._send_batch_sync(
+            queue_name=queue_name,
+            messages=encode_list_to_psql(messages),
+            delay=delay,
+            session=session,
+            commit=commit,
+        )
 
-    def _read_sync(self, queue_name: str, vt: int) -> Optional[Message]:
-        with self.session_maker() as session:
-            row = session.execute(
-                text("select * from pgmq.read(:queue_name,:vt,1);"),
-                {"queue_name": queue_name, "vt": vt},
-            ).fetchone()
+    @inject_session
+    def _read_sync(self, queue_name: str, vt: int, session: Optional[Session] = None, commit: bool = True) -> Optional[Message]:
+        row = session.execute(
+            *_statement.read(queue_name, vt)
+        ).fetchone()
+        if commit:
             session.commit()
         if row is None:
             return None
@@ -549,14 +638,14 @@ class PGMQueue:
             msg_id=row[0], read_ct=row[1], enqueued_at=row[2], vt=row[3], message=row[4]
         )
 
-    async def _read_async(self, queue_name: str, vt: int) -> Optional[Message]:
-        async with self.session_maker() as session:
-            row = (
-                await session.execute(
-                    text("select * from pgmq.read(:queue_name,:vt,1);"),
-                    {"queue_name": queue_name, "vt": vt},
-                )
-            ).fetchone()
+    @inject_async_session
+    async def _read_async(self, queue_name: str, vt: int, session: Optional[AsyncSession] = None, commit: bool = True) -> Optional[Message]:
+        row = (
+            await session.execute(
+                *_statement.read(queue_name, vt)
+            )
+        ).fetchone()
+        if commit:
             await session.commit()
         if row is None:
             return None
@@ -564,7 +653,7 @@ class PGMQueue:
             msg_id=row[0], read_ct=row[1], enqueued_at=row[2], vt=row[3], message=row[4]
         )
 
-    def read(self, queue_name: str, vt: Optional[int] = None) -> Optional[Message]:
+    def read(self, queue_name: str, vt: Optional[int] = None, session: Optional[Union[Session, AsyncSession]] = None, commit: bool = True) -> Optional[Message]:
         """
         .. _for_update_skip_locked: https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE
         .. |for_update_skip_locked| replace:: **FOR UPDATE SKIP LOCKED**
@@ -624,27 +713,35 @@ class PGMQueue:
 
 
         """
+        if vt is None:
+            vt = self.vt
         if self.is_async:
-            return self.loop.run_until_complete(self._read_async(queue_name, vt))
-        return self._read_sync(queue_name, vt)
+            return self.loop.run_until_complete(self._read_async(
+                queue_name=queue_name,
+                vt=vt,
+                session=session,
+                commit=commit,
+            ))
+        return self._read_sync(
+            queue_name=queue_name,
+            vt=vt,
+            session=session,
+            commit=commit,
+        )
 
+    @inject_session
     def _read_batch_sync(
         self,
         queue_name: str,
         vt: int,
         batch_size: int = 1,
+        session: Optional[Session] = None,
+        commit: bool = True,
     ) -> Optional[List[Message]]:
-        if vt is None:
-            vt = self.vt
-        with self.session_maker() as session:
-            rows = session.execute(
-                text("select * from pgmq.read(:queue_name,:vt,:batch_size);"),
-                {
-                    "queue_name": queue_name,
-                    "vt": vt,
-                    "batch_size": batch_size,
-                },
-            ).fetchall()
+        rows = session.execute(
+            *_statement.read_batch(queue_name, vt, batch_size)
+        ).fetchall()
+        if commit:
             session.commit()
         if not rows:
             return None
@@ -659,23 +756,21 @@ class PGMQueue:
             for row in rows
         ]
 
+    @inject_async_session
     async def _read_batch_async(
         self,
         queue_name: str,
         vt: int,
         batch_size: int = 1,
+        session: Optional[AsyncSession] = None,
+        commit: bool = True,
     ) -> Optional[List[Message]]:
-        async with self.session_maker() as session:
-            rows = (
-                await session.execute(
-                    text("select * from pgmq.read(:queue_name,:vt,:batch_size);"),
-                    {
-                        "queue_name": queue_name,
-                        "vt": vt,
-                        "batch_size": batch_size,
-                    },
-                )
-            ).fetchall()
+        rows = (
+            await session.execute(
+                *_statement.read_batch(queue_name, vt, batch_size)
+            )
+        ).fetchall()
+        if commit:
             await session.commit()
         if not rows:
             return None
@@ -695,6 +790,8 @@ class PGMQueue:
         queue_name: str,
         batch_size: int = 1,
         vt: Optional[int] = None,
+        session: Optional[Union[Session, AsyncSession]] = None,
+        commit: bool = True,
     ) -> Optional[List[Message]]:
         """
         | Read a batch of messages from the queue.
@@ -716,10 +813,23 @@ class PGMQueue:
             vt = self.vt
         if self.is_async:
             return self.loop.run_until_complete(
-                self._read_batch_async(queue_name, batch_size, vt)
+                self._read_batch_async(
+                    queue_name=queue_name,
+                    vt=vt,
+                    batch_size=batch_size,
+                    session=session,
+                    commit=commit,
+                )
             )
-        return self._read_batch_sync(queue_name, batch_size, vt)
+        return self._read_batch_sync(
+                    queue_name=queue_name,
+                    vt=vt,
+                    batch_size=batch_size,
+                    session=session,
+                    commit=commit,
+                )
 
+    @inject_session
     def _read_with_poll_sync(
         self,
         queue_name: str,
@@ -727,21 +837,16 @@ class PGMQueue:
         qty: int = 1,
         max_poll_seconds: int = 5,
         poll_interval_ms: int = 100,
+        session: Optional[Session] = None,
+        commit: bool = True,
     ) -> Optional[List[Message]]:
         """Read messages from a queue with polling."""
-        with self.session_maker() as session:
-            rows = session.execute(
-                text(
-                    "select * from pgmq.read_with_poll(:queue_name,:vt,:qty,:max_poll_seconds,:poll_interval_ms);"
-                ),
-                {
-                    "queue_name": queue_name,
-                    "vt": vt,
-                    "qty": qty,
-                    "max_poll_seconds": max_poll_seconds,
-                    "poll_interval_ms": poll_interval_ms,
-                },
-            ).fetchall()
+        rows = session.execute(
+            *_statement.read_with_poll(
+                queue_name, vt, qty, max_poll_seconds, poll_interval_ms
+            )
+        ).fetchall()
+        if commit:
             session.commit()
         if not rows:
             return None
@@ -763,23 +868,18 @@ class PGMQueue:
         qty: int = 1,
         max_poll_seconds: int = 5,
         poll_interval_ms: int = 100,
+        session: Optional[AsyncSession] = None,
+        commit: bool = True,
     ) -> Optional[List[Message]]:
         """Read messages from a queue with polling."""
-        async with self.session_maker() as session:
-            rows = (
-                await session.execute(
-                    text(
-                        "select * from pgmq.read_with_poll(:queue_name,:vt,:qty,:max_poll_seconds,:poll_interval_ms);"
-                    ),
-                    {
-                        "queue_name": queue_name,
-                        "vt": vt,
-                        "qty": qty,
-                        "max_poll_seconds": max_poll_seconds,
-                        "poll_interval_ms": poll_interval_ms,
-                    },
+        rows = (
+            await session.execute(
+                *_statement.read_with_poll(
+                    queue_name, vt, qty, max_poll_seconds, poll_interval_ms
                 )
-            ).fetchall()
+            )
+        ).fetchall()
+        if commit:
             await session.commit()
         if not rows:
             return None
@@ -801,6 +901,8 @@ class PGMQueue:
         qty: int = 1,
         max_poll_seconds: int = 5,
         poll_interval_ms: int = 100,
+        session: Optional[Union[Session, AsyncSession]] = None,
+        commit: bool = True,
     ) -> Optional[List[Message]]:
         """
 
@@ -856,22 +958,34 @@ class PGMQueue:
         if self.is_async:
             return self.loop.run_until_complete(
                 self._read_with_poll_async(
-                    queue_name, vt, qty, max_poll_seconds, poll_interval_ms
+                    queue_name=queue_name,
+                    vt=vt,
+                    qty=qty,
+                    max_poll_seconds=max_poll_seconds,
+                    poll_interval_ms=poll_interval_ms,
+                    session=session,
+                    commit=commit,
                 )
             )
         return self._read_with_poll_sync(
-            queue_name, vt, qty, max_poll_seconds, poll_interval_ms
-        )
+                queue_name=queue_name,
+                vt=vt,
+                qty=qty,
+                max_poll_seconds=max_poll_seconds,
+                poll_interval_ms=poll_interval_ms,
+                session=session,
+                commit=commit,
+            )
 
+    @inject_session
     def _set_vt_sync(
-        self, queue_name: str, msg_id: int, vt_offset: int
+        self, queue_name: str, msg_id: int, vt_offset: int, session: Optional[Session] = None, commit: bool = True
     ) -> Optional[Message]:
         """Set the visibility timeout for a message."""
-        with self.session_maker() as session:
-            row = session.execute(
-                text("select * from pgmq.set_vt(:queue_name,:msg_id,:vt_offset);"),
-                {"queue_name": queue_name, "msg_id": msg_id, "vt_offset": vt_offset},
-            ).fetchone()
+        row = session.execute(
+            *_statement.set_vt(queue_name, msg_id, vt_offset)
+        ).fetchone()
+        if commit:
             session.commit()
         if row is None:
             return None
@@ -880,29 +994,23 @@ class PGMQueue:
         )
 
     async def _set_vt_async(
-        self, queue_name: str, msg_id: int, vt_offset: int
+        self, queue_name: str, msg_id: int, vt_offset: int, session: Optional[AsyncSession] = None, commit: bool = True
     ) -> Optional[Message]:
         """Set the visibility timeout for a message."""
-        async with self.session_maker() as session:
-            row = (
-                await session.execute(
-                    text("select * from pgmq.set_vt(:queue_name,:msg_id,:vt_offset);"),
-                    {
-                        "queue_name": queue_name,
-                        "msg_id": msg_id,
-                        "vt_offset": vt_offset,
-                    },
-                )
-            ).fetchone()
+        row = (
+            await session.execute(
+                *_statement.set_vt(queue_name, msg_id, vt_offset)
+            )
+        ).fetchone()
+        if commit:
             await session.commit()
-        print("row", row)
         if row is None:
             return None
         return Message(
             msg_id=row[0], read_ct=row[1], enqueued_at=row[2], vt=row[3], message=row[4]
         )
 
-    def set_vt(self, queue_name: str, msg_id: int, vt_offset: int) -> Optional[Message]:
+    def set_vt(self, queue_name: str, msg_id: int, vt_offset: int, session: Optional[Union[Session, AsyncSession]] = None, commit: bool = True) -> Optional[Message]:
         """
         .. _set_vt_method: ref:`pgmq_sqlalchemy.PGMQueue.set_vt`
         .. |set_vt_method| replace:: :py:meth:`~pgmq_sqlalchemy.PGMQueue.set_vt`
@@ -961,16 +1069,28 @@ class PGMQueue:
         """
         if self.is_async:
             return self.loop.run_until_complete(
-                self._set_vt_async(queue_name, msg_id, vt_offset)
+                self._set_vt_async(
+                    queue_name=queue_name,
+                    msg_id=msg_id,
+                    vt_offset=vt_offset,
+                    session=session,
+                    commit=commit,
+                )
             )
-        return self._set_vt_sync(queue_name, msg_id, vt_offset)
+        return self._set_vt_sync(
+            queue_name=queue_name,
+            msg_id=msg_id,
+            vt_offset=vt_offset,
+            session=session,
+            commit=commit,
+        )
 
-    def _pop_sync(self, queue_name: str) -> Optional[Message]:
-        with self.session_maker() as session:
-            row = session.execute(
-                text("select * from pgmq.pop(:queue_name);"),
-                {"queue_name": queue_name},
-            ).fetchone()
+    @inject_session
+    def _pop_sync(self, queue_name: str, session: Optional[Session] = None, commit: bool = True) -> Optional[Message]:
+        row = session.execute(
+            *_statement.pop(queue_name)
+        ).fetchone()
+        if commit:
             session.commit()
         if row is None:
             return None
@@ -978,14 +1098,14 @@ class PGMQueue:
             msg_id=row[0], read_ct=row[1], enqueued_at=row[2], vt=row[3], message=row[4]
         )
 
-    async def _pop_async(self, queue_name: str) -> Optional[Message]:
-        async with self.session_maker() as session:
-            row = (
-                await session.execute(
-                    text("select * from pgmq.pop(:queue_name);"),
-                    {"queue_name": queue_name},
-                )
-            ).fetchone()
+    @inject_async_session
+    async def _pop_async(self, queue_name: str, session: Optional[AsyncSession] = None, commit: bool = True) -> Optional[Message]:
+        row = (
+            await session.execute(
+                *_statement.pop(queue_name)
+            )
+        ).fetchone()
+        if commit:
             await session.commit()
         if row is None:
             return None
@@ -993,7 +1113,7 @@ class PGMQueue:
             msg_id=row[0], read_ct=row[1], enqueued_at=row[2], vt=row[3], message=row[4]
         )
 
-    def pop(self, queue_name: str) -> Optional[Message]:
+    def pop(self, queue_name: str, session: Optional[Union[Session, AsyncSession]] = None, commit: bool = True) -> Optional[Message]:
         """
         Reads a single message from a queue and deletes it upon read.
 
@@ -1005,38 +1125,55 @@ class PGMQueue:
 
         """
         if self.is_async:
-            return self.loop.run_until_complete(self._pop_async(queue_name))
-        return self._pop_sync(queue_name)
+            return self.loop.run_until_complete(
+                self._pop_async(
+                    queue_name=queue_name,
+                    session=session,
+                    commit=commit,
+                )
+            )
+        return self._pop_sync(
+                    queue_name=queue_name,
+                    session=session,
+                    commit=commit,
+                )
+            
 
+    @inject_session
     def _delete_sync(
         self,
         queue_name: str,
         msg_id: int,
+        session: Optional[Session] = None,
+        commit: bool = True,
     ) -> bool:
-        with self.session_maker() as session:
-            # should add explicit type casts to choose the correct candidate function
-            row = session.execute(
-                text(f"select * from pgmq.delete('{queue_name}',{msg_id}::BIGINT);")
-            ).fetchone()
+        # should add explicit type casts to choose the correct candidate function
+        row = session.execute(
+            _statement.delete(queue_name, msg_id)
+        ).fetchone()
+        if commit:
             session.commit()
         return row[0]
 
+    @inject_async_session
     async def _delete_async(
         self,
         queue_name: str,
         msg_id: int,
+        session: Optional[AsyncSession] = None,
+        commit: bool = True,
     ) -> bool:
-        async with self.session_maker() as session:
-            # should add explicit type casts to choose the correct candidate function
-            row = (
-                await session.execute(
-                    text(f"select * from pgmq.delete('{queue_name}',{msg_id}::BIGINT);")
-                )
-            ).fetchone()
+        # should add explicit type casts to choose the correct candidate function
+        row = (
+            await session.execute(
+                text(f"select * from pgmq.delete('{queue_name}',{msg_id}::BIGINT);")
+            )
+        ).fetchone()
+        if commit:
             await session.commit()
         return row[0]
 
-    def delete(self, queue_name: str, msg_id: int) -> bool:
+    def delete(self, queue_name: str, msg_id: int, session: Optional[Union[Session, AsyncSession]] = None, commit: bool = True) -> bool:
         """
         Delete a message from the queue.
 
@@ -1055,38 +1192,52 @@ class PGMQueue:
 
         """
         if self.is_async:
-            return self.loop.run_until_complete(self._delete_async(queue_name, msg_id))
-        return self._delete_sync(queue_name, msg_id)
+            return self.loop.run_until_complete(self._delete_async(
+                queue_name=queue_name,
+                msg_id=msg_id,
+                session=session,
+                commit=commit,
+            ))
+        return self._delete_sync(
+                queue_name=queue_name,
+                msg_id=msg_id,
+                session=session,
+                commit=commit,
+            )
 
+    @inject_session
     def _delete_batch_sync(
         self,
         queue_name: str,
         msg_ids: List[int],
+        session: Optional[Session] = None,
+        commit: bool = True,
     ) -> List[int]:
-        # should add explicit type casts to choose the correct candidate function
-        with self.session_maker() as session:
-            rows = session.execute(
-                text(f"select * from pgmq.delete('{queue_name}',ARRAY{msg_ids});")
-            ).fetchall()
+        rows = session.execute(
+            _statement.delete_batch(queue_name, msg_ids)
+        ).fetchall()
+        if commit:
             session.commit()
         return [row[0] for row in rows]
 
+    @inject_async_session
     async def _delete_batch_async(
         self,
         queue_name: str,
         msg_ids: List[int],
+        session: Optional[AsyncSession] = None,
+        commit: bool = True,
     ) -> List[int]:
-        # should add explicit type casts to choose the correct candidate function
-        async with self.session_maker() as session:
-            rows = (
-                await session.execute(
-                    text(f"select * from pgmq.delete('{queue_name}',ARRAY{msg_ids});")
-                )
-            ).fetchall()
+        rows = (
+            await session.execute(
+                text(f"select * from pgmq.delete('{queue_name}',ARRAY{msg_ids});")
+            )
+        ).fetchall()
+        if commit:
             await session.commit()
         return [row[0] for row in rows]
 
-    def delete_batch(self, queue_name: str, msg_ids: List[int]) -> List[int]:
+    def delete_batch(self, queue_name: str, msg_ids: List[int], session: Optional[Union[Session, AsyncSession]] = None, commit: bool = True) -> List[int]:
         """
         Delete a batch of messages from the queue.
 
@@ -1105,31 +1256,43 @@ class PGMQueue:
         """
         if self.is_async:
             return self.loop.run_until_complete(
-                self._delete_batch_async(queue_name, msg_ids)
+                self._delete_batch_async(
+                    queue_name=queue_name,
+                    msg_ids=msg_ids,
+                    session=session,
+                    commit=commit,
+                )
             )
-        return self._delete_batch_sync(queue_name, msg_ids)
+        return self._delete_batch_sync(
+            queue_name=queue_name,
+            msg_ids=msg_ids,
+            session=session,
+            commit=commit,
+        )
 
-    def _archive_sync(self, queue_name: str, msg_id: int) -> bool:
+    @inject_session
+    def _archive_sync(self, queue_name: str, msg_id: int, session: Optional[Session] = None, commit: bool = True) -> bool:
         """Archive a message from a queue synchronously."""
-        with self.session_maker() as session:
-            row = session.execute(
-                text(f"select pgmq.archive('{queue_name}',{msg_id}::BIGINT);")
-            ).fetchone()
+        row = session.execute(
+            _statement.archive(queue_name, msg_id)
+        ).fetchone()
+        if commit:
             session.commit()
         return row[0]
 
-    async def _archive_async(self, queue_name: str, msg_id: int) -> bool:
+    @inject_async_session
+    async def _archive_async(self, queue_name: str, msg_id: int, session: Optional[AsyncSession] = None, commit: bool = True) -> bool:
         """Archive a message from a queue asynchronously."""
-        async with self.session_maker() as session:
-            row = (
-                await session.execute(
-                    text(f"select pgmq.archive('{queue_name}',{msg_id}::BIGINT);")
-                )
-            ).fetchone()
+        row = (
+            await session.execute(
+                _statement.archive(queue_name, msg_id)
+            )
+        ).fetchone()
+        if commit:
             await session.commit()
         return row[0]
 
-    def archive(self, queue_name: str, msg_id: int) -> bool:
+    def archive(self, queue_name: str, msg_id: int, session: Optional[Union[Session, AsyncSession]] = None, commit: bool = True) -> bool:
         """
         Archive a message from a queue.
 
@@ -1151,32 +1314,46 @@ class PGMQueue:
 
         """
         if self.is_async:
-            return self.loop.run_until_complete(self._archive_async(queue_name, msg_id))
-        return self._archive_sync(queue_name, msg_id)
+            return self.loop.run_until_complete(
+                self._archive_async(
+                    queue_name=queue_name,
+                    msg_id=msg_id,
+                    session=session,
+                    commit=commit,
+                )
+            )
+        return self._archive_sync(
+            queue_name=queue_name,
+            msg_id=msg_id,
+            session=session,
+            commit=commit,
+        )
 
-    def _archive_batch_sync(self, queue_name: str, msg_ids: List[int]) -> List[int]:
+    @inject_session
+    def _archive_batch_sync(self, queue_name: str, msg_ids: List[int], session: Optional[Session] = None, commit: bool = True) -> List[int]:
         """Archive multiple messages from a queue synchronously."""
-        with self.session_maker() as session:
-            rows = session.execute(
-                text(f"select * from pgmq.archive('{queue_name}',ARRAY{msg_ids});")
-            ).fetchall()
+        rows = session.execute(
+            _statement.archive_batch(queue_name, msg_ids)
+        ).fetchall()
+        if commit:
             session.commit()
         return [row[0] for row in rows]
 
+    @inject_async_session
     async def _archive_batch_async(
-        self, queue_name: str, msg_ids: List[int]
+        self, queue_name: str, msg_ids: List[int], session: Optional[AsyncSession] = None, commit: bool = True
     ) -> List[int]:
         """Archive multiple messages from a queue asynchronously."""
-        async with self.session_maker() as session:
-            rows = (
-                await session.execute(
-                    text(f"select * from pgmq.archive('{queue_name}',ARRAY{msg_ids});")
-                )
-            ).fetchall()
+        rows = (
+            await session.execute(
+                _statement.archive_batch(queue_name, msg_ids)
+            )
+        ).fetchall()
+        if commit:
             await session.commit()
         return [row[0] for row in rows]
 
-    def archive_batch(self, queue_name: str, msg_ids: List[int]) -> List[int]:
+    def archive_batch(self, queue_name: str, msg_ids: List[int], session: Optional[Union[Session, AsyncSession]] = None, commit: bool = True) -> List[int]:
         """
         Archive multiple messages from a queue.
 
@@ -1192,33 +1369,43 @@ class PGMQueue:
         """
         if self.is_async:
             return self.loop.run_until_complete(
-                self._archive_batch_async(queue_name, msg_ids)
+                self._archive_batch_async(
+                    queue_name=queue_name,
+                    msg_ids=msg_ids,
+                    session=session,
+                    commit=commit,
+                )
             )
-        return self._archive_batch_sync(queue_name, msg_ids)
+        return self._archive_batch_sync(
+                    queue_name=queue_name,
+                    msg_ids=msg_ids,
+                    session=session,
+                    commit=commit,
+                )
 
-    def _purge_sync(self, queue_name: str) -> int:
+    @inject_session
+    def _purge_sync(self, queue_name: str, session: Optional[Session] = None, commit: bool = True) -> int:
         """Purge a queue synchronously,return deleted_count."""
-        with self.session_maker() as session:
-            row = session.execute(
-                text("select pgmq.purge_queue(:queue_name);"),
-                {"queue_name": queue_name},
-            ).fetchone()
+        row = session.execute(
+            *_statement.purge(queue_name)
+        ).fetchone()
+        if commit:
             session.commit()
         return row[0]
 
-    async def _purge_async(self, queue_name: str) -> int:
+    @inject_async_session
+    async def _purge_async(self, queue_name: str, session: Optional[AsyncSession] = None, commit: bool = True) -> int:
         """Purge a queue asynchronously,return deleted_count."""
-        async with self.session_maker() as session:
-            row = (
-                await session.execute(
-                    text("select pgmq.purge_queue(:queue_name);"),
-                    {"queue_name": queue_name},
-                )
-            ).fetchone()
+        row = (
+            await session.execute(
+                *_statement.purge(queue_name)
+            )
+        ).fetchone()
+        if commit:
             await session.commit()
         return row[0]
 
-    def purge(self, queue_name: str) -> int:
+    def purge(self, queue_name: str, session: Optional[Union[Session, AsyncSession]] = None, commit: bool = True) -> int:
         """
         * Delete all messages from a queue, return the number of messages deleted.
         * Archive tables will **not** be affected.
@@ -1231,36 +1418,25 @@ class PGMQueue:
 
         """
         if self.is_async:
-            return self.loop.run_until_complete(self._purge_async(queue_name))
-        return self._purge_sync(queue_name)
-
-    def _metrics_sync(self, queue_name: str) -> Optional[QueueMetrics]:
-        """Get queue metrics synchronously."""
-        with self.session_maker() as session:
-            row = session.execute(
-                text("select * from pgmq.metrics(:queue_name);"),
-                {"queue_name": queue_name},
-            ).fetchone()
-            session.commit()
-        if row is None:
-            return None
-        return QueueMetrics(
-            queue_name=row[0],
-            queue_length=row[1],
-            newest_msg_age_sec=row[2],
-            oldest_msg_age_sec=row[3],
-            total_messages=row[4],
-        )
-
-    async def _metrics_async(self, queue_name: str) -> Optional[QueueMetrics]:
-        """Get queue metrics asynchronously."""
-        async with self.session_maker() as session:
-            row = (
-                await session.execute(
-                    text("select * from pgmq.metrics(:queue_name);"),
-                    {"queue_name": queue_name},
+            return self.loop.run_until_complete(
+                self._purge_async(
+                    queue_name=queue_name,
+                    session=session,
+                    commit=commit,
                 )
-            ).fetchone()
+            )
+        return self._purge_sync(
+            queue_name=queue_name,
+            session=session,
+            commit=commit,
+        )
+
+    @inject_session
+    def _metrics_sync(self, queue_name: str, session: Optional[Session] = None) -> Optional[QueueMetrics]:
+        """Get queue metrics synchronously."""
+        row = session.execute(
+            *_statement.metrics(queue_name)
+        ).fetchone()
         if row is None:
             return None
         return QueueMetrics(
@@ -1269,9 +1445,29 @@ class PGMQueue:
             newest_msg_age_sec=row[2],
             oldest_msg_age_sec=row[3],
             total_messages=row[4],
+            scrape_time=row[5],
         )
 
-    def metrics(self, queue_name: str) -> Optional[QueueMetrics]:
+    @inject_async_session
+    async def _metrics_async(self, queue_name: str, session: Optional[AsyncSession] = None) -> Optional[QueueMetrics]:
+        """Get queue metrics asynchronously."""
+        row = (
+            await session.execute(
+                *_statement.metrics(queue_name)
+            )
+        ).fetchone()
+        if row is None:
+            return None
+        return QueueMetrics(
+            queue_name=row[0],
+            queue_length=row[1],
+            newest_msg_age_sec=row[2],
+            oldest_msg_age_sec=row[3],
+            total_messages=row[4],
+            scrape_time=row[5],
+        )
+
+    def metrics(self, queue_name: str, session: Optional[Union[Session, AsyncSession]] = None) -> Optional[QueueMetrics]:
         """
         Get metrics for a queue.
 
@@ -1291,13 +1487,19 @@ class PGMQueue:
 
         """
         if self.is_async:
-            return self.loop.run_until_complete(self._metrics_async(queue_name))
-        return self._metrics_sync(queue_name)
+            return self.loop.run_until_complete(self._metrics_async(
+                queue_name=queue_name,
+                session=session,
+            ))
+        return self._metrics_sync(
+            queue_name=queue_name,
+            session=session,
+        )
 
-    def _metrics_all_sync(self) -> Optional[List[QueueMetrics]]:
+    @inject_session
+    def _metrics_all_sync(self, session: Optional[Session] = None) -> Optional[List[QueueMetrics]]:
         """Get metrics for all queues synchronously."""
-        with self.session_maker() as session:
-            rows = session.execute(text("select * from pgmq.metrics_all();")).fetchall()
+        rows = session.execute(_statement.metrics_all()).fetchall()
         if not rows:
             return None
         return [
@@ -1307,16 +1509,17 @@ class PGMQueue:
                 newest_msg_age_sec=row[2],
                 oldest_msg_age_sec=row[3],
                 total_messages=row[4],
+                scrape_time=row[5],
             )
             for row in rows
         ]
 
-    async def _metrics_all_async(self) -> Optional[List[QueueMetrics]]:
+    @inject_async_session
+    async def _metrics_all_async(self, session: Optional[AsyncSession] = None) -> Optional[List[QueueMetrics]]:
         """Get metrics for all queues asynchronously."""
-        async with self.session_maker() as session:
-            rows = (
-                await session.execute(text("select * from pgmq.metrics_all();"))
-            ).fetchall()
+        rows = (
+            await session.execute(_statement.metrics_all())
+        ).fetchall()
         if not rows:
             return None
         return [
@@ -1326,11 +1529,12 @@ class PGMQueue:
                 newest_msg_age_sec=row[2],
                 oldest_msg_age_sec=row[3],
                 total_messages=row[4],
+                scrape_time=row[5],
             )
             for row in rows
         ]
 
-    def metrics_all(self) -> Optional[List[QueueMetrics]]:
+    def metrics_all(self, session: Optional[Union[Session, AsyncSession]] = None) -> Optional[List[QueueMetrics]]:
         """
 
         .. _read_committed_isolation_level: https://www.postgresql.org/docs/current/transaction-iso.html#XACT-READ-COMMITTED
@@ -1365,5 +1569,9 @@ class PGMQueue:
 
         """
         if self.is_async:
-            return self.loop.run_until_complete(self._metrics_all_async())
-        return self._metrics_all_sync()
+            return self.loop.run_until_complete(self._metrics_all_async(
+                session=session,
+            ))
+        return self._metrics_all_sync(
+            session=session,
+        )

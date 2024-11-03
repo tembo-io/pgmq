@@ -16,7 +16,7 @@ DIALECTS_TYPE = Literal[
     'psycopg2',
     'psycopg3',
 ]
-STATEMENT_TYPE = Tuple[TextClause, Dict[str, Any]]
+STATEMENT_TYPE = Union[Tuple[TextClause, Dict[str, Any]], TextClause]
 
 class AsyncDBAPICursor(DBAPICursor):
     async def execute(
