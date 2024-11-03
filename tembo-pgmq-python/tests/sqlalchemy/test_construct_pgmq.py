@@ -1,7 +1,7 @@
 import pytest
 from tembo_pgmq_python.sqlalchemy.queue import PGMQueue
 
-from .fixture_deps import pgmq_deps
+from tests.sqlalchemy.fixture_deps import pgmq_deps
 
 
 @pgmq_deps

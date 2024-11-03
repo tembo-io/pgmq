@@ -4,17 +4,18 @@ import time
 
 from sqlalchemy.exc import ProgrammingError
 from filelock import FileLock
-from pgmq_sqlalchemy import PGMQueue
 
-from tests.fixture_deps import (
+from tembo_pgmq_python.sqlalchemy.queue import PGMQueue
+
+from tests.sqlalchemy.fixture_deps import (
     pgmq_deps,
     PGMQ_WITH_QUEUE,
     pgmq_setup_teardown,
     pgmq_partitioned_setup_teardown,
 )
 
-from tests._utils import check_queue_exists
-from tests.constant import MSG, LOCK_FILE_NAME
+from tests.sqlalchemy._utils import check_queue_exists
+from tests.sqlalchemy.constant import MSG, LOCK_FILE_NAME
 
 use_fixtures = [
     pgmq_setup_teardown,

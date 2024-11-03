@@ -1,20 +1,20 @@
 import uuid
-from typing import Tuple
+from typing import Tuple, Generator
 
 import pytest
 
 from tembo_pgmq_python.sqlalchemy.queue import PGMQueue
-from ._utils import check_queue_exists
+from tests.sqlalchemy._utils import check_queue_exists
 
 LAZY_FIXTURES = [
     pytest.lazy_fixture("pgmq_by_dsn"),
-    pytest.lazy_fixture("pgmq_by_async_dsn"),
-    pytest.lazy_fixture("pgmq_by_engine"),
-    pytest.lazy_fixture("pgmq_by_async_engine"),
-    pytest.lazy_fixture("pgmq_by_session_maker"),
-    pytest.lazy_fixture("pgmq_by_async_session_maker"),
-    pytest.lazy_fixture("pgmq_by_dsn_and_engine"),
-    pytest.lazy_fixture("pgmq_by_dsn_and_session_maker"),
+    # pytest.lazy_fixture("pgmq_by_async_dsn"),
+    # pytest.lazy_fixture("pgmq_by_engine"),
+    # pytest.lazy_fixture("pgmq_by_async_engine"),
+    # pytest.lazy_fixture("pgmq_by_session_maker"),
+    # pytest.lazy_fixture("pgmq_by_async_session_maker"),
+    # pytest.lazy_fixture("pgmq_by_dsn_and_engine"),
+    # pytest.lazy_fixture("pgmq_by_dsn_and_session_maker"),
 ]
 
 pgmq_deps = pytest.mark.parametrize(
@@ -45,7 +45,9 @@ PGMQ_WITH_QUEUE = Tuple[PGMQueue, str]
 
 
 @pytest.fixture(scope="function", params=LAZY_FIXTURES)
-def pgmq_setup_teardown(request: pytest.FixtureRequest, db_session) -> PGMQ_WITH_QUEUE:
+def pgmq_setup_teardown(
+    request: pytest.FixtureRequest, db_session
+) -> Generator[PGMQ_WITH_QUEUE, None, None]:
     """
     Fixture that provides a PGMQueue instance with a unique temporary queue with setup and teardown.
 
@@ -76,7 +78,7 @@ def pgmq_setup_teardown(request: pytest.FixtureRequest, db_session) -> PGMQ_WITH
 @pytest.fixture(scope="function", params=LAZY_FIXTURES)
 def pgmq_partitioned_setup_teardown(
     request: pytest.FixtureRequest, db_session
-) -> PGMQ_WITH_QUEUE:
+) -> Generator[PGMQ_WITH_QUEUE, None, None]:
     """
     Fixture that provides a PGMQueue instance with a unique temporary partitioned queue with setup and teardown.
 

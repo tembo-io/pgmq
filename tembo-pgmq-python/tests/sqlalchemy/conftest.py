@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, Session
 
 from tembo_pgmq_python.sqlalchemy.queue import PGMQueue
-from .constant import SYNC_DRIVERS, ASYNC_DRIVERS
+from tests.sqlalchemy.constant import SYNC_DRIVERS, ASYNC_DRIVERS
 
 
 @pytest.fixture(scope="module")
