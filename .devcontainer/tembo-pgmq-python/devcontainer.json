@@ -1,7 +1,7 @@
 {
     "name": "Python 3.9+ Development Container",
     "dockerComposeFile": [
-        "../../docker-compose.devcontainer.yml"
+        "docker-compose.devcontainer.yml"
     ],
     "containerEnv": {
         "POSTGRES_PASSWORD": "postgres",
@@ -21,8 +21,13 @@
             ]
         },
         "settings": {
-            "terminal.integrated.shell.*": "/bin/bash",
-            "terminal.integrated.defaultProfile.linux": "bash"
+            "terminal.integrated.defaultProfile.linux": "bash",
+            "terminal.integrated.profiles.linux": {
+                "bash": {
+                    "path": "bash",
+                    "icon": "terminal-bash"
+                }
+            }
         }
     },
     "remoteUser": "vscode"
