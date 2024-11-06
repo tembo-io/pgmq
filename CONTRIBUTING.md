@@ -66,10 +66,9 @@ If you're working on native Windows, follow these steps to install and build pgm
 - Download the `pgmq` source:
 
 ```powershell
-   Invoke-WebRequest -Uri https://api.pgxn.org/dist/pgmq/1.4.2/pgmq-1.4.2.zip -OutFile pgmq-1.4.2.zip
-   Expand-Archive -Path pgmq-1.4.2.zip -DestinationPath .\pgmq-1.4.2
-   cd .\pgmq-1.4.2
-```
+Invoke-WebRequest -Uri https://api.pgxn.org/dist/pgmq/1.4.2/pgmq-1.4.2.zip -OutFile pgmq-1.4.2.zip
+Expand-Archive -Path pgmq-1.4.2.zip -DestinationPath .\pgmq-1.4.2
+cd .\pgmq-1.4.2
 
 - Build and install `pgmq`: Use the following commands to compile and install pgmq using MinGW:
 
