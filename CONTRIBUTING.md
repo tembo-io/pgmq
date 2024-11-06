@@ -10,7 +10,7 @@ docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io
 
 ## PGXN Installation
 
-PGXN is a centralized network to make it easier to install and manage PostgreSQL extensions.
+PGXN is a distributed network of extensions that make it easier to install and manage PostgreSQL extensions.
 
 Install PGXN Client:
 
