@@ -41,7 +41,7 @@ async fn main() {
         .send_with_cxn(&example_queue, &msg, &mut *tx)
         .await
         .expect("failed to send message");
-    println!("message sent. id: {}, msg: {:?}", sent, msg);
+    println!("message sent. id: {sent}, msg: {msg:?}");
 
     // get row count from a new connection (not the transaction)
     let rows = sqlx::query("SELECT queue_length FROM pgmq.metrics($1)")
@@ -52,7 +52,7 @@ async fn main() {
         .get::<i64, usize>(0);
     // queue empty because transaction not committed
     assert_eq!(rows, 0);
-    println!("queue length: {}", rows);
+    println!("queue length: {rows}");
 
     // reading from queue returns no messages
     let received: Option<Message<MyMessage>> = queue
@@ -73,7 +73,7 @@ async fn main() {
         .get::<i64, usize>(0);
     // queue empty because transaction not committed
     assert_eq!(rows, 1);
-    println!("queue length: {}", rows);
+    println!("queue length: {rows}");
 
     // reading from queue returns no messages
     let received: Message<MyMessage> = queue

@@ -104,8 +104,7 @@ impl PGMQueueExt {
         // we need to check whether the queue exists first
         // pg_partman create operations are currently unable to be idempotent
         let exists_stmt = format!(
-            "SELECT EXISTS(SELECT * from part_config where parent_table = '{queue_table}');",
-            queue_table = queue_table
+            "SELECT EXISTS(SELECT * from part_config where parent_table = '{queue_table}');"
         );
         let exists = sqlx::query_scalar(&exists_stmt).fetch_one(executor).await?;
         if exists {
