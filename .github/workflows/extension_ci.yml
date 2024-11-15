@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        pg-version: [14, 15, 16]
+        pg-version: [14, 15, 16, 17]
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust stable toolchain
@@ -78,7 +78,7 @@ jobs:
         run: trunk build --pg-version ${{ matrix.pg-version }}
       - name: trunk publish
         # only publish release events
-        if: github.event_name == 'release'
+        # if: github.event_name == 'release'
         env:
           TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
         run: |
