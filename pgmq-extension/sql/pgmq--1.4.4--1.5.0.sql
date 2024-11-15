@@ -97,7 +97,7 @@ BEGIN
       IF FOUND THEN
         RETURN;
       ELSE
-        PERFORM pg_sleep(poll_interval_ms / 1000);
+        PERFORM pg_sleep(poll_interval_ms::numeric / 1000);
       END IF;
     END LOOP;
 END;
