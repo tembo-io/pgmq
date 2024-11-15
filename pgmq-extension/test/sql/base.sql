@@ -132,7 +132,7 @@ SELECT ARRAY(
 
 -- Read with poll will poll until the first message is available
 SELECT clock_timestamp() AS start \gset
-SELECT msg_id = :msg_id1 FROM pgmq.read_with_poll('test_read_queue', 10, 5, 5, 100);
+SELECT msg_id = :msg_id1 FROM pgmq.read_with_poll('test_read_queue', 10, 5, 6, 100);
 SELECT clock_timestamp() - :'start' > '3 second'::interval;
 
 -- test_purge_queue
