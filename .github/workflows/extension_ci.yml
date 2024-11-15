@@ -15,7 +15,7 @@ on:
   push:
     branches:
       - main
-      - patch/v1.4.5
+      - patch/v1.4.5a
     paths:
       - "pgmq-extension/**"
       - ".github/workflows/extension_ci.yml"
