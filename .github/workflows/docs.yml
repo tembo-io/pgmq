@@ -8,6 +8,7 @@ on:
       - ".github/workflows/docs.yml"
 jobs:
   deploy:
+    if: github.repository == 'tembo-io/pgmq'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
