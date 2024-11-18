@@ -1,0 +1,25 @@
+ARG DEB_RELEASE=12
+ARG PG_VERSION=17
+
+FROM bitnami/postgresql:${PG_VERSION}-debian-${DEB_RELEASE}
+
+USER root
+
+RUN install_packages \
+	clang \
+	curl \
+	gcc \
+	git \
+	libssl-dev \
+	make \
+	pkg-config
+
+COPY ./pgmq-extension /pgmq-extension
+
+RUN cd /pgmq-extension && make && make install && make install-pg-partman
+
+RUN apt-get autoremove --purge -y clang curl gcc git libssl-dev make pkg-config && \
+	apt-get update && apt-get upgrade -y && \
+	apt-get clean && rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+USER 1001
