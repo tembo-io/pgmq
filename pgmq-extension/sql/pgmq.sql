@@ -175,10 +175,10 @@ BEGIN
         WITH archived AS (
             DELETE FROM pgmq.%I
             WHERE msg_id = $1
-            RETURNING msg_id, vt, read_ct, enqueued_at, message
+            RETURNING msg_id, vt, read_ct, enqueued_at, message, headers
         )
-        INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message)
-        SELECT msg_id, vt, read_ct, enqueued_at, message
+        INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message, headers)
+        SELECT msg_id, vt, read_ct, enqueued_at, message, headers
         FROM archived
         RETURNING msg_id;
         $QUERY$,
@@ -207,9 +207,9 @@ BEGIN
         WITH archived AS (
             DELETE FROM pgmq.%I
             WHERE msg_id = ANY($1)
-            RETURNING msg_id, vt, read_ct, enqueued_at, message
+            RETURNING msg_id, vt, read_ct, enqueued_at, message, headers
         )
-        INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message)
+        INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message, headers)
         SELECT msg_id, vt, read_ct, enqueued_at, message
         FROM archived
         RETURNING msg_id;
