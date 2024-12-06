@@ -350,6 +350,7 @@ As the pgmq community grows, we'd love to see who is using it. Please send a PR 
 Currently, officially using pgmq:
 
 1. [Tembo](https://tembo.io) [[@ChuckHend](https://github.com/ChuckHend)]
+2. [Supabase](https://supabase.com) [[@Supabase](https://github.com/supabase)]
 
 ## ✨ Contributors
 
