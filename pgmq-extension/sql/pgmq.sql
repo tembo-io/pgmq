@@ -26,7 +26,8 @@ CREATE TYPE pgmq.message_record AS (
     read_ct INTEGER,
     enqueued_at TIMESTAMP WITH TIME ZONE,
     vt TIMESTAMP WITH TIME ZONE,
-    message JSONB
+    message JSONB,
+    headers JSONB
 );
 
 CREATE TYPE pgmq.queue_record AS (
@@ -85,7 +86,7 @@ BEGIN
             read_ct = read_ct + 1
         FROM cte
         WHERE m.msg_id = cte.msg_id
-        RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
+        RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message, m.headers;
         $QUERY$,
         qtable, conditional, qtable, make_interval(secs => vt)
     );
@@ -136,7 +137,7 @@ BEGIN
               read_ct = read_ct + 1
           FROM cte
           WHERE m.msg_id = cte.msg_id
-          RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
+          RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message, m.headers;
           $QUERY$,
           qtable, conditional, qtable, make_interval(secs => vt)
       );
@@ -174,10 +175,10 @@ BEGIN
         WITH archived AS (
             DELETE FROM pgmq.%I
             WHERE msg_id = $1
-            RETURNING msg_id, vt, read_ct, enqueued_at, message
+            RETURNING msg_id, vt, read_ct, enqueued_at, message, headers
         )
-        INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message)
-        SELECT msg_id, vt, read_ct, enqueued_at, message
+        INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message, headers)
+        SELECT msg_id, vt, read_ct, enqueued_at, message, headers
         FROM archived
         RETURNING msg_id;
         $QUERY$,
@@ -206,10 +207,10 @@ BEGIN
         WITH archived AS (
             DELETE FROM pgmq.%I
             WHERE msg_id = ANY($1)
-            RETURNING msg_id, vt, read_ct, enqueued_at, message
+            RETURNING msg_id, vt, read_ct, enqueued_at, message, headers
         )
-        INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message)
-        SELECT msg_id, vt, read_ct, enqueued_at, message
+        INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message, headers)
+        SELECT msg_id, vt, read_ct, enqueued_at, message, headers
         FROM archived
         RETURNING msg_id;
         $QUERY$,
@@ -267,23 +268,56 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- send
--- sends a message to a queue, optionally with a delay
+-- send: 2 args, no delay or headers
 CREATE FUNCTION pgmq.send(
     queue_name TEXT,
-    msg JSONB,
-    delay INTEGER DEFAULT 0
+    msg JSONB
 ) RETURNS SETOF BIGINT AS $$
-BEGIN
-    RETURN QUERY SELECT * FROM pgmq.send(queue_name, msg, clock_timestamp() + make_interval(secs => delay));
-END;
-$$ LANGUAGE plpgsql;
+    SELECT * FROM pgmq.send(queue_name, msg, NULL, clock_timestamp());
+$$ LANGUAGE sql;
 
--- send_at
--- sends a message to a queue, with a delay as a timestamp
+-- send: 3 args with headers
 CREATE FUNCTION pgmq.send(
     queue_name TEXT,
     msg JSONB,
+    headers JSONB
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send(queue_name, msg, headers, clock_timestamp());
+$$ LANGUAGE sql;
+
+-- send: 3 args with integer delay
+CREATE FUNCTION pgmq.send(
+    queue_name TEXT,
+    msg JSONB,
+    delay INTEGER
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send(queue_name, msg, NULL, clock_timestamp() + make_interval(secs => delay));
+$$ LANGUAGE sql;
+
+-- send: 3 args with timestamp
+CREATE FUNCTION pgmq.send(
+    queue_name TEXT,
+    msg JSONB,
+    delay TIMESTAMP WITH TIME ZONE
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send(queue_name, msg, NULL, delay);
+$$ LANGUAGE sql;
+
+-- send: 4 args with integer delay
+CREATE FUNCTION pgmq.send(
+    queue_name TEXT,
+    msg JSONB,
+    headers JSONB,
+    delay INTEGER
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send(queue_name, msg, headers, clock_timestamp() + make_interval(secs => delay));
+$$ LANGUAGE sql;
+
+-- send: actual implementation
+CREATE FUNCTION pgmq.send(
+    queue_name TEXT,
+    msg JSONB,
+    headers JSONB,
     delay TIMESTAMP WITH TIME ZONE
 ) RETURNS SETOF BIGINT AS $$
 DECLARE
@@ -292,33 +326,66 @@ DECLARE
 BEGIN
     sql := FORMAT(
         $QUERY$
-        INSERT INTO pgmq.%I (vt, message)
-        VALUES ($2, $1)
+        INSERT INTO pgmq.%I (vt, message, headers)
+        VALUES ($2, $1, $3)
         RETURNING msg_id;
         $QUERY$,
         qtable
     );
-    RETURN QUERY EXECUTE sql USING msg, delay;
+    RETURN QUERY EXECUTE sql USING msg, delay, headers;
 END;
 $$ LANGUAGE plpgsql;
 
--- send_batch
--- sends an array of list of messages to a queue, optionally with a delay
+-- send batch: 2 args
 CREATE FUNCTION pgmq.send_batch(
     queue_name TEXT,
-    msgs JSONB[],
-    delay INTEGER DEFAULT 0
+    msgs JSONB[]
 ) RETURNS SETOF BIGINT AS $$
-BEGIN
-    RETURN QUERY SELECT * FROM pgmq.send_batch(queue_name, msgs, clock_timestamp() + make_interval(secs => delay));
-END;
-$$ LANGUAGE plpgsql;
+    SELECT * FROM pgmq.send_batch(queue_name, msgs, NULL, clock_timestamp());
+$$ LANGUAGE sql;
 
--- send_batch_at
--- sends an array of list of messages to a queue, with a delay as a timestamp
+-- send batch: 3 args with headers
 CREATE FUNCTION pgmq.send_batch(
     queue_name TEXT,
     msgs JSONB[],
+    headers JSONB[]
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send_batch(queue_name, msgs, headers, clock_timestamp());
+$$ LANGUAGE sql;
+
+-- send batch: 3 args with integer delay
+CREATE FUNCTION pgmq.send_batch(
+    queue_name TEXT,
+    msgs JSONB[],
+    delay INTEGER
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send_batch(queue_name, msgs, NULL, clock_timestamp() + make_interval(secs => delay));
+$$ LANGUAGE sql;
+
+-- send batch: 3 args with timestamp
+CREATE FUNCTION pgmq.send_batch(
+    queue_name TEXT,
+    msgs JSONB[],
+    delay TIMESTAMP WITH TIME ZONE
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send_batch(queue_name, msgs, NULL, delay);
+$$ LANGUAGE sql;
+
+-- send_batch: 4 args with integer delay
+CREATE FUNCTION pgmq.send_batch(
+    queue_name TEXT,
+    msgs JSONB[],
+    headers JSONB[],
+    delay INTEGER
+) RETURNS SETOF BIGINT AS $$
+    SELECT * FROM pgmq.send_batch(queue_name, msgs, headers, clock_timestamp() + make_interval(secs => delay));
+$$ LANGUAGE sql;
+
+-- send_batch: actual implementation
+CREATE FUNCTION pgmq.send_batch(
+    queue_name TEXT,
+    msgs JSONB[],
+    headers JSONB[],
     delay TIMESTAMP WITH TIME ZONE
 ) RETURNS SETOF BIGINT AS $$
 DECLARE
@@ -327,13 +394,13 @@ DECLARE
 BEGIN
     sql := FORMAT(
         $QUERY$
-        INSERT INTO pgmq.%I (vt, message)
-        SELECT $2, unnest($1)
+        INSERT INTO pgmq.%I (vt, message, headers)
+        SELECT $2, unnest($1), unnest(coalesce($3, ARRAY[]::jsonb[]))
         RETURNING msg_id;
         $QUERY$,
         qtable
     );
-    RETURN QUERY EXECUTE sql USING msgs, delay;
+    RETURN QUERY EXECUTE sql USING msgs, delay, headers;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -631,7 +698,8 @@ BEGIN
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
-        message JSONB
+        message JSONB,
+        headers JSONB
     )
     $QUERY$,
     qtable
@@ -645,7 +713,8 @@ BEGIN
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
-      message JSONB
+      message JSONB,
+      headers JSONB
     );
     $QUERY$,
     atable
@@ -699,7 +768,8 @@ BEGIN
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
-        message JSONB
+        message JSONB,
+        headers JSONB
     )
     $QUERY$,
     qtable
@@ -713,7 +783,8 @@ BEGIN
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
-      message JSONB
+      message JSONB,
+      headers JSONB
     );
     $QUERY$,
     atable
@@ -819,7 +890,8 @@ BEGIN
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
-        message JSONB
+        message JSONB,
+        headers JSONB
     ) PARTITION BY RANGE (%I)
     $QUERY$,
     qtable, partition_col
@@ -895,7 +967,8 @@ BEGIN
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
-      message JSONB
+      message JSONB,
+      headers JSONB
     ) PARTITION BY RANGE (%I);
     $QUERY$,
     atable, a_partition_col
@@ -1034,6 +1107,5 @@ BEGIN
     retention_interval,
     qualified_a_table_name
   );
-
 END;
 $$ LANGUAGE plpgsql;
