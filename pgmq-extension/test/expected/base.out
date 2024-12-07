@@ -9,17 +9,17 @@ SELECT pgmq.create_unlogged('test_unlogged_queue');
  
 (1 row)
 
-SELECT * from pgmq.send('test_unlogged_queue', '{"hello": "world"}');
+SELECT * from pgmq.send('test_unlogged_queue', '{"hello": "world"}', '{"header": 1}'::jsonb);
  send 
 ------
     1
 (1 row)
 
-SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message
+SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message, headers
   FROM pgmq.read('test_unlogged_queue', 2, 1);
- msg_id | read_ct | ?column? | ?column? |      message       
---------+---------+----------+----------+--------------------
-      1 |       1 | f        | t        | {"hello": "world"}
+ msg_id | read_ct | ?column? | ?column? |      message       |    headers    
+--------+---------+----------+----------+--------------------+---------------
+      1 |       1 | f        | t        | {"hello": "world"} | {"header": 1}
 (1 row)
 
 -- test_max_queue_name_size

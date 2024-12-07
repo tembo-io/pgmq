@@ -5,8 +5,8 @@ CREATE EXTENSION IF NOT EXISTS pg_partman;
 -- test_unlogged
 -- CREATE with default retention and partition strategy
 SELECT pgmq.create_unlogged('test_unlogged_queue');
-SELECT * from pgmq.send('test_unlogged_queue', '{"hello": "world"}');
-SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message
+SELECT * from pgmq.send('test_unlogged_queue', '{"hello": "world"}', '{"header": 1}'::jsonb);
+SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message, headers
   FROM pgmq.read('test_unlogged_queue', 2, 1);
 
 -- test_max_queue_name_size
