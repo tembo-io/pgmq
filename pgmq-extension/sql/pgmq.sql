@@ -210,7 +210,7 @@ BEGIN
             RETURNING msg_id, vt, read_ct, enqueued_at, message, headers
         )
         INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message, headers)
-        SELECT msg_id, vt, read_ct, enqueued_at, message
+        SELECT msg_id, vt, read_ct, enqueued_at, message, headers
         FROM archived
         RETURNING msg_id;
         $QUERY$,

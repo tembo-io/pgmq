@@ -33,7 +33,7 @@ BEGIN
             read_ct = read_ct + 1
         FROM cte
         WHERE m.msg_id = cte.msg_id
-        RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
+        RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message, m.headers;
         $QUERY$,
         qtable, conditional, qtable, make_interval(secs => vt)
     );
@@ -85,7 +85,7 @@ BEGIN
               read_ct = read_ct + 1
           FROM cte
           WHERE m.msg_id = cte.msg_id
-          RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
+          RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message, headers;
           $QUERY$,
           qtable, conditional, qtable, make_interval(secs => vt)
       );
@@ -243,11 +243,7 @@ $$ LANGUAGE plpgsql;
 ALTER TYPE pgmq.message_record ADD ATTRIBUTE headers JSONB;
 
 -- Update functions
-DROP FUNCTION pgmq.send(TEXT, JSONB);
-DROP FUNCTION pgmq.send(TEXT, JSONB, TIMESTAMP WITH TIME ZONE);
 DROP FUNCTION pgmq.send(TEXT, JSONB, INTEGER);
-DROP FUNCTION pgmq.send_batch(TEXT, JSONB[]);
-DROP FUNCTION pgmq.send_batch(TEXT, JSONB[], TIMESTAMP WITH TIME ZONE);
 DROP FUNCTION pgmq.send_batch(TEXT, JSONB[], INTEGER);
 DROP FUNCTION pgmq.archive(TEXT, BIGINT);
 DROP FUNCTION pgmq.archive(TEXT, BIGINT[]);
@@ -407,7 +403,7 @@ BEGIN
             RETURNING msg_id, vt, read_ct, enqueued_at, message, headers
         )
         INSERT INTO pgmq.%I (msg_id, vt, read_ct, enqueued_at, message, headers)
-        SELECT msg_id, vt, read_ct, enqueued_at, message
+        SELECT msg_id, vt, read_ct, enqueued_at, message, headers
         FROM archived
         RETURNING msg_id;
         $QUERY$,
@@ -449,17 +445,25 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Update existing queues
-FOR queue_record IN SELECT queue_name FROM pgmq.meta LOOP
-    qtable := pgmq.format_table_name(queue_record.queue_name, 'q');
-    atable := pgmq.format_table_name(queue_record.queue_name, 'a');
+DO $$
+DECLARE
+    queue_record RECORD;
+    qtable TEXT;
+    atable TEXT;
+BEGIN
+    FOR queue_record IN SELECT queue_name FROM pgmq.meta LOOP
+        qtable := pgmq.format_table_name(queue_record.queue_name, 'q');
+        atable := pgmq.format_table_name(queue_record.queue_name, 'a');
 
-    EXECUTE format(
-        'ALTER TABLE pgmq.%I ADD COLUMN headers JSONB',
-        qtable
-    );
+        EXECUTE format(
+            'ALTER TABLE pgmq.%I ADD COLUMN headers JSONB',
+            qtable
+        );
 
-    EXECUTE format(
-        'ALTER TABLE pgmq.%I ADD COLUMN headers JSONB',
-        atable
-    );
-END LOOP;
+        EXECUTE format(
+            'ALTER TABLE pgmq.%I ADD COLUMN headers JSONB',
+            atable
+        );
+    END LOOP;
+END;
+$$;
