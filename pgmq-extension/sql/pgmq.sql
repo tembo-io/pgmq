@@ -376,7 +376,7 @@ CREATE FUNCTION pgmq.send_batch(
     queue_name TEXT,
     msgs JSONB[],
     headers JSONB[],
-    delay INTEGER DEFAULT 0
+    delay INTEGER
 ) RETURNS SETOF BIGINT AS $$
     SELECT * FROM pgmq.send_batch(queue_name, msgs, headers, clock_timestamp() + make_interval(secs => delay));
 $$ LANGUAGE sql;

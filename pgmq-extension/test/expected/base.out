@@ -164,12 +164,20 @@ SELECT pgmq.create('batch_queue');
 
 SELECT ARRAY( SELECT pgmq.send_batch(
     'batch_queue',
-    ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[]
+    ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[],
+    ARRAY['{"header": 1}', '{"header": 2}']::jsonb[]
 )) = ARRAY[1, 2]::BIGINT[];
  ?column? 
 ----------
  t
 (1 row)
+
+SELECT msg_id, message, headers from pgmq.read('batch_queue', 0, 2);
+ msg_id |       message        |    headers    
+--------+----------------------+---------------
+      1 | {"hello": "world_0"} | {"header": 1}
+      2 | {"hello": "world_1"} | {"header": 2}
+(2 rows)
 
 -- send a batch of 2 messages with timestamp
 SELECT pgmq.create('batch_queue_vt');
@@ -315,7 +323,7 @@ SELECT COUNT(*) = 0 FROM pgmq.a_archive_queue;
 -- put messages on the queue
 \set msg_id1 1::bigint
 \set msg_id2 2::bigint
-SELECT send = :msg_id1 FROM pgmq.send('archive_queue', '0');
+SELECT send = :msg_id1 FROM pgmq.send('archive_queue', '0', '{"headers": 1}'::jsonb);
  ?column? 
 ----------
  t
@@ -388,6 +396,15 @@ SELECT COUNT(*) = 3 FROM pgmq.a_archive_queue;
 ----------
  t
 (1 row)
+
+-- body and headers are archived
+SELECT msg_id, message, headers FROM pgmq.a_archive_queue;
+ msg_id | message |    headers     
+--------+---------+----------------
+      1 | 0       | {"headers": 1}
+      2 | 0       | 
+      3 | 0       | 
+(3 rows)
 
 -- test_read_read_with_poll
 -- Creating queue
