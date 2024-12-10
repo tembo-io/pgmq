@@ -57,7 +57,8 @@ $$ LANGUAGE plpgsql;
 CREATE FUNCTION pgmq.read(
     queue_name TEXT,
     vt INTEGER,
-    qty INTEGER
+    qty INTEGER,
+    conditional JSONB DEFAULT '{}'
 )
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
@@ -70,7 +71,10 @@ BEGIN
         (
             SELECT msg_id
             FROM pgmq.%I
-            WHERE vt <= clock_timestamp()
+            WHERE vt <= clock_timestamp() AND CASE
+                WHEN %L != '{}'::jsonb THEN (message @> %2$L)::integer
+                ELSE 1
+            END = 1
             ORDER BY msg_id ASC
             LIMIT $1
             FOR UPDATE SKIP LOCKED
@@ -83,7 +87,7 @@ BEGIN
         WHERE m.msg_id = cte.msg_id
         RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
         $QUERY$,
-        qtable, qtable, make_interval(secs => vt)
+        qtable, conditional, qtable, make_interval(secs => vt)
     );
     RETURN QUERY EXECUTE sql USING qty;
 END;
@@ -96,7 +100,8 @@ CREATE FUNCTION pgmq.read_with_poll(
     vt INTEGER,
     qty INTEGER,
     max_poll_seconds INTEGER DEFAULT 5,
-    poll_interval_ms INTEGER DEFAULT 100
+    poll_interval_ms INTEGER DEFAULT 100,
+    conditional JSONB DEFAULT '{}'
 )
 RETURNS SETOF pgmq.message_record AS $$
 DECLARE
@@ -117,7 +122,10 @@ BEGIN
           (
               SELECT msg_id
               FROM pgmq.%I
-              WHERE vt <= clock_timestamp()
+              WHERE vt <= clock_timestamp() AND CASE
+                  WHEN %L != '{}'::jsonb THEN (message @> %2$L)::integer
+                  ELSE 1
+              END = 1
               ORDER BY msg_id ASC
               LIMIT $1
               FOR UPDATE SKIP LOCKED
@@ -130,7 +138,7 @@ BEGIN
           WHERE m.msg_id = cte.msg_id
           RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message;
           $QUERY$,
-          qtable, qtable, make_interval(secs => vt)
+          qtable, conditional, qtable, make_interval(secs => vt)
       );
 
       FOR r IN
@@ -266,6 +274,18 @@ CREATE FUNCTION pgmq.send(
     msg JSONB,
     delay INTEGER DEFAULT 0
 ) RETURNS SETOF BIGINT AS $$
+BEGIN
+    RETURN QUERY SELECT * FROM pgmq.send(queue_name, msg, clock_timestamp() + make_interval(secs => delay));
+END;
+$$ LANGUAGE plpgsql;
+
+-- send_at
+-- sends a message to a queue, with a delay as a timestamp
+CREATE FUNCTION pgmq.send(
+    queue_name TEXT,
+    msg JSONB,
+    delay TIMESTAMP WITH TIME ZONE
+) RETURNS SETOF BIGINT AS $$
 DECLARE
     sql TEXT;
     qtable TEXT := pgmq.format_table_name(queue_name, 'q');
@@ -273,12 +293,12 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         INSERT INTO pgmq.%I (vt, message)
-        VALUES ((clock_timestamp() + %L), $1)
+        VALUES ($2, $1)
         RETURNING msg_id;
         $QUERY$,
-        qtable, make_interval(secs => delay)
+        qtable
     );
-    RETURN QUERY EXECUTE sql USING msg;
+    RETURN QUERY EXECUTE sql USING msg, delay;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -289,6 +309,18 @@ CREATE FUNCTION pgmq.send_batch(
     msgs JSONB[],
     delay INTEGER DEFAULT 0
 ) RETURNS SETOF BIGINT AS $$
+BEGIN
+    RETURN QUERY SELECT * FROM pgmq.send_batch(queue_name, msgs, clock_timestamp() + make_interval(secs => delay));
+END;
+$$ LANGUAGE plpgsql;
+
+-- send_batch_at
+-- sends an array of list of messages to a queue, with a delay as a timestamp
+CREATE FUNCTION pgmq.send_batch(
+    queue_name TEXT,
+    msgs JSONB[],
+    delay TIMESTAMP WITH TIME ZONE
+) RETURNS SETOF BIGINT AS $$
 DECLARE
     sql TEXT;
     qtable TEXT := pgmq.format_table_name(queue_name, 'q');
@@ -296,12 +328,12 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         INSERT INTO pgmq.%I (vt, message)
-        SELECT clock_timestamp() + %L, unnest($1)
+        SELECT $2, unnest($1)
         RETURNING msg_id;
         $QUERY$,
-        qtable, make_interval(secs => delay)
+        qtable
     );
-    RETURN QUERY EXECUTE sql USING msgs;
+    RETURN QUERY EXECUTE sql USING msgs, delay;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -312,7 +344,8 @@ CREATE TYPE pgmq.metrics_result AS (
     newest_msg_age_sec int,
     oldest_msg_age_sec int,
     total_messages bigint,
-    scrape_time timestamp with time zone
+    scrape_time timestamp with time zone,
+    queue_visible_length bigint
 );
 
 -- get metrics for a single queue
@@ -328,6 +361,7 @@ BEGIN
         WITH q_summary AS (
             SELECT
                 count(*) as queue_length,
+                count(CASE WHEN vt <= NOW() THEN 1 END) as queue_visible_length,
                 EXTRACT(epoch FROM (NOW() - max(enqueued_at)))::int as newest_msg_age_sec,
                 EXTRACT(epoch FROM (NOW() - min(enqueued_at)))::int as oldest_msg_age_sec,
                 NOW() as scrape_time
@@ -345,7 +379,8 @@ BEGIN
             q_summary.newest_msg_age_sec,
             q_summary.oldest_msg_age_sec,
             all_metrics.total_messages,
-            q_summary.scrape_time
+            q_summary.scrape_time,
+            q_summary.queue_visible_length
         FROM q_summary, all_metrics
         $QUERY$,
         qtable, qtable || '_msg_id_seq', queue_name
@@ -378,17 +413,23 @@ END
 $$ LANGUAGE plpgsql;
 
 -- purge queue, deleting all entries in it.
-CREATE FUNCTION pgmq."purge_queue"(queue_name TEXT)
+CREATE OR REPLACE FUNCTION pgmq."purge_queue"(queue_name TEXT)
 RETURNS BIGINT AS $$
 DECLARE
   deleted_count INTEGER;
   qtable TEXT := pgmq.format_table_name(queue_name, 'q');
 BEGIN
-  EXECUTE format('DELETE FROM pgmq.%I', qtable);
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  -- Get the row count before truncating
+  EXECUTE format('SELECT count(*) FROM pgmq.%I', qtable) INTO deleted_count;
+
+  -- Use TRUNCATE for better performance on large tables
+  EXECUTE format('TRUNCATE TABLE pgmq.%I', qtable);
+
+  -- Return the number of purged rows
   RETURN deleted_count;
 END
 $$ LANGUAGE plpgsql;
+
 
 -- unassign archive, so it can be kept when a queue is deleted
 CREATE FUNCTION pgmq."detach_archive"(queue_name TEXT)
@@ -460,7 +501,7 @@ RETURNS TEXT AS $$
     extname = 'pg_partman';
 $$ LANGUAGE SQL;
 
-CREATE FUNCTION pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN DEFAULT FALSE)
+CREATE FUNCTION pgmq.drop_queue(queue_name TEXT, partitioned BOOLEAN)
 RETURNS BOOLEAN AS $$
 DECLARE
     qtable TEXT := pgmq.format_table_name(queue_name, 'q');
@@ -468,6 +509,30 @@ DECLARE
     atable TEXT := pgmq.format_table_name(queue_name, 'a');
     fq_atable TEXT := 'pgmq.' || atable;
 BEGIN
+    RAISE WARNING 'drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead';
+
+    PERFORM pgmq.drop_queue(queue_name);
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE FUNCTION pgmq.drop_queue(queue_name TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+    qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+    fq_qtable TEXT := 'pgmq.' || qtable;
+    atable TEXT := pgmq.format_table_name(queue_name, 'a');
+    fq_atable TEXT := 'pgmq.' || atable;
+    partitioned BOOLEAN;
+BEGIN
+    EXECUTE FORMAT(
+        $QUERY$
+        SELECT is_partitioned FROM pgmq.meta WHERE queue_name = %L
+        $QUERY$,
+        queue_name
+    ) INTO partitioned;
+
     EXECUTE FORMAT(
         $QUERY$
         ALTER EXTENSION pgmq DROP TABLE pgmq.%I

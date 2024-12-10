@@ -1,0 +1,26 @@
+version: "3"
+services:
+  pgmq-postgres:
+    image: quay.io/tembo/pg16-pgmq:latest
+    container_name: pgmq-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    command: ["-c", "max_connections=20000"] # for running tests parallel
+    volumes:
+      - ./pgmq-extension/sql/pgmq.sql:/docker-entrypoint-initdb.d/db.sql
+    networks:
+      - tembo-pgmq-network
+  tembo-pgmq-python:
+    build:
+      context: ../../tembo-pgmq-python
+      dockerfile: ../.devcontainer/tembo-pgmq-python/devcontainer.Dockerfile
+    image: tembo-pgmq-python
+    container_name: tembo-pgmq-python
+    networks:
+      - tembo-pgmq-network
+    command: ["tail", "-f", "/dev/null"]
+networks:
+  tembo-pgmq-network:
+    driver: bridge

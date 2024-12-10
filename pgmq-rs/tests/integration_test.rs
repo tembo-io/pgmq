@@ -22,7 +22,7 @@ async fn init_queue(qname: &str) -> pgmq::PGMQueue {
     let random_sleep_ms = rand::thread_rng().gen_range(0..1000);
     tokio::time::sleep(std::time::Duration::from_millis(random_sleep_ms)).await;
     let q_success = queue.create(qname).await;
-    println!("q_success: {:?}", q_success);
+    println!("q_success: {q_success:?}");
     assert!(q_success.is_ok());
     queue
 }
@@ -654,11 +654,11 @@ async fn test_database_error_modes() {
                 // got the url parsing error error. good.
             } else {
                 // got some other error. bad.
-                panic!("expected a url parsing error, got {:?}", e);
+                panic!("expected a url parsing error, got {e:?}");
             }
         }
         // didn't get an error. bad.
-        _ => panic!("expected a url parsing error, got {:?}", read_msg),
+        _ => panic!("expected a url parsing error, got {read_msg:?}"),
     }
 
     // connect to a postgres instance that doesn't exist should error
@@ -670,11 +670,11 @@ async fn test_database_error_modes() {
                 // got the db error. good.
             } else {
                 // got some other error. bad.
-                panic!("expected a db error, got {:?}", e);
+                panic!("expected a db error, got {e:?}");
             }
         }
         // didn't get an error. bad.
-        _ => panic!("expected a db error, got {:?}", read_msg),
+        _ => panic!("expected a db error, got {read_msg:?}"),
     }
 }
 
@@ -712,11 +712,11 @@ async fn test_parsing_error_modes() {
                 // got the parsing error. good.
             } else {
                 // got some other error. bad.
-                panic!("expected a parse error, got {:?}", e);
+                panic!("expected a parse error, got {e:?}");
             }
         }
         // didn't get an error. bad.
-        _ => panic!("expected a parse error, got {:?}", read_msg),
+        _ => panic!("expected a parse error, got {read_msg:?}"),
     }
 }
 

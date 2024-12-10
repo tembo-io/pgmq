@@ -43,6 +43,7 @@ jobs:
       - run: pg-build-test
 
   publish:
+    if: github.repository == 'tembo-io/pgmq'
     name: trunk publish
     runs-on: ubuntu-22.04
     strategy:
@@ -83,9 +84,11 @@ jobs:
           pgmq_repo=$(stoml Trunk.toml extension.repository)
           trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
+    if: github.repository == 'tembo-io/pgmq'
     name: Build and push images
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         pg: [14, 15, 16, 17]
     outputs:
@@ -97,6 +100,7 @@ jobs:
         shell: bash
         run: |
           set -xe
+          sudo apt-get update && sudo apt-get install -y wget
           wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
           mv stoml_linux_amd64 stoml
           chmod +x stoml

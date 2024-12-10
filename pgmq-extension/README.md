@@ -20,15 +20,12 @@ A lightweight message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RS
 - Messages stay in the queue until explicitly removed
 - Messages can be archived, instead of deleted, for long-term retention and replayability
 
-## Support
-
-Postgres 12-16.
+Supported on Postgres 14-17.
 
 ## Table of Contents
 
 - [Postgres Message Queue (PGMQ)](#postgres-message-queue-pgmq)
   - [Features](#features)
-  - [Support](#support)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
     - [Updating](#updating)
@@ -52,7 +49,7 @@ Postgres 12-16.
 The fastest way to get started is by running the Tembo Docker image, where PGMQ comes pre-installed in Postgres.
 
 ```bash
-docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pg16-pgmq:latest
+docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 tembo.docker.scarf.sh/tembo/pg17-pgmq:latest
 ```
 
 If you'd like to build from source, you can follow the instructions in [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -75,6 +72,8 @@ Community
 - [Java (Spring Boot)](https://github.com/adamalexandru4/pgmq-spring)
 - [Kotlin JVM (JDBC)](https://github.com/vdsirotkin/pgmq-kotlin-jvm)
 - [Javascript (NodeJs)](https://github.com/Muhammad-Magdi/pgmq-js)
+- [TypeScript (NodeJs](https://github.com/waitingsong/pgmq-js/tree/main/packages/pgmq-js) + [Midway.js](https://midwayjs.org/))
+- [TypeScript (Deno)](https://github.com/tmountain/deno-pgmq)
 - [.NET](https://github.com/brianpursley/Npgmq)
 - [Python (with SQLAlchemy)](https://github.com/jason810496/pgmq-sqlalchemy)
 
@@ -351,6 +350,7 @@ As the pgmq community grows, we'd love to see who is using it. Please send a PR 
 Currently, officially using pgmq:
 
 1. [Tembo](https://tembo.io) [[@ChuckHend](https://github.com/ChuckHend)]
+2. [Supabase](https://supabase.com) [[@Supabase](https://github.com/supabase)]
 
 ## ✨ Contributors
 

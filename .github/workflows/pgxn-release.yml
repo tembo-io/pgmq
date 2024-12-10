@@ -5,6 +5,7 @@ on:
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
 jobs:
   release:
+    if: github.repository == 'tembo-io/pgmq'
     name: Release on PGXN
     runs-on: ubuntu-latest
     container: pgxn/pgxn-tools
@@ -12,12 +13,12 @@ jobs:
       run:
         working-directory: ./pgmq-extension
     steps:
-    - name: Check out the repo
-      uses: actions/checkout@v4
-    - name: Bundle the Release
-      run: make dist
-    - name: Release on PGXN
-      env:
-        PGXN_USERNAME: ${{ secrets.PGXN_USERNAME }}
-        PGXN_PASSWORD: ${{ secrets.PGXN_PASSWORD }}
-      run: pgxn-release
+      - name: Check out the repo
+        uses: actions/checkout@v4
+      - name: Bundle the Release
+        run: make dist
+      - name: Release on PGXN
+        env:
+          PGXN_USERNAME: ${{ secrets.PGXN_USERNAME }}
+          PGXN_PASSWORD: ${{ secrets.PGXN_PASSWORD }}
+        run: pgxn-release
