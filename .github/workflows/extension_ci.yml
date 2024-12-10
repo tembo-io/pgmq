@@ -75,7 +75,7 @@ jobs:
         run: trunk build --pg-version ${{ matrix.pg-version }}
       - name: trunk publish
         # only publish release events
-        # if: github.event_name == 'release'
+        if: github.event_name == 'release'
         env:
           TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
         run: |
@@ -143,7 +143,7 @@ jobs:
 
       - name: Build and push -- Releases
         # only publish release events
-        # if: github.event_name == 'release'
+        if: github.event_name == 'release'
         uses: docker/build-push-action@v5
         with:
           working-directory: ./
