@@ -9,17 +9,17 @@ SELECT pgmq.create_unlogged('test_unlogged_queue');
  
 (1 row)
 
-SELECT * from pgmq.send('test_unlogged_queue', '{"hello": "world"}');
+SELECT * from pgmq.send('test_unlogged_queue', '{"hello": "world"}', '{"header": 1}'::jsonb);
  send 
 ------
     1
 (1 row)
 
-SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message
+SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message, headers
   FROM pgmq.read('test_unlogged_queue', 2, 1);
- msg_id | read_ct | ?column? | ?column? |      message       
---------+---------+----------+----------+--------------------
-      1 |       1 | f        | t        | {"hello": "world"}
+ msg_id | read_ct | ?column? | ?column? |      message       |    headers    
+--------+---------+----------+----------+--------------------+---------------
+      1 |       1 | f        | t        | {"hello": "world"} | {"header": 1}
 (1 row)
 
 -- test_max_queue_name_size
@@ -164,12 +164,20 @@ SELECT pgmq.create('batch_queue');
 
 SELECT ARRAY( SELECT pgmq.send_batch(
     'batch_queue',
-    ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[]
+    ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[],
+    ARRAY['{"header": 1}', '{"header": 2}']::jsonb[]
 )) = ARRAY[1, 2]::BIGINT[];
  ?column? 
 ----------
  t
 (1 row)
+
+SELECT msg_id, message, headers from pgmq.read('batch_queue', 0, 2);
+ msg_id |       message        |    headers    
+--------+----------------------+---------------
+      1 | {"hello": "world_0"} | {"header": 1}
+      2 | {"hello": "world_1"} | {"header": 2}
+(2 rows)
 
 -- send a batch of 2 messages with timestamp
 SELECT pgmq.create('batch_queue_vt');
@@ -315,7 +323,7 @@ SELECT COUNT(*) = 0 FROM pgmq.a_archive_queue;
 -- put messages on the queue
 \set msg_id1 1::bigint
 \set msg_id2 2::bigint
-SELECT send = :msg_id1 FROM pgmq.send('archive_queue', '0');
+SELECT send = :msg_id1 FROM pgmq.send('archive_queue', '0', '{"headers": 1}'::jsonb);
  ?column? 
 ----------
  t
@@ -388,6 +396,15 @@ SELECT COUNT(*) = 3 FROM pgmq.a_archive_queue;
 ----------
  t
 (1 row)
+
+-- body and headers are archived
+SELECT msg_id, message, headers FROM pgmq.a_archive_queue;
+ msg_id | message |    headers     
+--------+---------+----------------
+      1 | 0       | {"headers": 1}
+      2 | 0       | 
+      3 | 0       | 
+(3 rows)
 
 -- test_read_read_with_poll
 -- Creating queue
@@ -503,8 +520,8 @@ SELECT pgmq.create('test_pop_queue');
 (1 row)
 
 SELECT * FROM pgmq.pop('test_pop_queue');
- msg_id | read_ct | enqueued_at | vt | message 
---------+---------+-------------+----+---------
+ msg_id | read_ct | enqueued_at | vt | message | headers 
+--------+---------+-------------+----+---------+---------
 (0 rows)
 
 SELECT send AS first_msg_id from pgmq.send('test_pop_queue', '0') \gset
@@ -534,8 +551,8 @@ SELECT pgmq.create('test_set_vt_queue');
 (1 row)
 
 SELECT * FROM pgmq.set_vt('test_set_vt_queue', 9999, 0);
- msg_id | read_ct | enqueued_at | vt | message 
---------+---------+-------------+----+---------
+ msg_id | read_ct | enqueued_at | vt | message | headers 
+--------+---------+-------------+----+---------+---------
 (0 rows)
 
 SELECT send AS first_msg_id from pgmq.send('test_set_vt_queue', '0') \gset
