@@ -29,12 +29,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pg: [12, 13, 14, 15, 16, 17]
+        pg: [13, 14, 15, 16, 17]
         partman: [4.7.3, 5.1.0]
         exclude:
-          # pg_partman does not support pg < 14
-          - pg: 12
-            partman: 5.1.0
           - pg: 13
             partman: 5.1.0
     container: pgxn/pgxn-tools
@@ -51,8 +48,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        # add 17 when trunk supports it
-        pg-version: [14, 15, 16]
+        pg-version: [14, 15, 16, 17]
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust stable toolchain
