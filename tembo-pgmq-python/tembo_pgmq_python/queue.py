@@ -40,16 +40,17 @@ class PGMQueue:
         self._initialize_extensions()
 
     def _initialize_logging(self) -> None:
+        self.logger = logging.getLogger(__name__)
+
         if self.verbose:
             log_filename = self.log_filename or datetime.now().strftime("pgmq_debug_%Y%m%d_%H%M%S.log")
-            logging.basicConfig(
-                filename=os.path.join(os.getcwd(), log_filename),
-                level=logging.DEBUG,
-                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            )
+            file_handler = logging.FileHandler(filename=os.path.join(os.getcwd(), log_filename))
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            file_handler.setFormatter(formatter)
+            self.logger.addHandler(file_handler)
+            self.logger.setLevel(logging.DEBUG)
         else:
-            logging.basicConfig(level=logging.WARNING)
-        self.logger = logging.getLogger(__name__)
+            self.logger.setLevel(logging.WARNING)
 
     def _initialize_extensions(self, conn=None) -> None:
         self._execute_query("create extension if not exists pgmq cascade;", conn=conn)
