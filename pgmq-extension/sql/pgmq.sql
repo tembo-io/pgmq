@@ -588,6 +588,7 @@ CREATE FUNCTION pgmq.drop_queue(queue_name TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
     qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+    qtable_seq TEXT := qtable || '_msg_id_seq';
     fq_qtable TEXT := 'pgmq.' || qtable;
     atable TEXT := pgmq.format_table_name(queue_name, 'a');
     fq_atable TEXT := 'pgmq.' || atable;
@@ -605,6 +606,13 @@ BEGIN
         ALTER EXTENSION pgmq DROP TABLE pgmq.%I
         $QUERY$,
         qtable
+    );
+
+    EXECUTE FORMAT(
+        $QUERY$
+        ALTER EXTENSION pgmq DROP SEQUENCE pgmq.%I
+        $QUERY$,
+        qtable_seq
     );
 
     EXECUTE FORMAT(
@@ -687,6 +695,7 @@ CREATE FUNCTION pgmq.create_non_partitioned(queue_name TEXT)
 RETURNS void AS $$
 DECLARE
   qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+  qtable_seq TEXT := qtable || '_msg_id_seq';
   atable TEXT := pgmq.format_table_name(queue_name, 'a');
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
@@ -722,6 +731,7 @@ BEGIN
 
   IF NOT pgmq._belongs_to_pgmq(qtable) THEN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', qtable);
+      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD SEQUENCE pgmq.%I', qtable_seq);
   END IF;
 
   IF NOT pgmq._belongs_to_pgmq(atable) THEN
@@ -758,6 +768,7 @@ CREATE FUNCTION pgmq.create_unlogged(queue_name TEXT)
 RETURNS void AS $$
 DECLARE
   qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+  qtable_seq TEXT := qtable || '_msg_id_seq';
   atable TEXT := pgmq.format_table_name(queue_name, 'a');
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
@@ -792,6 +803,7 @@ BEGIN
 
   IF NOT pgmq._belongs_to_pgmq(qtable) THEN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', qtable);
+      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD SEQUENCE pgmq.%I', qtable_seq);
   END IF;
 
   IF NOT pgmq._belongs_to_pgmq(atable) THEN
@@ -875,6 +887,7 @@ DECLARE
   partition_col TEXT;
   a_partition_col TEXT;
   qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+  qtable_seq TEXT := qtable || '_msg_id_seq';
   atable TEXT := pgmq.format_table_name(queue_name, 'a');
   fq_qtable TEXT := 'pgmq.' || qtable;
   fq_atable TEXT := 'pgmq.' || atable;
@@ -899,6 +912,7 @@ BEGIN
 
   IF NOT pgmq._belongs_to_pgmq(qtable) THEN
       EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', qtable);
+      EXECUTE FORMAT('ALTER EXTENSION pgmq ADD SEQUENCE pgmq.%I', qtable_seq);
   END IF;
 
   -- https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md

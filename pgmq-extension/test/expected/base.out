@@ -28,7 +28,7 @@ SELECT pgmq.create(repeat('a', 48));
 ERROR:  queue name is too long, maximum length is 48 characters
 CONTEXT:  PL/pgSQL function pgmq.validate_queue_name(text) line 4 at RAISE
 SQL statement "SELECT pgmq.validate_queue_name(queue_name)"
-PL/pgSQL function pgmq.create_non_partitioned(text) line 6 at PERFORM
+PL/pgSQL function pgmq.create_non_partitioned(text) line 7 at PERFORM
 SQL statement "SELECT pgmq.create_non_partitioned(queue_name)"
 PL/pgSQL function pgmq."create"(text) line 3 at PERFORM
 SELECT pgmq.create(repeat('a', 47));
@@ -597,7 +597,7 @@ SELECT * FROM pgmq.create_partitioned(
 ERROR:  pg_partman is required for partitioned queues
 CONTEXT:  PL/pgSQL function pgmq._ensure_pg_partman_installed() line 12 at RAISE
 SQL statement "SELECT pgmq._ensure_pg_partman_installed()"
-PL/pgSQL function pgmq.create_partitioned(text,text,text) line 11 at PERFORM
+PL/pgSQL function pgmq.create_partitioned(text,text,text) line 12 at PERFORM
 -- With the extension existing, the queue is created successfully
 CREATE EXTENSION pg_partman;
 SELECT * FROM pgmq.create_partitioned(
