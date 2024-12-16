@@ -216,7 +216,8 @@ BEGIN
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
-        message JSONB
+        message JSONB,
+        headers JSONB
     )
     $QUERY$,
     qtable
@@ -230,7 +231,8 @@ BEGIN
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
-      message JSONB
+      message JSONB,
+      headers JSONB
     );
     $QUERY$,
     atable
@@ -286,7 +288,8 @@ BEGIN
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
-        message JSONB
+        message JSONB,
+        headers JSONB
     )
     $QUERY$,
     qtable
@@ -300,7 +303,8 @@ BEGIN
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
-      message JSONB
+      message JSONB,
+      headers JSONB
     );
     $QUERY$,
     atable
@@ -367,7 +371,8 @@ BEGIN
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
-        message JSONB
+        message JSONB,
+        headers JSONB
     ) PARTITION BY RANGE (%I)
     $QUERY$,
     qtable, partition_col
@@ -444,7 +449,8 @@ BEGIN
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
-      message JSONB
+      message JSONB,
+      headers JSONB
     ) PARTITION BY RANGE (%I);
     $QUERY$,
     atable, a_partition_col
