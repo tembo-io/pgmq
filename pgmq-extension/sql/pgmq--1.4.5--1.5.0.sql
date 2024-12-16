@@ -85,7 +85,7 @@ BEGIN
               read_ct = read_ct + 1
           FROM cte
           WHERE m.msg_id = cte.msg_id
-          RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message, headers;
+          RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message, m.headers;
           $QUERY$,
           qtable, conditional, qtable, make_interval(secs => vt)
       );
