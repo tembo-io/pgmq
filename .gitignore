@@ -16,7 +16,7 @@ images/pgmq-pg/Dockerfile
 META.json
 Trunk.toml
 .vscode/
-/results/
-/regression.*
-/output_iso/
+pgmq-extension/results/
+pgmq-extension/regression.*
+pgmq-extension/output_iso/
 .env
