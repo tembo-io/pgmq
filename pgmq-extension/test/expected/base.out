@@ -155,18 +155,36 @@ SELECT msg_id = :msg_id FROM pgmq.read_with_poll('test_default_queue_vt', 10, 1,
  t
 (1 row)
 
--- send a batch of 2 messages
+-- test send_batch
 SELECT pgmq.create('batch_queue');
  create 
 --------
  
 (1 row)
 
+-- send without headers, not explicitly typed
+SELECT ARRAY( SELECT pgmq.send_batch(
+    'batch_queue',
+    ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[]
+)) = ARRAY[1, 2]::BIGINT[];
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT msg_id, message, headers from pgmq.read('batch_queue', 10, 2);
+ msg_id |       message        | headers 
+--------+----------------------+---------
+      1 | {"hello": "world_0"} | 
+      2 | {"hello": "world_1"} | 
+(2 rows)
+
+-- send with headers
 SELECT ARRAY( SELECT pgmq.send_batch(
     'batch_queue',
     ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[],
     ARRAY['{"header": 1}', '{"header": 2}']::jsonb[]
-)) = ARRAY[1, 2]::BIGINT[];
+)) = ARRAY[3, 4]::BIGINT[];
  ?column? 
 ----------
  t
@@ -175,8 +193,8 @@ SELECT ARRAY( SELECT pgmq.send_batch(
 SELECT msg_id, message, headers from pgmq.read('batch_queue', 0, 2);
  msg_id |       message        |    headers    
 --------+----------------------+---------------
-      1 | {"hello": "world_0"} | {"header": 1}
-      2 | {"hello": "world_1"} | {"header": 2}
+      3 | {"hello": "world_0"} | {"header": 1}
+      4 | {"hello": "world_1"} | {"header": 2}
 (2 rows)
 
 -- send a batch of 2 messages with timestamp
