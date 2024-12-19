@@ -66,13 +66,23 @@ SELECT msg_id = :msg_id FROM pgmq.read('test_default_queue_vt', 2, 1);
 -- read again, now using poll to block until message is ready
 SELECT msg_id = :msg_id FROM pgmq.read_with_poll('test_default_queue_vt', 10, 1, 10);
 
--- send a batch of 2 messages
+-- test send_batch
 SELECT pgmq.create('batch_queue');
+
+-- send without headers, not explicitly typed
+SELECT ARRAY( SELECT pgmq.send_batch(
+    'batch_queue',
+    ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[]
+)) = ARRAY[1, 2]::BIGINT[];
+
+SELECT msg_id, message, headers from pgmq.read('batch_queue', 10, 2);
+
+-- send with headers
 SELECT ARRAY( SELECT pgmq.send_batch(
     'batch_queue',
     ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[],
     ARRAY['{"header": 1}', '{"header": 2}']::jsonb[]
-)) = ARRAY[1, 2]::BIGINT[];
+)) = ARRAY[3, 4]::BIGINT[];
 
 SELECT msg_id, message, headers from pgmq.read('batch_queue', 0, 2);
 
