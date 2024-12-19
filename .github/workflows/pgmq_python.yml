@@ -14,6 +14,7 @@ on:
       - "tembo-pgmq-python/tembo_pgmq_python/**"
       - "tembo-pgmq-python/tests/**"
       - "tembo-pgmq-python/pyproject.toml"
+      - "pgmq-extension/**"
   push:
     branches:
       - main
@@ -22,7 +23,7 @@ on:
       - "tembo-pgmq-python/tembo_pgmq_python/**"
       - "tembo-pgmq-python/tests/**"
       - "tembo-pgmq-python/pyproject.toml"
-
+      - "pgmq-extension/**"
 jobs:
   lints:
     runs-on: ubuntu-latest
