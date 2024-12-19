@@ -116,7 +116,7 @@ class PGMQueue:
     def send(self, queue: str, message: dict, delay: int = 0, conn=None) -> int:
         """Send a message to a queue."""
         self.logger.debug(f"send called with conn: {conn}")
-        query = "select * from pgmq.send(%s, %s, %s);"
+        query = "select * from pgmq.send(%s::text, %s::jsonb, %s::integer);"
         result = self._execute_query_with_result(query, [queue, Jsonb(message), delay], conn=conn)
         return result[0][0]
 

@@ -168,7 +168,7 @@ class PGMQueue:
     async def _send_internal(self, queue, message, delay, conn):
         self.logger.debug(f"Sending message to queue '{queue}' with delay={delay}")
         result = await conn.fetchrow(
-            "SELECT * FROM pgmq.send($1, $2::jsonb, $3);",
+            "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::integer);",
             queue,
             dumps(message).decode("utf-8"),
             delay,
@@ -190,7 +190,7 @@ class PGMQueue:
         self.logger.debug(f"Sending batch of messages to queue '{queue}' with delay={delay}")
         jsonb_array = [dumps(message).decode("utf-8") for message in messages]
         result = await conn.fetch(
-            "SELECT * FROM pgmq.send_batch($1::string, $2::jsonb[], $3::integer);",
+            "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::integer);",
             queue,
             jsonb_array,
             delay,
