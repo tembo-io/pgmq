@@ -186,11 +186,11 @@ class PGMQueue:
         else:
             return await self._send_batch_internal(queue, messages, delay, conn)
 
-    async def _send_batch_internal(self, queue, messages, delay, conn):
+    async def _send_batch_internal(self, queue: str, messages: List[dict], delay: int, conn):
         self.logger.debug(f"Sending batch of messages to queue '{queue}' with delay={delay}")
         jsonb_array = [dumps(message).decode("utf-8") for message in messages]
         result = await conn.fetch(
-            "SELECT * FROM pgmq.send_batch($1, $2::jsonb[], $3);",
+            "SELECT * FROM pgmq.send_batch($1::string, $2::jsonb[], $3::integer);",
             queue,
             jsonb_array,
             delay,
