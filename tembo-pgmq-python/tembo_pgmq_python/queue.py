@@ -133,7 +133,7 @@ class PGMQueue:
     def read(self, queue: str, vt: Optional[int] = None, conn=None) -> Optional[Message]:
         """Read a message from a queue."""
         self.logger.debug(f"read called with conn: {conn}")
-        query = "select * from pgmq.read(%s, %s, %s);"
+        query = "select * from pgmq.read(%s::text, %s::integer, %s::integer);"
         rows = self._execute_query_with_result(query, [queue, vt or self.vt, 1], conn=conn)
         messages = [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
         return messages[0] if messages else None
@@ -142,7 +142,7 @@ class PGMQueue:
     def read_batch(self, queue: str, vt: Optional[int] = None, batch_size=1, conn=None) -> Optional[List[Message]]:
         """Read a batch of messages from a queue."""
         self.logger.debug(f"read_batch called with conn: {conn}")
-        query = "select * from pgmq.read(%s, %s, %s);"
+        query = "select * from pgmq.read(%s::text, %s::integer, %s::integer);"
         rows = self._execute_query_with_result(query, [queue, vt or self.vt, batch_size], conn=conn)
         return [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
 
@@ -158,7 +158,7 @@ class PGMQueue:
     ) -> Optional[List[Message]]:
         """Read messages from a queue with polling."""
         self.logger.debug(f"read_with_poll called with conn: {conn}")
-        query = "select * from pgmq.read_with_poll(%s, %s, %s, %s, %s);"
+        query = "select * from pgmq.read_with_poll(%s::text, %s::integer, %s::integer, %s::integer, %s::integer);"
         params = [queue, vt or self.vt, qty, max_poll_seconds, poll_interval_ms]
         rows = self._execute_query_with_result(query, params, conn=conn)
         return [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]

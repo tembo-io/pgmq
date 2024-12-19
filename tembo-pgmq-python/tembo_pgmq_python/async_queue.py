@@ -213,7 +213,7 @@ class PGMQueue:
     async def _read_internal(self, queue, vt, batch_size, conn):
         self.logger.debug(f"Reading message from queue '{queue}' with vt={vt}")
         rows = await conn.fetch(
-            "SELECT * FROM pgmq.read($1, $2, $3);",
+            "SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer);",
             queue,
             vt or self.vt,
             batch_size,
@@ -246,7 +246,7 @@ class PGMQueue:
     async def _read_batch_internal(self, queue, vt, batch_size, conn):
         self.logger.debug(f"Reading batch of messages from queue '{queue}' with vt={vt}")
         rows = await conn.fetch(
-            "SELECT * FROM pgmq.read($1, $2, $3);",
+            "SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer);",
             queue,
             vt or self.vt,
             batch_size,
