@@ -168,7 +168,7 @@ class PGMQueue:
     async def _send_internal(self, queue, message, delay, conn):
         self.logger.debug(f"Sending message to queue '{queue}' with delay={delay}")
         result = await conn.fetchrow(
-            "SELECT * FROM pgmq.send($1, $2::jsonb, $3);",
+            "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::integer);",
             queue,
             dumps(message).decode("utf-8"),
             delay,
@@ -186,11 +186,11 @@ class PGMQueue:
         else:
             return await self._send_batch_internal(queue, messages, delay, conn)
 
-    async def _send_batch_internal(self, queue, messages, delay, conn):
+    async def _send_batch_internal(self, queue: str, messages: List[dict], delay: int, conn):
         self.logger.debug(f"Sending batch of messages to queue '{queue}' with delay={delay}")
         jsonb_array = [dumps(message).decode("utf-8") for message in messages]
         result = await conn.fetch(
-            "SELECT * FROM pgmq.send_batch($1, $2::jsonb[], $3);",
+            "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::integer);",
             queue,
             jsonb_array,
             delay,
@@ -213,7 +213,7 @@ class PGMQueue:
     async def _read_internal(self, queue, vt, batch_size, conn):
         self.logger.debug(f"Reading message from queue '{queue}' with vt={vt}")
         rows = await conn.fetch(
-            "SELECT * FROM pgmq.read($1, $2, $3);",
+            "SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer);",
             queue,
             vt or self.vt,
             batch_size,
@@ -246,7 +246,7 @@ class PGMQueue:
     async def _read_batch_internal(self, queue, vt, batch_size, conn):
         self.logger.debug(f"Reading batch of messages from queue '{queue}' with vt={vt}")
         rows = await conn.fetch(
-            "SELECT * FROM pgmq.read($1, $2, $3);",
+            "SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer);",
             queue,
             vt or self.vt,
             batch_size,
