@@ -14,7 +14,7 @@ update.readme:
 		> README.md
 
 run.postgres:
-	docker run --rm -d --name pgmq-pg -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD} -p 5432:5432 quay.io/tembo/pg16-pgmq:latest
+	docker run --rm -d --name pgmq-pg -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD} -p 5432:5432 quay.io/tembo/pg17-pgmq:latest
 
 test: run.postgres
 	sleep 4;
