@@ -921,7 +921,7 @@ impl PGMQueue {
     /// use pgmq::{PgmqError, PGMQueue};
     /// use serde::{Deserialize, Serialize};
     /// use serde_json::Value;
-
+    ///
     /// #[derive(Debug, Deserialize, Serialize)]
     /// struct MyMessage {
     ///    foo: String,

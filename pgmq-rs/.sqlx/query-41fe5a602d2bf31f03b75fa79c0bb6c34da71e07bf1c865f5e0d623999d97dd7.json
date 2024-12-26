@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * from pgmq.create($1::text);",
+  "query": "SELECT * from pgmq.create_unlogged(queue_name=>$1::text);",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "create",
+        "name": "create_unlogged",
         "type_info": "Void"
       }
     ],
@@ -18,5 +18,5 @@
       null
     ]
   },
-  "hash": "8bf48b3cab42cc04047e8cc16cdd4064c3768328a673d8a278002afa85b2b1d4"
+  "hash": "41fe5a602d2bf31f03b75fa79c0bb6c34da71e07bf1c865f5e0d623999d97dd7"
 }

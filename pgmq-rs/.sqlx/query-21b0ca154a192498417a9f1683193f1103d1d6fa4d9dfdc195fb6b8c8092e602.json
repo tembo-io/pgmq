@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * from pgmq.set_vt($1::text, $2::bigint, $3::integer);",
+  "query": "SELECT * from pgmq.read(queue_name=>$1::text, vt=>$2::integer, qty=>$3::integer)",
   "describe": {
     "columns": [
       {
@@ -27,12 +27,17 @@
         "ordinal": 4,
         "name": "message",
         "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "headers",
+        "type_info": "Jsonb"
       }
     ],
     "parameters": {
       "Left": [
         "Text",
-        "Int8",
+        "Int4",
         "Int4"
       ]
     },
@@ -41,8 +46,9 @@
       null,
       null,
       null,
+      null,
       null
     ]
   },
-  "hash": "775c8aa14d49076963fd996b465ff96213b44421787a615d5502e145b9a71005"
+  "hash": "21b0ca154a192498417a9f1683193f1103d1d6fa4d9dfdc195fb6b8c8092e602"
 }
