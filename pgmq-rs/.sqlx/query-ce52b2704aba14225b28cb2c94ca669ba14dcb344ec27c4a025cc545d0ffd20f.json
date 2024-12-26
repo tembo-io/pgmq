@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * from pgmq.archive($1::text, $2::bigint)",
+  "query": "SELECT * from pgmq.delete(queue_name=>$1::text, msg_id=>$2::bigint)",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "archive",
+        "name": "delete",
         "type_info": "Bool"
       }
     ],
@@ -19,5 +19,5 @@
       null
     ]
   },
-  "hash": "cb31699ff46d61c834893d93416c5321ea403e3001cdededf85b9fef2a5906b8"
+  "hash": "ce52b2704aba14225b28cb2c94ca669ba14dcb344ec27c4a025cc545d0ffd20f"
 }

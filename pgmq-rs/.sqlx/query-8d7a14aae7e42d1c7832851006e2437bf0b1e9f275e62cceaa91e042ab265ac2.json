@@ -1,23 +1,23 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * from pgmq.archive($1::text, $2::bigint[])",
+  "query": "SELECT * from pgmq.archive(queue_name=>$1::text, msg_id=>$2::bigint)",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
         "name": "archive",
-        "type_info": "Int8"
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
         "Text",
-        "Int8Array"
+        "Int8"
       ]
     },
     "nullable": [
       null
     ]
   },
-  "hash": "23e056e8442ba9a1b2f4922d8b0f0b90a7b9d63a40be3345047450d0405b83b6"
+  "hash": "8d7a14aae7e42d1c7832851006e2437bf0b1e9f275e62cceaa91e042ab265ac2"
 }
