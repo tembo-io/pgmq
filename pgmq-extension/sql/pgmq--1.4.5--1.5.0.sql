@@ -85,7 +85,7 @@ BEGIN
               read_ct = read_ct + 1
           FROM cte
           WHERE m.msg_id = cte.msg_id
-          RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message, headers;
+          RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message, m.headers;
           $QUERY$,
           qtable, conditional, qtable, make_interval(secs => vt)
       );
@@ -114,7 +114,7 @@ DECLARE
     atable TEXT := pgmq.format_table_name(queue_name, 'a');
     fq_atable TEXT := 'pgmq.' || atable;
 BEGIN
-    RAISE WARNING "drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead.";
+    RAISE WARNING 'drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead.';
 
     PERFORM pgmq.drop_queue(queue_name);
 
@@ -216,7 +216,8 @@ BEGIN
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
-        message JSONB
+        message JSONB,
+        headers JSONB
     )
     $QUERY$,
     qtable
@@ -230,7 +231,8 @@ BEGIN
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
-      message JSONB
+      message JSONB,
+      headers JSONB
     );
     $QUERY$,
     atable
@@ -286,7 +288,8 @@ BEGIN
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
-        message JSONB
+        message JSONB,
+        headers JSONB
     )
     $QUERY$,
     qtable
@@ -300,7 +303,8 @@ BEGIN
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
-      message JSONB
+      message JSONB,
+      headers JSONB
     );
     $QUERY$,
     atable
@@ -367,7 +371,8 @@ BEGIN
         read_ct INT DEFAULT 0 NOT NULL,
         enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
         vt TIMESTAMP WITH TIME ZONE NOT NULL,
-        message JSONB
+        message JSONB,
+        headers JSONB
     ) PARTITION BY RANGE (%I)
     $QUERY$,
     qtable, partition_col
@@ -444,7 +449,8 @@ BEGIN
       enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
       vt TIMESTAMP WITH TIME ZONE NOT NULL,
-      message JSONB
+      message JSONB,
+      headers JSONB
     ) PARTITION BY RANGE (%I);
     $QUERY$,
     atable, a_partition_col
