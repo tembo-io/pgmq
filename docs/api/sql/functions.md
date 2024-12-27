@@ -133,7 +133,7 @@ RETURNS SETOF <a href="../types/#message_record">pgmq.message_record</a>
 | queue_name  | text     | The name of the queue   |
 | vt          | integer  | Time in seconds that the message become invisible after reading |
 | qty         | integer  | The number of messages to read from the queue. Defaults to 1 |
-| conditional | jsonb    | Filters the messages by their json content. Defaults to '{}' - no filtering |
+| conditional | jsonb    | Filters the messages by their json content. Defaults to '{}' - no filtering. **This feature is experimental, and the API is subject to change in future releases**  |
 
 Examples:
 
@@ -189,7 +189,7 @@ RETURNS SETOF <a href="../types/#message_record">pgmq.message_record</a>
 | qty   | integer        | The number of messages to read from the queue. Defaults to 1.      |
 | max_poll_seconds   | integer        | Time in seconds to wait for new messages to reach the queue. Defaults to 5.      |
 | poll_interval_ms   | integer        | Milliseconds between the internal poll operations. Defaults to 100.      |
-| conditional | jsonb    | Filters the messages by their json content. Defaults to '{}' - no filtering |
+| conditional | jsonb    | Filters the messages by their json content. Defaults to '{}' - no filtering. **This feature is experimental, and the API is subject to change in future releases** |
 
 Example:
 
