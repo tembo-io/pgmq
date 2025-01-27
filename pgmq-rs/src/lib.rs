@@ -480,7 +480,7 @@ impl PGMQueue {
     ///        MyMessage {foo: "bar3".to_owned()},
     ///    ];
     ///
-    ///    let struct_message_batch_ids = queue.send_batch(&my_queue, &struct_message_batch, 1000)
+    ///    let struct_message_batch_ids = queue.send_batch_delay(&my_queue, &struct_message_batch, 1000)
     ///        .await
     ///        .expect("Failed to enqueue messages");
     ///     println!("Struct Message ids: {:?}", struct_message_batch_ids);
