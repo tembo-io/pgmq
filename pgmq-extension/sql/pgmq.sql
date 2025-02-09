@@ -4,7 +4,14 @@
 -- When installed as an extension, we don't need to create the `pgmq` schema
 -- because it is automatically created by postgres due to being declared in
 -- the extension control file
-CREATE SCHEMA IF NOT EXISTS pgmq;
+DO
+$$
+BEGIN
+    IF (SELECT NOT EXISTS( SELECT 1 FROM pg_extension WHERE extname = 'pgmq')) THEN
+      CREATE SCHEMA IF NOT EXISTS pgmq;
+    END IF;
+END
+$$;
 
 -- Table where queues and metadata about them is stored
 CREATE TABLE pgmq.meta (
