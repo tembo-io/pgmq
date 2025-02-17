@@ -595,7 +595,7 @@ SELECT * FROM pgmq.create_partitioned(
     :'retention_interval'
 );
 ERROR:  pg_partman is required for partitioned queues
-CONTEXT:  PL/pgSQL function pgmq._ensure_pg_partman_installed() line 12 at RAISE
+CONTEXT:  PL/pgSQL function pgmq._ensure_pg_partman_installed() line 4 at RAISE
 SQL statement "SELECT pgmq._ensure_pg_partman_installed()"
 PL/pgSQL function pgmq.create_partitioned(text,text,text) line 12 at PERFORM
 -- With the extension existing, the queue is created successfully
