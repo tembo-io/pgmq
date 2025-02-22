@@ -533,7 +533,7 @@ BEGIN
             (
                 SELECT msg_id
                 FROM pgmq.%I
-                WHERE vt <= now()
+                WHERE vt <= clock_timestamp()
                 ORDER BY msg_id ASC
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED
@@ -559,7 +559,7 @@ BEGIN
     sql := FORMAT(
         $QUERY$
         UPDATE pgmq.%I
-        SET vt = (now() + %L)
+        SET vt = (clock_timestamp() + %L)
         WHERE msg_id = %L
         RETURNING *;
         $QUERY$,
