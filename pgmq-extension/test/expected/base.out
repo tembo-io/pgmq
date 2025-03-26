@@ -255,6 +255,27 @@ SELECT COUNT(1) from pgmq.metrics_all();
      9
 (1 row)
 
+-- delete an existing queue returns true
+select pgmq.create('exists');
+ create 
+--------
+ 
+(1 row)
+
+select pgmq.drop_queue('exists');
+ drop_queue 
+------------
+ t
+(1 row)
+
+-- delete a queue does not exists returns false
+select pgmq.drop_queue('does_not_exist');
+NOTICE:  pgmq queue `does_not_exists` does not exist
+ drop_queue 
+------------
+ f
+(1 row)
+
 -- delete all the queues
 -- delete partitioned queues
 SELECT pgmq.drop_queue(queue, true)

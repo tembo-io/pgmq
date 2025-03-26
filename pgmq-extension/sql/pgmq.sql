@@ -612,6 +612,16 @@ BEGIN
         queue_name
     ) INTO partitioned;
 
+    -- check if the queue exists
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_name = qtable and table_schema = 'pgmq'
+    ) THEN
+        RAISE NOTICE 'pgmq queue `%s` does not exist', queue_name;
+        RETURN FALSE;
+    END IF;
+
     IF pgmq._extension_exists('pgmq') THEN
         EXECUTE FORMAT(
             $QUERY$
