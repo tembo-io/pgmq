@@ -270,7 +270,7 @@ select pgmq.drop_queue('exists');
 
 -- delete a queue does not exists returns false
 select pgmq.drop_queue('does_not_exist');
-NOTICE:  pgmq queue `does_not_exists` does not exist
+NOTICE:  pgmq queue `does_not_exist` does not exist
  drop_queue 
 ------------
  f

@@ -618,7 +618,7 @@ BEGIN
         FROM information_schema.tables
         WHERE table_name = qtable and table_schema = 'pgmq'
     ) THEN
-        RAISE NOTICE 'pgmq queue `%s` does not exist', queue_name;
+        RAISE NOTICE 'pgmq queue `%` does not exist', queue_name;
         RETURN FALSE;
     END IF;
 
