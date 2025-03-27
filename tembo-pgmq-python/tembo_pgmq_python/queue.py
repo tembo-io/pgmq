@@ -55,24 +55,16 @@ class PGMQueue:
     def _initialize_extensions(self, conn=None) -> None:
         self._execute_query("create extension if not exists pgmq cascade;", conn=conn)
 
-    def _execute_query(
-        self, query: str, params: Optional[Union[List, tuple]] = None, conn=None
-    ) -> None:
-        self.logger.debug(
-            f"Executing query: {query} with params: {params} using conn: {conn}"
-        )
+    def _execute_query(self, query: str, params: Optional[Union[List, tuple]] = None, conn=None) -> None:
+        self.logger.debug(f"Executing query: {query} with params: {params} using conn: {conn}")
         if conn:
             conn.execute(query, params)
         else:
             with self.pool.connection() as conn:
                 conn.execute(query, params)
 
-    def _execute_query_with_result(
-        self, query: str, params: Optional[Union[List, tuple]] = None, conn=None
-    ):
-        self.logger.debug(
-            f"Executing query with result: {query} with params: {params} using conn: {conn}"
-        )
+    def _execute_query_with_result(self, query: str, params: Optional[Union[List, tuple]] = None, conn=None):
+        self.logger.debug(f"Executing query with result: {query} with params: {params} using conn: {conn}")
         if conn:
             return conn.execute(query, params).fetchall()
         else:
@@ -96,11 +88,7 @@ class PGMQueue:
     def create_queue(self, queue: str, unlogged: bool = False, conn=None) -> None:
         """Create a new queue."""
         self.logger.debug(f"create_queue called with conn: {conn}")
-        query = (
-            "select pgmq.create_unlogged(%s);"
-            if unlogged
-            else "select pgmq.create(%s);"
-        )
+        query = "select pgmq.create_unlogged(%s);" if unlogged else "select pgmq.create(%s);"
         self._execute_query(query, [queue], conn=conn)
 
     def validate_queue_name(self, queue_name: str, conn=None) -> None:
@@ -125,27 +113,19 @@ class PGMQueue:
         return [row[0] for row in rows]
 
     @transaction
-    def send(
-        self, queue: str, message: dict, delay: int = 0, tz: datetime = None, conn=None
-    ) -> int:
+    def send(self, queue: str, message: dict, delay: int = 0, tz: datetime = None, conn=None) -> int:
         """Send a message to a queue."""
         self.logger.debug(f"send called with conn: {conn}")
         result = None
         if delay:
             query = "select * from pgmq.send(%s::text, %s::jsonb, %s::integer);"
-            result = self._execute_query_with_result(
-                query, [queue, Jsonb(message), delay], conn=conn
-            )
+            result = self._execute_query_with_result(query, [queue, Jsonb(message), delay], conn=conn)
         elif tz:
             query = "select * from pgmq.send(%s::text, %s::jsonb, %s::timestamptz);"
-            result = self._execute_query_with_result(
-                query, [queue, Jsonb(message), tz], conn=conn
-            )
+            result = self._execute_query_with_result(query, [queue, Jsonb(message), tz], conn=conn)
         else:
             query = "select * from pgmq.send(%s::text, %s::jsonb);"
-            result = self._execute_query_with_result(
-                query, [queue, Jsonb(message)], conn=conn
-            )
+            result = self._execute_query_with_result(query, [queue, Jsonb(message)], conn=conn)
         return result[0][0]
 
     @transaction
@@ -175,9 +155,7 @@ class PGMQueue:
         return [message[0] for message in result]
 
     @transaction
-    def read(
-        self, queue: str, vt: Optional[int] = None, conn=None
-    ) -> Optional[Message]:
+    def read(self, queue: str, vt: Optional[int] = None, conn=None) -> Optional[Message]:
         """Read a message from a queue."""
         self.logger.debug(f"read called with conn: {conn}")
         query = "select * from pgmq.read(%s::text, %s::integer, %s::integer);"
@@ -186,9 +164,7 @@ class PGMQueue:
         return messages[0] if messages else None
 
     @transaction
-    def read_batch(
-        self, queue: str, vt: Optional[int] = None, batch_size=1, conn=None
-    ) -> Optional[List[Message]]:
+    def read_batch(self, queue: str, vt: Optional[int] = None, batch_size=1, conn=None) -> Optional[List[Message]]:
         """Read a batch of messages from a queue."""
         self.logger.debug(f"read_batch called with conn: {conn}")
         query = "select * from pgmq.read(%s::text, %s::integer, %s::integer);"
@@ -210,10 +186,7 @@ class PGMQueue:
         query = "select * from pgmq.read_with_poll(%s::text, %s::integer, %s::integer, %s::integer, %s::integer);"
         params = [queue, vt or self.vt, qty, max_poll_seconds, poll_interval_ms]
         rows = self._execute_query_with_result(query, params, conn=conn)
-        return [
-            Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4])
-            for x in rows
-        ]
+        return [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
 
     @transaction
     def pop(self, queue: str, conn=None) -> Message:
@@ -221,10 +194,7 @@ class PGMQueue:
         self.logger.debug(f"pop called with conn: {conn}")
         query = "select * from pgmq.pop(%s);"
         rows = self._execute_query_with_result(query, [queue], conn=conn)
-        messages = [
-            Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4])
-            for x in rows
-        ]
+        messages = [Message(msg_id=x[0], read_ct=x[1], enqueued_at=x[2], vt=x[3], message=x[4]) for x in rows]
         return messages[0]
 
     @transaction
@@ -305,9 +275,7 @@ class PGMQueue:
         """Set the visibility timeout for a specific message."""
         self.logger.debug(f"set_vt called with conn: {conn}")
         query = "select * from pgmq.set_vt(%s, %s, %s);"
-        result = self._execute_query_with_result(query, [queue, msg_id, vt], conn=conn)[
-            0
-        ]
+        result = self._execute_query_with_result(query, [queue, msg_id, vt], conn=conn)[0]
         return Message(
             msg_id=result[0],
             read_ct=result[1],

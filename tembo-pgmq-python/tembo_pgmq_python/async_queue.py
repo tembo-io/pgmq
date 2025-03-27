@@ -88,17 +88,11 @@ class PGMQueue:
         )
         if conn is None:
             async with self.pool.acquire() as conn:
-                await self._create_partitioned_queue_internal(
-                    queue, partition_interval, retention_interval, conn
-                )
+                await self._create_partitioned_queue_internal(queue, partition_interval, retention_interval, conn)
         else:
-            await self._create_partitioned_queue_internal(
-                queue, partition_interval, retention_interval, conn
-            )
+            await self._create_partitioned_queue_internal(queue, partition_interval, retention_interval, conn)
 
-    async def _create_partitioned_queue_internal(
-        self, queue, partition_interval, retention_interval, conn
-    ):
+    async def _create_partitioned_queue_internal(self, queue, partition_interval, retention_interval, conn):
         self.logger.debug(f"Creating partitioned queue '{queue}'")
         await conn.execute(
             "SELECT pgmq.create($1, $2::text, $3::text);",
@@ -110,9 +104,7 @@ class PGMQueue:
     @transaction
     async def create_queue(self, queue: str, unlogged: bool = False, conn=None) -> None:
         """Create a new queue."""
-        self.logger.debug(
-            f"create_queue called with queue='{queue}', unlogged={unlogged}, conn={conn}"
-        )
+        self.logger.debug(f"create_queue called with queue='{queue}', unlogged={unlogged}, conn={conn}")
         if conn is None:
             async with self.pool.acquire() as conn:
                 await self._create_queue_internal(queue, unlogged, conn)
@@ -133,13 +125,9 @@ class PGMQueue:
             await conn.execute("SELECT pgmq.validate_queue_name($1);", queue_name)
 
     @transaction
-    async def drop_queue(
-        self, queue: str, partitioned: bool = False, conn=None
-    ) -> bool:
+    async def drop_queue(self, queue: str, partitioned: bool = False, conn=None) -> bool:
         """Drop a queue."""
-        self.logger.debug(
-            f"drop_queue called with queue='{queue}', partitioned={partitioned}, conn={conn}"
-        )
+        self.logger.debug(f"drop_queue called with queue='{queue}', partitioned={partitioned}, conn={conn}")
         if conn is None:
             async with self.pool.acquire() as conn:
                 return await self._drop_queue_internal(queue, partitioned, conn)
@@ -147,9 +135,7 @@ class PGMQueue:
             return await self._drop_queue_internal(queue, partitioned, conn)
 
     async def _drop_queue_internal(self, queue, partitioned, conn):
-        result = await conn.fetchrow(
-            "SELECT pgmq.drop_queue($1, $2);", queue, partitioned
-        )
+        result = await conn.fetchrow("SELECT pgmq.drop_queue($1, $2);", queue, partitioned)
         self.logger.debug(f"Queue '{queue}' dropped: {result[0]}")
         return result[0]
 
@@ -170,13 +156,9 @@ class PGMQueue:
         return queues
 
     @transaction
-    async def send(
-        self, queue: str, message: dict, delay: int = 0, tz: datetime = None, conn=None
-    ) -> int:
+    async def send(self, queue: str, message: dict, delay: int = 0, tz: datetime = None, conn=None) -> int:
         """Send a message to a queue."""
-        self.logger.debug(
-            f"send called with queue='{queue}', message={message}, delay={delay}, tz={tz}, conn={conn}"
-        )
+        self.logger.debug(f"send called with queue='{queue}', message={message}, delay={delay}, tz={tz}, conn={conn}")
         if conn is None:
             async with self.pool.acquire() as conn:
                 return await self._send_internal(queue, message, delay, tz, conn)
@@ -191,9 +173,7 @@ class PGMQueue:
         tz: datetime = None,
         conn=None,
     ):
-        self.logger.debug(
-            f"Sending message to queue '{queue}' with delay={delay}, tz={tz}"
-        )
+        self.logger.debug(f"Sending message to queue '{queue}' with delay={delay}, tz={tz}")
         result = None
         if delay:
             result = await conn.fetchrow(
@@ -245,9 +225,7 @@ class PGMQueue:
         tz: datetime = None,
         conn=None,
     ):
-        self.logger.debug(
-            f"Sending batch of messages to queue '{queue}' with delay={delay}, tz={tz}"
-        )
+        self.logger.debug(f"Sending batch of messages to queue '{queue}' with delay={delay}, tz={tz}")
         jsonb_array = [dumps(message).decode("utf-8") for message in messages]
         result = None
         if delay:
@@ -275,9 +253,7 @@ class PGMQueue:
         return msg_ids
 
     @transaction
-    async def read(
-        self, queue: str, vt: Optional[int] = None, conn=None
-    ) -> Optional[Message]:
+    async def read(self, queue: str, vt: Optional[int] = None, conn=None) -> Optional[Message]:
         """Read a message from a queue."""
         self.logger.debug(f"read called with queue='{queue}', vt={vt}, conn={conn}")
         batch_size = 1
@@ -313,9 +289,7 @@ class PGMQueue:
         self, queue: str, vt: Optional[int] = None, batch_size=1, conn=None
     ) -> Optional[List[Message]]:
         """Read a batch of messages from a queue."""
-        self.logger.debug(
-            f"read_batch called with queue='{queue}', vt={vt}, batch_size={batch_size}, conn={conn}"
-        )
+        self.logger.debug(f"read_batch called with queue='{queue}', vt={vt}, batch_size={batch_size}, conn={conn}")
         if conn is None:
             async with self.pool.acquire() as conn:
                 return await self._read_batch_internal(queue, vt, batch_size, conn)
@@ -323,9 +297,7 @@ class PGMQueue:
             return await self._read_batch_internal(queue, vt, batch_size, conn)
 
     async def _read_batch_internal(self, queue, vt, batch_size, conn):
-        self.logger.debug(
-            f"Reading batch of messages from queue '{queue}' with vt={vt}"
-        )
+        self.logger.debug(f"Reading batch of messages from queue '{queue}' with vt={vt}")
         rows = await conn.fetch(
             "SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer);",
             queue,
@@ -362,17 +334,11 @@ class PGMQueue:
         )
         if conn is None:
             async with self.pool.acquire() as conn:
-                return await self._read_with_poll_internal(
-                    queue, vt, qty, max_poll_seconds, poll_interval_ms, conn
-                )
+                return await self._read_with_poll_internal(queue, vt, qty, max_poll_seconds, poll_interval_ms, conn)
         else:
-            return await self._read_with_poll_internal(
-                queue, vt, qty, max_poll_seconds, poll_interval_ms, conn
-            )
+            return await self._read_with_poll_internal(queue, vt, qty, max_poll_seconds, poll_interval_ms, conn)
 
-    async def _read_with_poll_internal(
-        self, queue, vt, qty, max_poll_seconds, poll_interval_ms, conn
-    ):
+    async def _read_with_poll_internal(self, queue, vt, qty, max_poll_seconds, poll_interval_ms, conn):
         self.logger.debug(f"Reading messages with polling from queue '{queue}'")
         rows = await conn.fetch(
             "SELECT * FROM pgmq.read_with_poll($1, $2, $3, $4, $5);",
@@ -424,9 +390,7 @@ class PGMQueue:
     @transaction
     async def delete(self, queue: str, msg_id: int, conn=None) -> bool:
         """Delete a message from a queue."""
-        self.logger.debug(
-            f"delete called with queue='{queue}', msg_id={msg_id}, conn={conn}"
-        )
+        self.logger.debug(f"delete called with queue='{queue}', msg_id={msg_id}, conn={conn}")
         if conn is None:
             async with self.pool.acquire() as conn:
                 return await self._delete_internal(queue, msg_id, conn)
@@ -435,20 +399,14 @@ class PGMQueue:
 
     async def _delete_internal(self, queue, msg_id, conn):
         self.logger.debug(f"Deleting message with msg_id={msg_id} from queue '{queue}'")
-        row = await conn.fetchrow(
-            "SELECT pgmq.delete($1::text, $2::int);", queue, msg_id
-        )
+        row = await conn.fetchrow("SELECT pgmq.delete($1::text, $2::int);", queue, msg_id)
         self.logger.debug(f"Message deleted: {row[0]}")
         return row[0]
 
     @transaction
-    async def delete_batch(
-        self, queue: str, msg_ids: List[int], conn=None
-    ) -> List[int]:
+    async def delete_batch(self, queue: str, msg_ids: List[int], conn=None) -> List[int]:
         """Delete multiple messages from a queue."""
-        self.logger.debug(
-            f"delete_batch called with queue='{queue}', msg_ids={msg_ids}, conn={conn}"
-        )
+        self.logger.debug(f"delete_batch called with queue='{queue}', msg_ids={msg_ids}, conn={conn}")
         if conn is None:
             async with self.pool.acquire() as conn:
                 return await self._delete_batch_internal(queue, msg_ids, conn)
@@ -456,12 +414,8 @@ class PGMQueue:
             return await self._delete_batch_internal(queue, msg_ids, conn)
 
     async def _delete_batch_internal(self, queue, msg_ids, conn):
-        self.logger.debug(
-            f"Deleting messages with msg_ids={msg_ids} from queue '{queue}'"
-        )
-        results = await conn.fetch(
-            "SELECT * FROM pgmq.delete($1::text, $2::int[]);", queue, msg_ids
-        )
+        self.logger.debug(f"Deleting messages with msg_ids={msg_ids} from queue '{queue}'")
+        results = await conn.fetch("SELECT * FROM pgmq.delete($1::text, $2::int[]);", queue, msg_ids)
         deleted_ids = [result[0] for result in results]
         self.logger.debug(f"Messages deleted: {deleted_ids}")
         return deleted_ids
@@ -469,9 +423,7 @@ class PGMQueue:
     @transaction
     async def archive(self, queue: str, msg_id: int, conn=None) -> bool:
         """Archive a message from a queue."""
-        self.logger.debug(
-            f"archive called with queue='{queue}', msg_id={msg_id}, conn={conn}"
-        )
+        self.logger.debug(f"archive called with queue='{queue}', msg_id={msg_id}, conn={conn}")
         if conn is None:
             async with self.pool.acquire() as conn:
                 return await self._archive_internal(queue, msg_id, conn)
@@ -479,23 +431,15 @@ class PGMQueue:
             return await self._archive_internal(queue, msg_id, conn)
 
     async def _archive_internal(self, queue, msg_id, conn):
-        self.logger.debug(
-            f"Archiving message with msg_id={msg_id} from queue '{queue}'"
-        )
-        row = await conn.fetchrow(
-            "SELECT pgmq.archive($1::text, $2::int);", queue, msg_id
-        )
+        self.logger.debug(f"Archiving message with msg_id={msg_id} from queue '{queue}'")
+        row = await conn.fetchrow("SELECT pgmq.archive($1::text, $2::int);", queue, msg_id)
         self.logger.debug(f"Message archived: {row[0]}")
         return row[0]
 
     @transaction
-    async def archive_batch(
-        self, queue: str, msg_ids: List[int], conn=None
-    ) -> List[int]:
+    async def archive_batch(self, queue: str, msg_ids: List[int], conn=None) -> List[int]:
         """Archive multiple messages from a queue."""
-        self.logger.debug(
-            f"archive_batch called with queue='{queue}', msg_ids={msg_ids}, conn={conn}"
-        )
+        self.logger.debug(f"archive_batch called with queue='{queue}', msg_ids={msg_ids}, conn={conn}")
         if conn is None:
             async with self.pool.acquire() as conn:
                 return await self._archive_batch_internal(queue, msg_ids, conn)
@@ -503,12 +447,8 @@ class PGMQueue:
             return await self._archive_batch_internal(queue, msg_ids, conn)
 
     async def _archive_batch_internal(self, queue, msg_ids, conn):
-        self.logger.debug(
-            f"Archiving messages with msg_ids={msg_ids} from queue '{queue}'"
-        )
-        results = await conn.fetch(
-            "SELECT * FROM pgmq.archive($1::text, $2::int[]);", queue, msg_ids
-        )
+        self.logger.debug(f"Archiving messages with msg_ids={msg_ids} from queue '{queue}'")
+        results = await conn.fetch("SELECT * FROM pgmq.archive($1::text, $2::int[]);", queue, msg_ids)
         archived_ids = [result[0] for result in results]
         self.logger.debug(f"Messages archived: {archived_ids}")
         return archived_ids
@@ -583,9 +523,7 @@ class PGMQueue:
     @transaction
     async def set_vt(self, queue: str, msg_id: int, vt: int, conn=None) -> Message:
         """Set the visibility timeout for a specific message."""
-        self.logger.debug(
-            f"set_vt called with queue='{queue}', msg_id={msg_id}, vt={vt}, conn={conn}"
-        )
+        self.logger.debug(f"set_vt called with queue='{queue}', msg_id={msg_id}, vt={vt}, conn={conn}")
         if conn is None:
             async with self.pool.acquire() as conn:
                 return await self._set_vt_internal(queue, msg_id, vt, conn)
@@ -593,12 +531,8 @@ class PGMQueue:
             return await self._set_vt_internal(queue, msg_id, vt, conn)
 
     async def _set_vt_internal(self, queue, msg_id, vt, conn):
-        self.logger.debug(
-            f"Setting VT for msg_id={msg_id} in queue '{queue}' to vt={vt}"
-        )
-        row = await conn.fetchrow(
-            "SELECT * FROM pgmq.set_vt($1, $2, $3);", queue, msg_id, vt
-        )
+        self.logger.debug(f"Setting VT for msg_id={msg_id} in queue '{queue}' to vt={vt}")
+        row = await conn.fetchrow("SELECT * FROM pgmq.set_vt($1, $2, $3);", queue, msg_id, vt)
         message = Message(
             msg_id=row[0],
             read_ct=row[1],
