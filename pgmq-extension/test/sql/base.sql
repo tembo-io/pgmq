@@ -13,6 +13,8 @@ SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message, headers
 -- CREATE with default retention and partition strategy
 SELECT pgmq.create(repeat('a', 48));
 SELECT pgmq.create(repeat('a', 47));
+SELECT pgmq.create_partitioned(repeat('p', 48));
+SELECT pgmq.create_partitioned(repeat('p', 47));
 
 -- test_lifecycle
 -- CREATE with default retention and partition strategy

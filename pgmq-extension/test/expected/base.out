@@ -25,8 +25,8 @@ SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message, headers
 -- test_max_queue_name_size
 -- CREATE with default retention and partition strategy
 SELECT pgmq.create(repeat('a', 48));
-ERROR:  queue name is too long, maximum length is 48 characters
-CONTEXT:  PL/pgSQL function pgmq.validate_queue_name(text) line 4 at RAISE
+ERROR:  queue name is too long, maximum length is 47 characters
+CONTEXT:  PL/pgSQL function pgmq.validate_queue_name(text) line 8 at RAISE
 SQL statement "SELECT pgmq.validate_queue_name(queue_name)"
 PL/pgSQL function pgmq.create_non_partitioned(text) line 7 at PERFORM
 SQL statement "SELECT pgmq.create_non_partitioned(queue_name)"
@@ -34,6 +34,17 @@ PL/pgSQL function pgmq."create"(text) line 3 at PERFORM
 SELECT pgmq.create(repeat('a', 47));
  create 
 --------
+ 
+(1 row)
+
+SELECT pgmq.create_partitioned(repeat('p', 48));
+ERROR:  queue name is too long, maximum length is 47 characters
+CONTEXT:  PL/pgSQL function pgmq.validate_queue_name(text) line 8 at RAISE
+SQL statement "SELECT pgmq.validate_queue_name(queue_name)"
+PL/pgSQL function pgmq.create_partitioned(text,text,text) line 11 at PERFORM
+SELECT pgmq.create_partitioned(repeat('p', 47));
+ create_partitioned 
+--------------------
  
 (1 row)
 
@@ -252,7 +263,7 @@ SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_m
 SELECT COUNT(1) from pgmq.metrics_all();
  count 
 -------
-     9
+    10
 (1 row)
 
 -- delete an existing queue returns true
@@ -304,6 +315,7 @@ WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed 
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
+WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
  drop_queue 
 ------------
  t
@@ -313,7 +325,8 @@ WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed 
  t
  t
  t
-(7 rows)
+ t
+(8 rows)
 
 SELECT queue_name FROM pgmq.list_queues();
  queue_name 
