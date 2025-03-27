@@ -106,6 +106,12 @@ SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_m
 -- get metrics all
 SELECT COUNT(1) from pgmq.metrics_all();
 
+-- delete an existing queue returns true
+select pgmq.create('exists');
+select pgmq.drop_queue('exists');
+-- delete a queue does not exists returns false
+select pgmq.drop_queue('does_not_exist');
+
 -- delete all the queues
 -- delete partitioned queues
 SELECT pgmq.drop_queue(queue, true)
