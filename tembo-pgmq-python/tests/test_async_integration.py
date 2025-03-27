@@ -70,7 +70,7 @@ class BaseTestPGMQueue(unittest.IsolatedAsyncioTestCase):
 
     async def test_send_message_with_tz(self):
         """Test sending a message with a timestamp delay."""
-        timestamp = str(datetime.now(timezone.utc) + timedelta(seconds=5))
+        timestamp = datetime.now(timezone.utc) + timedelta(seconds=5)
         msg_id = await self.queue.send(self.test_queue, self.test_message, tz=timestamp)
         message = await self.queue.read(self.test_queue, vt=20)
         self.assertIsNone(message, "Message should not be visible yet")

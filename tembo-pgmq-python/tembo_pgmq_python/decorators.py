@@ -17,10 +17,14 @@ def transaction(func):
                         try:
                             kwargs["conn"] = conn  # Inject 'conn' into kwargs
                             result = func(*args, **kwargs)
-                            self.logger.debug(f"Transaction completed with conn: {conn}")
+                            self.logger.debug(
+                                f"Transaction completed with conn: {conn}"
+                            )
                             return result
                         except Exception as e:
-                            self.logger.error(f"Transaction failed with exception: {e}, rolling back.")
+                            self.logger.error(
+                                f"Transaction failed with exception: {e}, rolling back."
+                            )
                             raise
             else:
                 return func(*args, **kwargs)
@@ -35,10 +39,14 @@ def transaction(func):
                         try:
                             kwargs["conn"] = conn  # Inject 'conn' into kwargs
                             result = func(*args, **kwargs)
-                            queue.logger.debug(f"Transaction completed with conn: {conn}")
+                            queue.logger.debug(
+                                f"Transaction completed with conn: {conn}"
+                            )
                             return result
                         except Exception as e:
-                            queue.logger.error(f"Transaction failed with exception: {e}, rolling back.")
+                            queue.logger.error(
+                                f"Transaction failed with exception: {e}, rolling back."
+                            )
                             raise
             else:
                 return func(*args, **kwargs)
