@@ -61,9 +61,12 @@ impl PGMQueueExt {
         executor: E,
     ) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
-        sqlx::query!("SELECT * from pgmq.create($1::text);", queue_name)
-            .execute(executor)
-            .await?;
+        sqlx::query!(
+            "SELECT * from pgmq.create(queue_name=>$1::text);",
+            queue_name
+        )
+        .execute(executor)
+        .await?;
         Ok(true)
     }
     /// Errors when there is any database error and Ok(false) when the queue already exists.
@@ -78,9 +81,12 @@ impl PGMQueueExt {
         executor: E,
     ) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
-        sqlx::query!("SELECT * from pgmq.create_unlogged($1::text);", queue_name)
-            .execute(executor)
-            .await?;
+        sqlx::query!(
+            "SELECT * from pgmq.create_unlogged(queue_name=>$1::text);",
+            queue_name
+        )
+        .execute(executor)
+        .await?;
         Ok(true)
     }
 
@@ -103,17 +109,17 @@ impl PGMQueueExt {
         let queue_table = format!("pgmq.{QUEUE_PREFIX}_{queue_name}");
         // we need to check whether the queue exists first
         // pg_partman create operations are currently unable to be idempotent
-        let exists_stmt = format!(
-            "SELECT EXISTS(SELECT * from part_config where parent_table = '{queue_table}');",
-            queue_table = queue_table
-        );
-        let exists = sqlx::query_scalar(&exists_stmt).fetch_one(executor).await?;
+        let exists_stmt = "SELECT EXISTS(SELECT * from part_config where parent_table = $1);";
+        let exists = sqlx::query_scalar(exists_stmt)
+            .bind(queue_table)
+            .fetch_one(executor)
+            .await?;
         if exists {
             info!("queue: {} already exists", queue_name);
             Ok(false)
         } else {
             sqlx::query!(
-                "SELECT * from pgmq.create_partitioned($1::text);",
+                "SELECT * from pgmq.create_partitioned(queue_name=>$1::text);",
                 queue_name
             )
             .execute(executor)
@@ -137,7 +143,7 @@ impl PGMQueueExt {
         check_input(queue_name)?;
         executor
             .execute(sqlx::query!(
-                "SELECT * from pgmq.drop_queue($1::text);",
+                "SELECT * from pgmq.drop_queue(queue_name=>$1::text);",
                 queue_name
             ))
             .await?;
@@ -157,9 +163,12 @@ impl PGMQueueExt {
         executor: E,
     ) -> Result<i64, PgmqError> {
         check_input(queue_name)?;
-        let purged = sqlx::query!("SELECT * from pgmq.purge_queue($1::text);", queue_name)
-            .fetch_one(executor)
-            .await?;
+        let purged = sqlx::query!(
+            "SELECT * from pgmq.purge_queue(queue_name=>$1::text);",
+            queue_name
+        )
+        .fetch_one(executor)
+        .await?;
 
         Ok(purged.purge_queue.expect("no purged count"))
     }
@@ -211,7 +220,7 @@ impl PGMQueueExt {
     ) -> Result<Message<T>, PgmqError> {
         check_input(queue_name)?;
         let updated = sqlx::query!(
-            "SELECT * from pgmq.set_vt($1::text, $2::bigint, $3::integer);",
+            "SELECT * from pgmq.set_vt(queue_name=>$1::text, msg_id=>$2::bigint, vt=>$3::integer);",
             queue_name,
             msg_id,
             vt
@@ -249,7 +258,7 @@ impl PGMQueueExt {
         check_input(queue_name)?;
         let msg = serde_json::json!(&message);
         let prepared = sqlx::query!(
-            "SELECT send as msg_id from pgmq.send($1::text, $2::jsonb, 0::integer);",
+            "SELECT send as msg_id from pgmq.send(queue_name=>$1::text, msg=>$2::jsonb, delay=>0::integer);",
             queue_name,
             msg
         );
@@ -280,7 +289,7 @@ impl PGMQueueExt {
         check_input(queue_name)?;
         let msg = serde_json::json!(&message);
         let sent = sqlx::query!(
-            "SELECT send as msg_id from pgmq.send($1::text, $2::jsonb, $3::int);",
+            "SELECT send as msg_id from pgmq.send(queue_name=>$1::text, msg=>$2::jsonb, delay=>$3::int);",
             queue_name,
             msg,
             delay as i32
@@ -312,7 +321,7 @@ impl PGMQueueExt {
     ) -> Result<Option<Message<T>>, PgmqError> {
         check_input(queue_name)?;
         let row = sqlx::query!(
-            "SELECT * from pgmq.read($1::text, $2, $3)",
+            "SELECT * from pgmq.read(queue_name=>$1::text, vt=>$2::integer, qty=>$3::integer)",
             queue_name,
             vt,
             1
@@ -366,7 +375,13 @@ impl PGMQueueExt {
         let poll_interval_ms =
             poll_interval.map_or(DEFAULT_POLL_INTERVAL_MS, |i| i.as_millis() as i32);
         let result = sqlx::query!(
-            "SELECT * from pgmq.read_with_poll($1::text, $2, $3, $4, $5)",
+            "SELECT * from pgmq.read_with_poll(
+                queue_name=>$1::text,
+                vt=>$2::integer,
+                qty=>$3::integer,
+                max_poll_seconds=>$4::integer,
+                poll_interval_ms=>$5::integer
+            )",
             queue_name,
             vt,
             max_batch_size,
@@ -431,7 +446,7 @@ impl PGMQueueExt {
     ) -> Result<bool, PgmqError> {
         check_input(queue_name)?;
         let arch = sqlx::query!(
-            "SELECT * from pgmq.archive($1::text, $2::bigint)",
+            "SELECT * from pgmq.archive(queue_name=>$1::text, msg_id=>$2::bigint)",
             queue_name,
             msg_id
         )
@@ -454,7 +469,7 @@ impl PGMQueueExt {
     ) -> Result<usize, PgmqError> {
         check_input(queue_name)?;
         let qty = sqlx::query!(
-            "SELECT * from pgmq.archive($1::text, $2::bigint[])",
+            "SELECT * from pgmq.archive(queue_name=>$1::text, msg_ids=>$2::bigint[])",
             queue_name,
             msg_ids
         )
@@ -485,7 +500,7 @@ impl PGMQueueExt {
         executor: E,
     ) -> Result<Option<Message<T>>, PgmqError> {
         check_input(queue_name)?;
-        let row = sqlx::query!("SELECT * from pgmq.pop($1::text)", queue_name,)
+        let row = sqlx::query!("SELECT * from pgmq.pop(queue_name=>$1::text)", queue_name,)
             .fetch_optional(executor)
             .await?;
         match row {
@@ -524,7 +539,7 @@ impl PGMQueueExt {
         executor: E,
     ) -> Result<bool, PgmqError> {
         let row = sqlx::query!(
-            "SELECT * from pgmq.delete($1::text, $2::bigint)",
+            "SELECT * from pgmq.delete(queue_name=>$1::text, msg_id=>$2::bigint)",
             queue_name,
             msg_id
         )
@@ -546,7 +561,7 @@ impl PGMQueueExt {
         executor: E,
     ) -> Result<usize, PgmqError> {
         let qty = sqlx::query!(
-            "SELECT * from pgmq.delete($1::text, $2::bigint[])",
+            "SELECT * from pgmq.delete(queue_name=>$1::text, msg_ids=>$2::bigint[])",
             queue_name,
             msg_id
         )

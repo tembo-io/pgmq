@@ -11,7 +11,7 @@ fn replace_db_string(s: &str, replacement: &str) -> String {
     match s.rfind('/') {
         Some(pos) => {
             let prefix = &s[0..pos];
-            format!("{}{}", prefix, replacement)
+            format!("{prefix}{replacement}")
         }
         None => s.to_string(),
     }
@@ -36,7 +36,7 @@ async fn init_queue_ext(qname: &str) -> pgmq::PGMQueueExt {
     let _ = queue.drop_queue(qname).await;
     // CREATE QUEUE
     let q_success = queue.create(qname).await;
-    println!("q_success: {:?}", q_success);
+    println!("q_success: {q_success:?}");
     assert!(q_success.is_ok());
     queue
 }

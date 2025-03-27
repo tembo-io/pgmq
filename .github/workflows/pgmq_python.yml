@@ -14,6 +14,7 @@ on:
       - "tembo-pgmq-python/tembo_pgmq_python/**"
       - "tembo-pgmq-python/tests/**"
       - "tembo-pgmq-python/pyproject.toml"
+      - "pgmq-extension/**"
   push:
     branches:
       - main
@@ -22,7 +23,7 @@ on:
       - "tembo-pgmq-python/tembo_pgmq_python/**"
       - "tembo-pgmq-python/tests/**"
       - "tembo-pgmq-python/pyproject.toml"
-
+      - "pgmq-extension/**"
 jobs:
   lints:
     runs-on: ubuntu-latest
@@ -57,7 +58,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     # only publish off main branch
-    if: github.ref == 'refs/heads/main'
+    if: github.repository == 'tembo-io/pgmq' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.11.0

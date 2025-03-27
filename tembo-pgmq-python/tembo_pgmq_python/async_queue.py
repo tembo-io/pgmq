@@ -45,18 +45,17 @@ class PGMQueue:
         self.logger.debug("PGMQueue initialized")
 
     def _initialize_logging(self) -> None:
-        if self.verbose:
-            log_filename = self.log_filename or datetime.now().strftime(
-                "pgmq_async_debug_%Y%m%d_%H%M%S.log"
-            )
-            logging.basicConfig(
-                filename=os.path.join(os.getcwd(), log_filename),
-                level=logging.DEBUG,
-                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            )
-        else:
-            logging.basicConfig(level=logging.WARNING)
         self.logger = logging.getLogger(__name__)
+
+        if self.verbose:
+            log_filename = self.log_filename or datetime.now().strftime("pgmq_async_debug_%Y%m%d_%H%M%S.log")
+            file_handler = logging.FileHandler(filename=os.path.join(os.getcwd(), log_filename))
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            file_handler.setFormatter(formatter)
+            self.logger.addHandler(file_handler)
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.WARNING)
 
     async def init(self):
         self.logger.debug("Creating asyncpg connection pool")
@@ -291,7 +290,7 @@ class PGMQueue:
     async def _read_internal(self, queue, vt, batch_size, conn):
         self.logger.debug(f"Reading message from queue '{queue}' with vt={vt}")
         rows = await conn.fetch(
-            "SELECT * FROM pgmq.read($1, $2, $3);",
+            "SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer);",
             queue,
             vt or self.vt,
             batch_size,
@@ -328,7 +327,7 @@ class PGMQueue:
             f"Reading batch of messages from queue '{queue}' with vt={vt}"
         )
         rows = await conn.fetch(
-            "SELECT * FROM pgmq.read($1, $2, $3);",
+            "SELECT * FROM pgmq.read($1::text, $2::integer, $3::integer);",
             queue,
             vt or self.vt,
             batch_size,

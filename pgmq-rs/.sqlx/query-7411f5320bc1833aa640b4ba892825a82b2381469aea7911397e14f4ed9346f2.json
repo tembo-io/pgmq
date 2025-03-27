@@ -1,12 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * from pgmq.purge_queue($1::text);",
+  "query": "SELECT * from pgmq.drop_queue(queue_name=>$1::text);",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "purge_queue",
-        "type_info": "Int8"
+        "name": "drop_queue",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -18,5 +18,5 @@
       null
     ]
   },
-  "hash": "f3f011e1a531861630c09d79a2f8f1b11a9543e30bfcbb7654ce9e30f0cf51e3"
+  "hash": "7411f5320bc1833aa640b4ba892825a82b2381469aea7911397e14f4ed9346f2"
 }

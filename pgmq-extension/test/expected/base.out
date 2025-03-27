@@ -9,31 +9,42 @@ SELECT pgmq.create_unlogged('test_unlogged_queue');
  
 (1 row)
 
-SELECT * from pgmq.send('test_unlogged_queue', '{"hello": "world"}');
+SELECT * from pgmq.send('test_unlogged_queue', '{"hello": "world"}', '{"header": 1}'::jsonb);
  send 
 ------
     1
 (1 row)
 
-SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message
+SELECT msg_id, read_ct, enqueued_at > NOW(), vt > NOW(), message, headers
   FROM pgmq.read('test_unlogged_queue', 2, 1);
- msg_id | read_ct | ?column? | ?column? |      message       
---------+---------+----------+----------+--------------------
-      1 |       1 | f        | t        | {"hello": "world"}
+ msg_id | read_ct | ?column? | ?column? |      message       |    headers    
+--------+---------+----------+----------+--------------------+---------------
+      1 |       1 | f        | t        | {"hello": "world"} | {"header": 1}
 (1 row)
 
 -- test_max_queue_name_size
 -- CREATE with default retention and partition strategy
 SELECT pgmq.create(repeat('a', 48));
-ERROR:  queue name is too long, maximum length is 48 characters
-CONTEXT:  PL/pgSQL function pgmq.validate_queue_name(text) line 4 at RAISE
+ERROR:  queue name is too long, maximum length is 47 characters
+CONTEXT:  PL/pgSQL function pgmq.validate_queue_name(text) line 8 at RAISE
 SQL statement "SELECT pgmq.validate_queue_name(queue_name)"
-PL/pgSQL function pgmq.create_non_partitioned(text) line 6 at PERFORM
+PL/pgSQL function pgmq.create_non_partitioned(text) line 7 at PERFORM
 SQL statement "SELECT pgmq.create_non_partitioned(queue_name)"
 PL/pgSQL function pgmq."create"(text) line 3 at PERFORM
 SELECT pgmq.create(repeat('a', 47));
  create 
 --------
+ 
+(1 row)
+
+SELECT pgmq.create_partitioned(repeat('p', 48));
+ERROR:  queue name is too long, maximum length is 47 characters
+CONTEXT:  PL/pgSQL function pgmq.validate_queue_name(text) line 8 at RAISE
+SQL statement "SELECT pgmq.validate_queue_name(queue_name)"
+PL/pgSQL function pgmq.create_partitioned(text,text,text) line 11 at PERFORM
+SELECT pgmq.create_partitioned(repeat('p', 47));
+ create_partitioned 
+--------------------
  
 (1 row)
 
@@ -164,12 +175,20 @@ SELECT pgmq.create('batch_queue');
 
 SELECT ARRAY( SELECT pgmq.send_batch(
     'batch_queue',
-    ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[]
+    ARRAY['{"hello": "world_0"}', '{"hello": "world_1"}']::jsonb[],
+    ARRAY['{"header": 1}', '{"header": 2}']::jsonb[]
 )) = ARRAY[1, 2]::BIGINT[];
  ?column? 
 ----------
  t
 (1 row)
+
+SELECT msg_id, message, headers from pgmq.read('batch_queue', 0, 2);
+ msg_id |       message        |    headers    
+--------+----------------------+---------------
+      1 | {"hello": "world_0"} | {"header": 1}
+      2 | {"hello": "world_1"} | {"header": 2}
+(2 rows)
 
 -- send a batch of 2 messages with timestamp
 SELECT pgmq.create('batch_queue_vt');
@@ -244,7 +263,28 @@ SELECT queue_name, queue_length, newest_msg_age_sec, oldest_msg_age_sec, total_m
 SELECT COUNT(1) from pgmq.metrics_all();
  count 
 -------
-     9
+    10
+(1 row)
+
+-- delete an existing queue returns true
+select pgmq.create('exists');
+ create 
+--------
+ 
+(1 row)
+
+select pgmq.drop_queue('exists');
+ drop_queue 
+------------
+ t
+(1 row)
+
+-- delete a queue does not exists returns false
+select pgmq.drop_queue('does_not_exist');
+NOTICE:  pgmq queue `does_not_exist` does not exist
+ drop_queue 
+------------
+ f
 (1 row)
 
 -- delete all the queues
@@ -275,6 +315,7 @@ WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed 
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
 WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
+WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed in PGMQ v2.0. Use drop_queue(queue_name) instead
  drop_queue 
 ------------
  t
@@ -284,7 +325,8 @@ WARNING:  drop_queue(queue_name, partitioned) is deprecated and will be removed 
  t
  t
  t
-(7 rows)
+ t
+(8 rows)
 
 SELECT queue_name FROM pgmq.list_queues();
  queue_name 
@@ -315,7 +357,7 @@ SELECT COUNT(*) = 0 FROM pgmq.a_archive_queue;
 -- put messages on the queue
 \set msg_id1 1::bigint
 \set msg_id2 2::bigint
-SELECT send = :msg_id1 FROM pgmq.send('archive_queue', '0');
+SELECT send = :msg_id1 FROM pgmq.send('archive_queue', '0', '{"headers": 1}'::jsonb);
  ?column? 
 ----------
  t
@@ -389,6 +431,15 @@ SELECT COUNT(*) = 3 FROM pgmq.a_archive_queue;
  t
 (1 row)
 
+-- body and headers are archived
+SELECT msg_id, message, headers FROM pgmq.a_archive_queue;
+ msg_id | message |    headers     
+--------+---------+----------------
+      1 | 0       | {"headers": 1}
+      2 | 0       | 
+      3 | 0       | 
+(3 rows)
+
 -- test_read_read_with_poll
 -- Creating queue
 SELECT pgmq.create('test_read_queue');
@@ -434,7 +485,7 @@ SELECT ARRAY(
 
 -- Read with poll will poll until the first message is available
 SELECT clock_timestamp() AS start \gset
-SELECT msg_id = :msg_id1 FROM pgmq.read_with_poll('test_read_queue', 10, 5, 5, 100);
+SELECT msg_id = :msg_id1 FROM pgmq.read_with_poll('test_read_queue', 10, 5, 6, 100);
  ?column? 
 ----------
  t
@@ -503,8 +554,8 @@ SELECT pgmq.create('test_pop_queue');
 (1 row)
 
 SELECT * FROM pgmq.pop('test_pop_queue');
- msg_id | read_ct | enqueued_at | vt | message 
---------+---------+-------------+----+---------
+ msg_id | read_ct | enqueued_at | vt | message | headers 
+--------+---------+-------------+----+---------+---------
 (0 rows)
 
 SELECT send AS first_msg_id from pgmq.send('test_pop_queue', '0') \gset
@@ -534,8 +585,8 @@ SELECT pgmq.create('test_set_vt_queue');
 (1 row)
 
 SELECT * FROM pgmq.set_vt('test_set_vt_queue', 9999, 0);
- msg_id | read_ct | enqueued_at | vt | message 
---------+---------+-------------+----+---------
+ msg_id | read_ct | enqueued_at | vt | message | headers 
+--------+---------+-------------+----+---------+---------
 (0 rows)
 
 SELECT send AS first_msg_id from pgmq.send('test_set_vt_queue', '0') \gset
@@ -578,9 +629,9 @@ SELECT * FROM pgmq.create_partitioned(
     :'retention_interval'
 );
 ERROR:  pg_partman is required for partitioned queues
-CONTEXT:  PL/pgSQL function pgmq._ensure_pg_partman_installed() line 12 at RAISE
+CONTEXT:  PL/pgSQL function pgmq._ensure_pg_partman_installed() line 4 at RAISE
 SQL statement "SELECT pgmq._ensure_pg_partman_installed()"
-PL/pgSQL function pgmq.create_partitioned(text,text,text) line 11 at PERFORM
+PL/pgSQL function pgmq.create_partitioned(text,text,text) line 12 at PERFORM
 -- With the extension existing, the queue is created successfully
 CREATE EXTENSION pg_partman;
 SELECT * FROM pgmq.create_partitioned(

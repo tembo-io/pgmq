@@ -443,8 +443,57 @@ impl PGMQueue {
         queue_name: &str,
         messages: &[T],
     ) -> Result<Vec<i64>, PgmqError> {
+        self.send_batch_delay(queue_name, messages, 0).await
+    }
+
+    /// Send multiple messages with a delay in seconds to a queue.
+    /// Same as send_batch(), messages can be any implementor of the [`serde::Serialize`] trait.
+    /// A vector of message ids are returned in the call. These message ids are in the
+    /// same order as the messages in the input vector.
+    ///
+    /// Example:
+    ///
+    /// ```rust
+    /// use pgmq::{PgmqError, PGMQueue};
+    /// use serde::{Deserialize, Serialize};
+    /// use serde_json::Value;
+    ///
+    /// #[derive(Debug, Deserialize, Serialize)]
+    /// struct MyMessage {
+    ///    foo: String,
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), PgmqError> {
+    ///
+    ///     println!("Connecting to Postgres");
+    ///     let queue: PGMQueue = PGMQueue::new("postgres://postgres:postgres@0.0.0.0:5432".to_owned())
+    ///         .await
+    ///         .expect("Failed to connect to postgres");
+    ///     let my_queue = "my_queue".to_owned();
+    ///     queue.create(&my_queue)
+    ///         .await
+    ///         .expect("Failed to create queue");
+    ///    let struct_message_batch = vec![
+    ///        MyMessage {foo: "bar1".to_owned()},
+    ///        MyMessage {foo: "bar2".to_owned()},
+    ///        MyMessage {foo: "bar3".to_owned()},
+    ///    ];
+    ///
+    ///    let struct_message_batch_ids = queue.send_batch_delay(&my_queue, &struct_message_batch, 1000)
+    ///        .await
+    ///        .expect("Failed to enqueue messages");
+    ///     println!("Struct Message ids: {:?}", struct_message_batch_ids);
+    ///     Ok(())
+    /// }
+    pub async fn send_batch_delay<T: Serialize>(
+        &self,
+        queue_name: &str,
+        messages: &[T],
+        delay: u64,
+    ) -> Result<Vec<i64>, PgmqError> {
         let mut msg_ids: Vec<i64> = Vec::new();
-        let query = query::enqueue(queue_name, messages.len(), &0)?;
+        let query = query::enqueue(queue_name, messages.len(), &delay)?;
         let mut q = sqlx::query(&query);
         for msg in messages.iter() {
             q = q.bind(serde_json::json!(msg));
@@ -921,7 +970,7 @@ impl PGMQueue {
     /// use pgmq::{PgmqError, PGMQueue};
     /// use serde::{Deserialize, Serialize};
     /// use serde_json::Value;
-
+    ///
     /// #[derive(Debug, Deserialize, Serialize)]
     /// struct MyMessage {
     ///    foo: String,

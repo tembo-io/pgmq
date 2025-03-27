@@ -29,12 +29,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pg: [12, 13, 14, 15, 16, 17]
+        pg: [13, 14, 15, 16, 17]
         partman: [4.7.3, 5.1.0]
         exclude:
-          # pg_partman does not support pg < 14
-          - pg: 12
-            partman: 5.1.0
           - pg: 13
             partman: 5.1.0
     container: pgxn/pgxn-tools
@@ -46,12 +43,12 @@ jobs:
       - run: pg-build-test
 
   publish:
+    if: github.repository == 'tembo-io/pgmq'
     name: trunk publish
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        # add 17 when trunk supports it
-        pg-version: [14, 15, 16]
+        pg-version: [14, 15, 16, 17]
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust stable toolchain
@@ -87,6 +84,7 @@ jobs:
           pgmq_repo=$(stoml Trunk.toml extension.repository)
           trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
   build_and_push:
+    if: github.repository == 'tembo-io/pgmq'
     name: Build and push images
     runs-on: ubuntu-latest
     strategy:
