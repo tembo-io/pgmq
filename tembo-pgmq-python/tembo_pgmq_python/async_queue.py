@@ -230,14 +230,14 @@ class PGMQueue:
         result = None
         if delay:
             result = await conn.fetch(
-                "SELECT * FROM pgmq.send_batch($1, $2::jsonb[], $3);",
+                "SELECT * FROM pgmq.send_batch($1, $2::jsonb[], $3::integer);",
                 queue,
                 jsonb_array,
                 delay,
             )
         elif tz:
             result = await conn.fetch(
-                "SELECT * FROM pgmq.send_batch($1, $2::jsonb[], $3);",
+                "SELECT * FROM pgmq.send_batch($1, $2::jsonb[], $3::integer);",
                 queue,
                 jsonb_array,
                 tz,
