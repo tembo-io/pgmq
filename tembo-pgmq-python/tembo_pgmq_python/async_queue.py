@@ -156,45 +156,98 @@ class PGMQueue:
         return queues
 
     @transaction
-    async def send(self, queue: str, message: dict, delay: int = 0, conn=None) -> int:
+    async def send(self, queue: str, message: dict, delay: int = 0, tz: datetime = None, conn=None) -> int:
         """Send a message to a queue."""
-        self.logger.debug(f"send called with queue='{queue}', message={message}, delay={delay}, conn={conn}")
+        self.logger.debug(f"send called with queue='{queue}', message={message}, delay={delay}, tz={tz}, conn={conn}")
         if conn is None:
             async with self.pool.acquire() as conn:
-                return await self._send_internal(queue, message, delay, conn)
+                return await self._send_internal(queue, message, delay, tz, conn)
         else:
-            return await self._send_internal(queue, message, delay, conn)
+            return await self._send_internal(queue, message, delay, tz, conn)
 
-    async def _send_internal(self, queue, message, delay, conn):
-        self.logger.debug(f"Sending message to queue '{queue}' with delay={delay}")
-        result = await conn.fetchrow(
-            "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::integer);",
-            queue,
-            dumps(message).decode("utf-8"),
-            delay,
-        )
+    async def _send_internal(
+        self,
+        queue: str,
+        message: dict,
+        delay: int = None,
+        tz: datetime = None,
+        conn=None,
+    ):
+        self.logger.debug(f"Sending message to queue '{queue}' with delay={delay}, tz={tz}")
+        result = None
+        if delay:
+            result = await conn.fetchrow(
+                "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::integer);",
+                queue,
+                dumps(message).decode("utf-8"),
+                delay,
+            )
+        elif tz:
+            result = await conn.fetchrow(
+                "SELECT * FROM pgmq.send($1::text, $2::jsonb, $3::timestamptz);",
+                queue,
+                dumps(message).decode("utf-8"),
+                tz,
+            )
+        else:
+            result = await conn.fetchrow(
+                "SELECT * FROM pgmq.send($1::text, $2::jsonb);",
+                queue,
+                dumps(message).decode("utf-8"),
+            )
         self.logger.debug(f"Message sent with msg_id={result[0]}")
         return result[0]
 
     @transaction
-    async def send_batch(self, queue: str, messages: List[dict], delay: int = 0, conn=None) -> List[int]:
+    async def send_batch(
+        self,
+        queue: str,
+        messages: List[dict],
+        delay: int = 0,
+        tz: str = None,
+        conn=None,
+    ) -> List[int]:
         """Send a batch of messages to a queue."""
-        self.logger.debug(f"send_batch called with queue='{queue}', messages={messages}, delay={delay}, conn={conn}")
+        self.logger.debug(
+            f"send_batch called with queue='{queue}', messages={messages}, delay={delay}, tz={tz}, conn={conn}"
+        )
         if conn is None:
             async with self.pool.acquire() as conn:
-                return await self._send_batch_internal(queue, messages, delay, conn)
+                return await self._send_batch_internal(queue, messages, delay, tz, conn)
         else:
-            return await self._send_batch_internal(queue, messages, delay, conn)
+            return await self._send_batch_internal(queue, messages, delay, tz, conn)
 
-    async def _send_batch_internal(self, queue: str, messages: List[dict], delay: int, conn):
-        self.logger.debug(f"Sending batch of messages to queue '{queue}' with delay={delay}")
+    async def _send_batch_internal(
+        self,
+        queue: str,
+        messages: list[dict],
+        delay: int = None,
+        tz: datetime = None,
+        conn=None,
+    ):
+        self.logger.debug(f"Sending batch of messages to queue '{queue}' with delay={delay}, tz={tz}")
         jsonb_array = [dumps(message).decode("utf-8") for message in messages]
-        result = await conn.fetch(
-            "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::integer);",
-            queue,
-            jsonb_array,
-            delay,
-        )
+        result = None
+        if delay:
+            result = await conn.fetch(
+                "SELECT * FROM pgmq.send_batch($1, $2::jsonb[], $3::integer);",
+                queue,
+                jsonb_array,
+                delay,
+            )
+        elif tz:
+            result = await conn.fetch(
+                "SELECT * FROM pgmq.send_batch($1, $2::jsonb[], $3::integer);",
+                queue,
+                jsonb_array,
+                tz,
+            )
+        else:
+            result = await conn.fetch(
+                "SELECT * FROM pgmq.send_batch($1, $2::jsonb[]);",
+                queue,
+                jsonb_array,
+            )
         msg_ids = [message[0] for message in result]
         self.logger.debug(f"Batch messages sent with msg_ids={msg_ids}")
         return msg_ids

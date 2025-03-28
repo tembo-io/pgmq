@@ -66,6 +66,18 @@ class BaseTestPGMQueue(unittest.TestCase):
         self.assertEqual(message.message, self.test_message)
         self.assertEqual(message.msg_id, msg_id, "Read the wrong message")
 
+    def test_send_message_with_tz(self):
+        """Test sending a message with a timestamp delay."""
+        timestamp = datetime.now(timezone.utc) + timedelta(seconds=5)
+        msg_id = self.queue.send(self.test_queue, self.test_message, tz=timestamp)
+        message = self.queue.read(self.test_queue, vt=20)
+        self.assertIsNone(message, "Message should not be visible yet")
+        time.sleep(5)
+        message: Message = self.queue.read(self.test_queue, vt=20)
+        self.assertIsNotNone(message, "Message should be visible after timestamp delay")
+        self.assertEqual(message.message, self.test_message)
+        self.assertEqual(message.msg_id, msg_id, "Read the wrong message")
+
     def test_archive_message(self):
         """Test archiving a message in the queue."""
         msg_id = self.queue.send(self.test_queue, self.test_message)

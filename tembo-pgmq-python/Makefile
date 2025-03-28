@@ -23,7 +23,7 @@ clear-postgres:
 	docker rm -f pgmq-postgres || true
 
 run-pgmq-postgres:
-	docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pg16-pgmq:latest || true
+	docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/pg17-pgmq:latest || true
 
 test: clear-postgres run-pgmq-postgres check-poetry-version
 	sleep 10 # Give PostgreSQL some time to start up
