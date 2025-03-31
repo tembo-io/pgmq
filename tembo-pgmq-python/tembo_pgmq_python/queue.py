@@ -113,20 +113,45 @@ class PGMQueue:
         return [row[0] for row in rows]
 
     @transaction
-    def send(self, queue: str, message: dict, delay: int = 0, conn=None) -> int:
+    def send(self, queue: str, message: dict, delay: int = 0, tz: datetime = None, conn=None) -> int:
         """Send a message to a queue."""
         self.logger.debug(f"send called with conn: {conn}")
-        query = "select * from pgmq.send(%s::text, %s::jsonb, %s::integer);"
-        result = self._execute_query_with_result(query, [queue, Jsonb(message), delay], conn=conn)
+        result = None
+        if delay:
+            query = "select * from pgmq.send(%s::text, %s::jsonb, %s::integer);"
+            result = self._execute_query_with_result(query, [queue, Jsonb(message), delay], conn=conn)
+        elif tz:
+            query = "select * from pgmq.send(%s::text, %s::jsonb, %s::timestamptz);"
+            result = self._execute_query_with_result(query, [queue, Jsonb(message), tz], conn=conn)
+        else:
+            query = "select * from pgmq.send(%s::text, %s::jsonb);"
+            result = self._execute_query_with_result(query, [queue, Jsonb(message)], conn=conn)
         return result[0][0]
 
     @transaction
-    def send_batch(self, queue: str, messages: List[dict], delay: int = 0, conn=None) -> List[int]:
+    def send_batch(
+        self,
+        queue: str,
+        messages: List[dict],
+        delay: int = 0,
+        tz: datetime = None,
+        conn=None,
+    ) -> List[int]:
         """Send a batch of messages to a queue."""
         self.logger.debug(f"send_batch called with conn: {conn}")
-        query = "select * from pgmq.send_batch(%s::text, %s::jsonb[], %s::integer);"
-        params = [queue, [Jsonb(message) for message in messages], delay]
-        result = self._execute_query_with_result(query, params, conn=conn)
+        result = None
+        if delay:
+            query = "select * from pgmq.send_batch(%s::text, %s::jsonb[], %s::integer);"
+            params = [queue, [Jsonb(message) for message in messages], delay]
+            result = self._execute_query_with_result(query, params, conn=conn)
+        elif tz:
+            query = "select * from pgmq.send_batch(%s::text, %s::jsonb[], %s::timestamptz);"
+            params = [queue, [Jsonb(message) for message in messages], tz]
+            result = self._execute_query_with_result(query, params, conn=conn)
+        else:
+            query = "select * from pgmq.send_batch(%s::text, %s::jsonb[]);"
+            params = [queue, [Jsonb(message) for message in messages]]
+            result = self._execute_query_with_result(query, params, conn=conn)
         return [message[0] for message in result]
 
     @transaction
