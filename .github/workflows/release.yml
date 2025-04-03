@@ -82,6 +82,7 @@ jobs:
 
       - name: Set version strings
         id: versions
+        working-directory: ./pgmq-extension
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "TAG_VER=$(grep 'default_version' pgmq.control | cut -d "'" -f 2)" >> $GITHUB_OUTPUT
