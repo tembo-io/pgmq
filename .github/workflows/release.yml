@@ -29,6 +29,9 @@ jobs:
     strategy:
       matrix:
         pg-version: [14, 15, 16, 17]
+    defaults:
+      run:
+        working-directory: ./pgmq-extension
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust stable toolchain
@@ -97,3 +100,14 @@ jobs:
       - name: Generate dockerfile from template file
         working-directory: ./
         run: ./images/pgmq-pg/replace-pg-version.sh ${{ matrix.pg }} ./images/pgmq-pg/Dockerfile.in ./images/pgmq-pg/Dockerfile
+
+      - name: Build and push -- Releases
+        uses: docker/build-push-action@v5
+        with:
+          file: ./images/pgmq-pg/Dockerfile
+          context: .
+          platforms: linux/amd64, linux/arm64
+          push: true
+          tags: |
+            quay.io/tembo/pg${{matrix.pg}}-pgmq:v${{ steps.versions.outputs.TAG_VER }}
+            quay.io/tembo/pg${{matrix.pg}}-pgmq:latest
