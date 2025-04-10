@@ -305,7 +305,7 @@ select * from pgmq.delete('my_queue', ARRAY[6, 999]);
 Permanently deletes all messages in a queue. Returns the number of messages that were deleted.
 
 ```text
-purge_queue(queue_name text)
+pgmq.purge_queue(queue_name text)
 RETURN bigint
 ```
 
@@ -578,7 +578,7 @@ select * from pgmq.set_vt('my_queue', 11, 30);
 List all the queues that currently exist.
 
 ```sql
-list_queues()
+pgmq.list_queues()
 RETURNS TABLE(
     queue_name text,
     created_at timestamp with time zone,
