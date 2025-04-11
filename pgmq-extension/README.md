@@ -76,6 +76,7 @@ Community
 - [TypeScript (Deno)](https://github.com/tmountain/deno-pgmq)
 - [.NET](https://github.com/brianpursley/Npgmq)
 - [Python (with SQLAlchemy)](https://github.com/jason810496/pgmq-sqlalchemy)
+- [REST-API (Bun + Elysia)](https://github.com/eichenroth/pgmq-rest)
 
 ## SQL Examples
 
