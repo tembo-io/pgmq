@@ -1,0 +1,99 @@
+<div>
+  <.header>
+    Queues
+    <:actions>
+      <.link patch={~p"/queues/new"}>
+        <.button class="mr-2">New Queue</.button>
+      </.link>
+    </:actions>
+  </.header>
+  <div class="flex flex-row flex-wrap-reverse">
+    <div class="flex-auto basis-3/4">
+      <.table
+        id="queues"
+        rows={@streams.queues}
+        row_click={fn {_id, queue} -> JS.navigate("/queues/#{queue.name}") end}
+      >
+        <:col :let={{_id, queue}} label="Queue">
+          <%= queue.name %>
+          <%= if queue.is_unlogged do %>
+            <.indigo_badge>Unlogged</.indigo_badge>
+          <% end %>
+          <%= if queue.is_partitioned do %>
+            <.pink_badge>Partitioned</.pink_badge>
+          <% end %>
+          <%= if queue.metrics.total_messages == 0 do %>
+            <.yellow_badge>Never used</.yellow_badge>
+          <% end %>
+        </:col>
+        <:col :let={{_id, queue}} label="Current size">
+          <.gray_badge><%= queue.metrics.queue_length %></.gray_badge>
+        </:col>
+        <:col :let={{_id, queue}} label="Total messages">
+          <.gray_badge><%= queue.metrics.total_messages %></.gray_badge>
+        </:col>
+        <:col :let={{_id, queue}} label="Created at">
+          <.timestamp_ago timestamp={queue.created_at} />
+        </:col>
+        <:action :let={{_id, queue}}>
+          <.link
+            navigate={"/queues/#{queue.name}"}
+            class="rounded bg-indigo-100 px-2.5 py-0.5 text-indigo-800 dark:border dark:border-solid dark:border-slate-800 dark:bg-amber-400 dark:bg-indigo-900 dark:text-amber-800 dark:text-indigo-300"
+          >
+            Open
+          </.link>
+          <.link
+            phx-click={JS.push("delete", value: %{id: queue.name}) |> hide("##{queue.name}")}
+            class="rounded bg-red-100 px-2.5 py-0.5 text-red-800 dark:border dark:border-solid dark:border-slate-800 dark:bg-slate-500 dark:text-slate-300"
+            data-confirm="Are you sure?"
+          >
+            Delete
+          </.link>
+        </:action>
+      </.table>
+    </div>
+    <div class="flex-auto basis-1/4">
+      <div class="flex flex-wrap py-10 pl-10">
+        <.stat_card>
+          <:title>Queues</:title>
+          <:content><%= @aggregates.queues %></:content>
+        </.stat_card>
+        <.stat_card>
+          <:title>Pending messages</:title>
+          <:content><%= @aggregates.pending_messages %></:content>
+        </.stat_card>
+        <.stat_card>
+          <:title>Archived messages</:title>
+          <:content><%= @aggregates.archived_messages %></:content>
+        </.stat_card>
+        <.stat_card>
+          <:title>Oldest pending message</:title>
+          <:content>
+            <%= if @aggregates.oldest_message do %>
+              Sent <.seconds_ago seconds={@aggregates.oldest_message.age} />
+              on queue "<%= @aggregates.oldest_message.queue %>"
+            <% else %>
+              None
+            <% end %>
+          </:content>
+        </.stat_card>
+      </div>
+    </div>
+  </div>
+</div>
+
+<.modal
+  :if={@live_action in [:new, :edit]}
+  id="queue-modal"
+  show
+  on_cancel={JS.patch(~p"/queues")}
+>
+  <.live_component
+    module={PgmqAdminWeb.QueueLive.FormComponent}
+    id={@queue[:name] || :new}
+    title={@page_title}
+    action={@live_action}
+    queue={@queue}
+    patch={~p"/queues"}
+  />
+</.modal>
