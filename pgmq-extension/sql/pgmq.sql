@@ -724,7 +724,6 @@ DECLARE
   qtable TEXT := pgmq.format_table_name(queue_name, 'q');
   qtable_seq TEXT := qtable || '_msg_id_seq';
   atable TEXT := pgmq.format_table_name(queue_name, 'a');
-  lock_key BIGINT;
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
 
