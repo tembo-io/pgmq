@@ -52,7 +52,7 @@ CREATE TYPE pgmq.queue_record AS (
 
 -- prevents race conditions during queue creation by acquiring a transaction-level advisory lock
 -- uses a transaction advisory lock maintain the lock until transaction commit
--- a race condition would still exist if a session advisory lock is used
+-- a race condition would still exist if lock was released before commit
 CREATE FUNCTION pgmq.acquire_queue_lock(queue_name TEXT) 
 RETURNS void AS $$
 BEGIN
