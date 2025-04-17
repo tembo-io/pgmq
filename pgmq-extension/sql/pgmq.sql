@@ -605,6 +605,7 @@ DECLARE
     fq_atable TEXT := 'pgmq.' || atable;
     partitioned BOOLEAN;
 BEGIN
+    PERFORM pg_advisory_xact_lock(hashtext('pgmq.drop_queue' || queue_name));
     EXECUTE FORMAT(
         $QUERY$
         SELECT is_partitioned FROM pgmq.meta WHERE queue_name = %L
