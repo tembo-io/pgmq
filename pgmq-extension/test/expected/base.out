@@ -28,7 +28,7 @@ SELECT pgmq.create(repeat('a', 48));
 ERROR:  queue name is too long, maximum length is 47 characters
 CONTEXT:  PL/pgSQL function pgmq.validate_queue_name(text) line 8 at RAISE
 SQL statement "SELECT pgmq.validate_queue_name(queue_name)"
-PL/pgSQL function pgmq.create_non_partitioned(text) line 7 at PERFORM
+PL/pgSQL function pgmq.create_non_partitioned(text) line 8 at PERFORM
 SQL statement "SELECT pgmq.create_non_partitioned(queue_name)"
 PL/pgSQL function pgmq."create"(text) line 3 at PERFORM
 SELECT pgmq.create(repeat('a', 47));

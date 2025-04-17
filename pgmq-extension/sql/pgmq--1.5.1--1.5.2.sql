@@ -102,3 +102,155 @@ BEGIN
     RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP FUNCTION pgmq.create_non_partitioned(TEXT);
+CREATE FUNCTION pgmq.create_non_partitioned(queue_name TEXT)
+RETURNS void AS $$
+DECLARE
+  qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+  qtable_seq TEXT := qtable || '_msg_id_seq';
+  atable TEXT := pgmq.format_table_name(queue_name, 'a');
+  lock_key BIGINT;
+BEGIN
+  PERFORM pgmq.validate_queue_name(queue_name);
+  PERFORM pg_advisory_xact_lock(PERFORM pg_advisory_xact_lock(hashtext('pgmq.create_non_partitioned' || queue_name)););
+
+  EXECUTE FORMAT(
+    $QUERY$
+    CREATE TABLE IF NOT EXISTS pgmq.%I (
+        msg_id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+        read_ct INT DEFAULT 0 NOT NULL,
+        enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+        vt TIMESTAMP WITH TIME ZONE NOT NULL,
+        message JSONB,
+        headers JSONB
+    )
+    $QUERY$,
+    qtable
+  );
+
+  EXECUTE FORMAT(
+    $QUERY$
+    CREATE TABLE IF NOT EXISTS pgmq.%I (
+      msg_id BIGINT PRIMARY KEY,
+      read_ct INT DEFAULT 0 NOT NULL,
+      enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+      archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+      vt TIMESTAMP WITH TIME ZONE NOT NULL,
+      message JSONB,
+      headers JSONB
+    );
+    $QUERY$,
+    atable
+  );
+
+  IF pgmq._extension_exists('pgmq') THEN
+      IF NOT pgmq._belongs_to_pgmq(qtable) THEN
+          EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', qtable);
+          EXECUTE FORMAT('ALTER EXTENSION pgmq ADD SEQUENCE pgmq.%I', qtable_seq);
+      END IF;
+
+      IF NOT pgmq._belongs_to_pgmq(atable) THEN
+          EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', atable);
+      END IF;
+  END IF;
+
+  EXECUTE FORMAT(
+    $QUERY$
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (vt ASC);
+    $QUERY$,
+    qtable || '_vt_idx', qtable
+  );
+
+  EXECUTE FORMAT(
+    $QUERY$
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (archived_at);
+    $QUERY$,
+    'archived_at_idx_' || queue_name, atable
+  );
+
+  EXECUTE FORMAT(
+    $QUERY$
+    INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
+    VALUES (%L, false, false)
+    ON CONFLICT
+    DO NOTHING;
+    $QUERY$,
+    queue_name
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE FUNCTION pgmq.create_unlogged(queue_name TEXT)
+RETURNS void AS $$
+DECLARE
+  qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+  qtable_seq TEXT := qtable || '_msg_id_seq';
+  atable TEXT := pgmq.format_table_name(queue_name, 'a');
+BEGIN
+  PERFORM pgmq.validate_queue_name(queue_name);
+  EXECUTE FORMAT(
+    $QUERY$
+    CREATE UNLOGGED TABLE IF NOT EXISTS pgmq.%I (
+        msg_id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+        read_ct INT DEFAULT 0 NOT NULL,
+        enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+        vt TIMESTAMP WITH TIME ZONE NOT NULL,
+        message JSONB,
+        headers JSONB
+    )
+    $QUERY$,
+    qtable
+  );
+
+  EXECUTE FORMAT(
+    $QUERY$
+    CREATE TABLE IF NOT EXISTS pgmq.%I (
+      msg_id BIGINT PRIMARY KEY,
+      read_ct INT DEFAULT 0 NOT NULL,
+      enqueued_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+      archived_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+      vt TIMESTAMP WITH TIME ZONE NOT NULL,
+      message JSONB,
+      headers JSONB
+    );
+    $QUERY$,
+    atable
+  );
+
+  IF pgmq._extension_exists('pgmq') THEN
+      IF NOT pgmq._belongs_to_pgmq(qtable) THEN
+          EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', qtable);
+          EXECUTE FORMAT('ALTER EXTENSION pgmq ADD SEQUENCE pgmq.%I', qtable_seq);
+      END IF;
+
+      IF NOT pgmq._belongs_to_pgmq(atable) THEN
+          EXECUTE FORMAT('ALTER EXTENSION pgmq ADD TABLE pgmq.%I', atable);
+      END IF;
+  END IF;
+
+  EXECUTE FORMAT(
+    $QUERY$
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (vt ASC);
+    $QUERY$,
+    qtable || '_vt_idx', qtable
+  );
+
+  EXECUTE FORMAT(
+    $QUERY$
+    CREATE INDEX IF NOT EXISTS %I ON pgmq.%I (archived_at);
+    $QUERY$,
+    'archived_at_idx_' || queue_name, atable
+  );
+
+  EXECUTE FORMAT(
+    $QUERY$
+    INSERT INTO pgmq.meta (queue_name, is_partitioned, is_unlogged)
+    VALUES (%L, false, true)
+    ON CONFLICT
+    DO NOTHING;
+    $QUERY$,
+    queue_name
+  );
+END;
+$$ LANGUAGE plpgsql;
