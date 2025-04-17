@@ -72,10 +72,11 @@ Community
 - [Java (Spring Boot)](https://github.com/adamalexandru4/pgmq-spring)
 - [Kotlin JVM (JDBC)](https://github.com/vdsirotkin/pgmq-kotlin-jvm)
 - [Javascript (NodeJs)](https://github.com/Muhammad-Magdi/pgmq-js)
-- [TypeScript (NodeJs](https://github.com/waitingsong/pgmq-js/tree/main/packages/pgmq-js) + [Midway.js](https://midwayjs.org/))
+- [TypeScript (NodeJs](https://github.com/waitingsong/pgmq-js) + [Midway.js](https://midwayjs.org/))
 - [TypeScript (Deno)](https://github.com/tmountain/deno-pgmq)
 - [.NET](https://github.com/brianpursley/Npgmq)
 - [Python (with SQLAlchemy)](https://github.com/jason810496/pgmq-sqlalchemy)
+- [REST-API (Bun + Elysia)](https://github.com/eichenroth/pgmq-rest)
 
 ## SQL Examples
 
