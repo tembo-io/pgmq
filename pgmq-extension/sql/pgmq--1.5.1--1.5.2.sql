@@ -113,7 +113,7 @@ DECLARE
   lock_key BIGINT;
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
-  PERFORM pg_advisory_xact_lock(PERFORM pg_advisory_xact_lock(hashtext('pgmq.create_non_partitioned' || queue_name)););
+  PERFORM pg_advisory_xact_lock(hashtext('pgmq.create_non_partitioned' || queue_name)););
 
   EXECUTE FORMAT(
     $QUERY$
