@@ -50,6 +50,14 @@ CREATE TYPE pgmq.queue_record AS (
 -- Functions
 ------------------------------------------------------------
 
+-- Used for consistently creating a lock for a specific queue
+CREATE FUNCTION pgmq.acquire_queue_lock(queue_name TEXT) 
+RETURNS void AS $$
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext('pgmq.queue_' || queue_name));
+END;
+$$ LANGUAGE plpgsql;
+
 -- a helper to format table names and check for invalid characters
 CREATE FUNCTION pgmq.format_table_name(queue_name text, prefix text)
 RETURNS TEXT AS $$
@@ -605,7 +613,7 @@ DECLARE
     fq_atable TEXT := 'pgmq.' || atable;
     partitioned BOOLEAN;
 BEGIN
-    PERFORM pg_advisory_xact_lock(hashtext('pgmq.drop_queue' || queue_name));
+    PERFORM pgmq.acquire_queue_lock(queue_name);
     EXECUTE FORMAT(
         $QUERY$
         SELECT is_partitioned FROM pgmq.meta WHERE queue_name = %L
@@ -727,8 +735,7 @@ DECLARE
   atable TEXT := pgmq.format_table_name(queue_name, 'a');
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
-
-  PERFORM pg_advisory_xact_lock(hashtext('pgmq.create_non_partitioned' || queue_name));
+  PERFORM pgmq.acquire_queue_lock(queue_name);
 
   EXECUTE FORMAT(
     $QUERY$
@@ -804,6 +811,8 @@ DECLARE
   atable TEXT := pgmq.format_table_name(queue_name, 'a');
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
+  PERFORM pgmq.acquire_queue_lock(queue_name);
+
   EXECUTE FORMAT(
     $QUERY$
     CREATE UNLOGGED TABLE IF NOT EXISTS pgmq.%I (
@@ -930,6 +939,7 @@ DECLARE
   fq_atable TEXT := 'pgmq.' || atable;
 BEGIN
   PERFORM pgmq.validate_queue_name(queue_name);
+  PERFORM pgmq.acquire_queue_lock(queue_name);
   PERFORM pgmq._ensure_pg_partman_installed();
   SELECT pgmq._get_partition_col(partition_interval) INTO partition_col;
 
@@ -1077,7 +1087,6 @@ BEGIN
 
 END;
 $$ LANGUAGE plpgsql;
-
 
 CREATE FUNCTION pgmq.create(queue_name TEXT)
 RETURNS void AS $$
