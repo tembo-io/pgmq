@@ -52,7 +52,7 @@ The fastest way to get started is by running the Tembo Docker image, where PGMQ 
 docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 tembo.docker.scarf.sh/tembo/pg17-pgmq:latest
 ```
 
-If you'd like to build from source, you can follow the instructions in [CONTRIBUTING.md](CONTRIBUTING.md).
+If you'd like to install PGMQ into an existing Postgres instance, refer to [INSTALLATION.md](../INSTALLATION.md).
 
 ### Updating
 
