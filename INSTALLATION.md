@@ -83,7 +83,7 @@ PGMQ consists of raw SQL objects and can also be installed directly into any Pos
 Simply executing the SQL definition file on your Postgres instance will create all the required objects. This can be accomplished by cloning the repo then running the following commands. This requires `psql` to be installed and available on your `PATH`.
 
 ```bash
-git clone https://github.com/ChuckHend/pgmq.git
+git clone https://github.com/pgmq/pgmq.git
 
 cd pgmq
 
