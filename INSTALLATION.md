@@ -23,7 +23,7 @@ pgxn install pgmq
 Alternatively, clone the repository:
 
 ```bash
-git clone https://github.com/ChuckHend/pgmq.git
+git clone https://github.com/pgmq/pgmq.git
 cd pgmq/pgmq-extension
 ```
 
