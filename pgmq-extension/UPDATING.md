@@ -1,4 +1,4 @@
-## Updating PGMQ
+## Updating the PGMQ Extension
 
 #### Notes
 - Updates from versions before 0.14.3 are not supported, and a full re-install
