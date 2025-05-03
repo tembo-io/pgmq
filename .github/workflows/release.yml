@@ -3,62 +3,60 @@ on:
   push:
     # Release on semantic version tag.
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
-    branches:
-      - ghcr
 jobs:
-  # pgxn-release:
-  #   if: github.repository == 'pgmq/pgmq'
-  #   name: Release on PGXN
-  #   runs-on: ubuntu-latest
-  #   container: pgxn/pgxn-tools
-  #   defaults:
-  #     run:
-  #       working-directory: ./pgmq-extension
-  #   steps:
-  #     - name: Check out the repo
-  #       uses: actions/checkout@v4
-  #     - name: Bundle the Release
-  #       run: make dist
-  #     - name: Release on PGXN
-  #       env:
-  #         PGXN_USERNAME: ${{ secrets.PGXN_USERNAME }}
-  #         PGXN_PASSWORD: ${{ secrets.PGXN_PASSWORD }}
-  #       run: pgxn-release
-  # trunk-release:
-  #   if: github.repository == 'pgmq/pgmq'
-  #   name: Release on Trunk
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       pg-version: [14, 15, 16, 17]
-  #   defaults:
-  #     run:
-  #       working-directory: ./pgmq-extension
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Install Rust stable toolchain
-  #       uses: dtolnay/rust-toolchain@stable
-  #     - name: Install stoml and pg-trunk
-  #       shell: bash
-  #       run: |
-  #         set -xe
-  #         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
-  #         mv stoml_linux_amd64 stoml
-  #         chmod +x stoml
-  #         sudo mv stoml /usr/local/bin/
-  #         cargo install pg-trunk
-  #     - name: Make trunk
-  #       run: make Trunk.toml
-  #     - name: trunk build
-  #       run: trunk build --pg-version ${{ matrix.pg-version }}
-  #     - name: trunk publish
-  #       env:
-  #         TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
-  #       run: |
-  #         pgmq_ver=$(stoml Trunk.toml extension.version)
-  #         pgmq_descr=$(stoml Trunk.toml extension.description)
-  #         pgmq_repo=$(stoml Trunk.toml extension.repository)
-  #         trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/pgmq/pgmq" --repository "https://github.com/pgmq/pgmq" --license "PostgreSQL" --category featured --category orchestration
+  pgxn-release:
+    if: github.repository == 'pgmq/pgmq'
+    name: Release on PGXN
+    runs-on: ubuntu-latest
+    container: pgxn/pgxn-tools
+    defaults:
+      run:
+        working-directory: ./pgmq-extension
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+      - name: Bundle the Release
+        run: make dist
+      - name: Release on PGXN
+        env:
+          PGXN_USERNAME: ${{ secrets.PGXN_USERNAME }}
+          PGXN_PASSWORD: ${{ secrets.PGXN_PASSWORD }}
+        run: pgxn-release
+  trunk-release:
+    if: github.repository == 'pgmq/pgmq'
+    name: Release on Trunk
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pg-version: [14, 15, 16, 17]
+    defaults:
+      run:
+        working-directory: ./pgmq-extension
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install stoml and pg-trunk
+        shell: bash
+        run: |
+          set -xe
+          wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+          mv stoml_linux_amd64 stoml
+          chmod +x stoml
+          sudo mv stoml /usr/local/bin/
+          cargo install pg-trunk
+      - name: Make trunk
+        run: make Trunk.toml
+      - name: trunk build
+        run: trunk build --pg-version ${{ matrix.pg-version }}
+      - name: trunk publish
+        env:
+          TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
+        run: |
+          pgmq_ver=$(stoml Trunk.toml extension.version)
+          pgmq_descr=$(stoml Trunk.toml extension.description)
+          pgmq_repo=$(stoml Trunk.toml extension.repository)
+          trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/pgmq/pgmq" --repository "https://github.com/pgmq/pgmq" --license "PostgreSQL" --category featured --category orchestration
   container-image-release:
     if: github.repository == 'pgmq/pgmq'
     name: Build and push images

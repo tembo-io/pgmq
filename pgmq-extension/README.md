@@ -46,10 +46,10 @@ Supported on Postgres 14-17.
 
 ## Installation
 
-The fastest way to get started is by running the Tembo Docker image, where PGMQ comes pre-installed in Postgres.
+The fastest way to get started is by running the Docker image, where PGMQ comes pre-installed in Postgres.
 
 ```bash
-docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 tembo.docker.scarf.sh/tembo/pg17-pgmq:latest
+docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 ghcr.io/pgmq/pg17-pgmq:v1.5.1
 ```
 
 If you'd like to install PGMQ into an existing Postgres instance, refer to [INSTALLATION.md](../INSTALLATION.md).
