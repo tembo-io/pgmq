@@ -1,11 +1,11 @@
-name: ⚙️ Release on Quay, Trunk, PGXN
+name: ⚙️ Release on GHCR, Trunk, PGXN
 on:
   push:
     # Release on semantic version tag.
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
 jobs:
   pgxn-release:
-    if: github.repository == 'tembo-io/pgmq'
+    if: github.repository == 'pgmq/pgmq'
     name: Release on PGXN
     runs-on: ubuntu-latest
     container: pgxn/pgxn-tools
@@ -23,7 +23,7 @@ jobs:
           PGXN_PASSWORD: ${{ secrets.PGXN_PASSWORD }}
         run: pgxn-release
   trunk-release:
-    if: github.repository == 'tembo-io/pgmq'
+    if: github.repository == 'pgmq/pgmq'
     name: Release on Trunk
     runs-on: ubuntu-latest
     strategy:
@@ -56,9 +56,9 @@ jobs:
           pgmq_ver=$(stoml Trunk.toml extension.version)
           pgmq_descr=$(stoml Trunk.toml extension.description)
           pgmq_repo=$(stoml Trunk.toml extension.repository)
-          trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/tembo-io/pgmq" --repository "https://github.com/tembo-io/pgmq" --license "PostgreSQL" --category featured --category orchestration
+          trunk publish pgmq --version ${pgmq_ver} --description "A lightweight message queue. Like AWS SQS and RSMQ, on Postgres." --homepage "https://github.com/pgmq/pgmq" --repository "https://github.com/pgmq/pgmq" --license "PostgreSQL" --category featured --category orchestration
   container-image-release:
-    if: github.repository == 'tembo-io/pgmq'
+    if: github.repository == 'pgmq/pgmq'
     name: Build and push images
     runs-on: ubuntu-latest
     strategy:
@@ -92,12 +92,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Quay
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
-          registry: quay.io/tembo
-          username: ${{ secrets.QUAY_USER_TEMBO }}
-          password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set package visibility to public
+        run: |
+          echo "Setting package visibility to public"
+          echo "::set-output name=package_visibility::public"
+
       - name: Generate dockerfile from template file
         working-directory: ./
         run: ./images/pgmq-pg/replace-pg-version.sh ${{ matrix.pg }} ./images/pgmq-pg/Dockerfile.in ./images/pgmq-pg/Dockerfile
@@ -110,5 +116,5 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/pg${{matrix.pg}}-pgmq:v${{ steps.versions.outputs.TAG_VER }}
-            quay.io/tembo/pg${{matrix.pg}}-pgmq:latest
+            ghcr.io/pgmq/pg${{matrix.pg}}-pgmq:v${{ steps.versions.outputs.TAG_VER }}
+            ghcr.io/pgmq/pg${{matrix.pg}}-pgmq:latest
