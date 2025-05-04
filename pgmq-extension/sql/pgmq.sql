@@ -53,7 +53,7 @@ CREATE TYPE pgmq.queue_record AS (
 -- prevents race conditions during queue creation by acquiring a transaction-level advisory lock
 -- uses a transaction advisory lock maintain the lock until transaction commit
 -- a race condition would still exist if lock was released before commit
-CREATE FUNCTION pgmq.acquire_queue_lock(queue_name TEXT) 
+CREATE FUNCTION pgmq.acquire_queue_lock(queue_name TEXT)
 RETURNS void AS $$
 BEGIN
   PERFORM pg_advisory_xact_lock(hashtext('pgmq.queue_' || queue_name));
@@ -703,7 +703,7 @@ BEGIN
     -- complete table identifier must be <= 63
     -- https://www.postgresql.org/docs/17/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
     -- e.g. template_pgmq_q_my_queue is an identifier for my_queue when partitioned
-    -- template_pgmq_q_ (16) + <a max length queue name> (47) = 63 
+    -- template_pgmq_q_ (16) + <a max length queue name> (47) = 63
     RAISE EXCEPTION 'queue name is too long, maximum length is 47 characters';
   END IF;
 END;
@@ -1173,5 +1173,130 @@ BEGIN
     retention_interval,
     qualified_a_table_name
   );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Implementation of FIFO messaging support
+-- read_fifo respects strict ordering of messages with the same FIFO key
+-- Messages with the same 'x-pgmq-fifo' header value will be processed in order
+-- A message with a particular FIFO key won't be read if there are in-flight messages
+-- with the same key, ensuring strict ordering within each key's message group
+CREATE FUNCTION pgmq.read_fifo(
+    queue_name TEXT,
+    vt INTEGER,
+    qty INTEGER
+)
+RETURNS SETOF pgmq.message_record AS $$
+DECLARE
+    sql TEXT;
+    qtable TEXT := pgmq.format_table_name(queue_name, 'q');
+    result_count INTEGER := 0;
+    fifo_keys TEXT[];
+    selected_keys TEXT[] := ARRAY[]::TEXT[];
+    fifo_key TEXT;
+    r pgmq.message_record;
+    first_potentially_readable BIGINT[];
+    results pgmq.message_record[];
+BEGIN
+    -- First, get the first message id per ordering key:
+    sql := FORMAT(
+        $QUERY$
+        WITH first_msgs AS (
+            SELECT MIN(msg_id) as min_msg_id
+            FROM pgmq.%I
+            GROUP BY headers->>'x-pgmq-fifo'
+        )
+        SELECT array_agg(min_msg_id)
+        FROM first_msgs
+        $QUERY$,
+        qtable
+    );
+
+    EXECUTE sql INTO first_potentially_readable;
+
+    IF first_potentially_readable IS NULL THEN
+        first_potentially_readable := ARRAY[]::BIGINT[];
+    END IF;
+
+    -- Then, we read the ones that are available (vt-wise) and not
+    -- locked:
+    sql := FORMAT(
+        $QUERY$
+        WITH cte AS
+        (
+            SELECT msg_id
+            FROM pgmq.%I
+            WHERE vt <= clock_timestamp() AND msg_id = ANY($1)
+            ORDER BY msg_id ASC
+            LIMIT $2
+            FOR UPDATE SKIP LOCKED
+        )
+        UPDATE pgmq.%I m
+        SET
+            vt = clock_timestamp() + %L,
+            read_ct = read_ct + 1
+        FROM cte
+        WHERE m.msg_id = cte.msg_id
+        RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message, m.headers;
+        $QUERY$,
+        qtable, qtable, make_interval(secs => vt)
+    );
+
+    -- Execute and store results
+    FOR r IN EXECUTE sql USING first_potentially_readable, qty
+    LOOP
+        fifo_key := COALESCE(r.headers->>'x-pgmq-fifo', '__NULL__');
+
+        IF NOT fifo_key = ANY(selected_keys) THEN
+            selected_keys := array_append(selected_keys, fifo_key);
+        END IF;
+
+        RETURN NEXT r;
+        result_count := result_count + 1;
+    END LOOP;
+
+    -- If we've already hit our quota, just return
+    IF result_count >= qty THEN
+        RETURN;
+    END IF;
+
+    -- If not, we can get other messages from the same ordering keys
+    -- we've already read from (since we know these are now "unlocked"
+    -- for reading)
+    IF array_length(selected_keys, 1) > 0 THEN
+        sql := FORMAT(
+            $QUERY$
+            WITH cte AS
+            (
+                SELECT msg_id
+                FROM pgmq.%I
+                WHERE vt <= clock_timestamp()
+                AND (
+                  headers->>'x-pgmq-fifo' = ANY($1)
+                  OR (headers->>'x-pgmq-fifo' IS NULL AND '__NULL__' = ANY($1))
+                )
+                ORDER BY msg_id ASC
+                LIMIT $2
+                FOR UPDATE SKIP LOCKED
+            )
+            UPDATE pgmq.%I m
+            SET
+                vt = clock_timestamp() + %L,
+                read_ct = read_ct + 1
+            FROM cte
+            WHERE m.msg_id = cte.msg_id
+            RETURNING m.msg_id, m.read_ct, m.enqueued_at, m.vt, m.message, m.headers;
+            $QUERY$,
+            qtable, qtable, make_interval(secs => vt)
+        );
+
+        -- Return additional messages from the same FIFO keys
+        FOR r IN EXECUTE sql USING selected_keys, qty - result_count
+        LOOP
+            RETURN NEXT r;
+        END LOOP;
+    END IF;
+
+    RETURN;
 END;
 $$ LANGUAGE plpgsql;

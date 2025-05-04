@@ -1,0 +1,88 @@
+-- Test FIFO message queue functionality
+CREATE EXTENSION IF NOT EXISTS pgmq;
+SELECT pgmq.create('fifo_queue');
+ create 
+--------
+ 
+(1 row)
+
+SELECT * FROM pgmq.send('fifo_queue', '"hello"'::jsonb, '{"x-pgmq-fifo": "key-1"}'::jsonb);
+ send 
+------
+    1
+(1 row)
+
+SELECT * FROM pgmq.send('fifo_queue', '"fifo"'::jsonb, '{"x-pgmq-fifo": "key-2"}'::jsonb);
+ send 
+------
+    2
+(1 row)
+
+SELECT * FROM pgmq.send('fifo_queue', '"fifo"'::jsonb, '{"x-pgmq-fifo": "key-2"}'::jsonb);
+ send 
+------
+    3
+(1 row)
+
+SELECT * FROM pgmq.send('fifo_queue', '"fifo"'::jsonb, '{}'::jsonb);
+ send 
+------
+    4
+(1 row)
+
+SELECT msg_id, message, headers FROM pgmq.read_fifo('fifo_queue', 10, 10);
+ msg_id | message |         headers          
+--------+---------+--------------------------
+      1 | "hello" | {"x-pgmq-fifo": "key-1"}
+      2 | "fifo"  | {"x-pgmq-fifo": "key-2"}
+      4 | "fifo"  | {}
+      3 | "fifo"  | {"x-pgmq-fifo": "key-2"}
+(4 rows)
+
+SELECT * FROM pgmq.send('fifo_queue', '"fifo"'::jsonb, '{"x-pgmq-fifo": "key-1"}'::jsonb);
+ send 
+------
+    5
+(1 row)
+
+SELECT * FROM pgmq.send('fifo_queue', '"fifo"'::jsonb, '{}'::jsonb);
+ send 
+------
+    6
+(1 row)
+
+SELECT * FROM pgmq.send('fifo_queue', '"fifo"'::jsonb, '{"x-pgmq-fifo": "key-3"}'::jsonb);
+ send 
+------
+    7
+(1 row)
+
+-- Second read should only get the message with key-3, as key-1 (and no key) still
+-- have messages with active visibility timeouts
+SELECT msg_id, message, headers FROM pgmq.read_fifo('fifo_queue', 10, 10);
+ msg_id | message |         headers          
+--------+---------+--------------------------
+      7 | "fifo"  | {"x-pgmq-fifo": "key-3"}
+(1 row)
+
+-- Expire VT for all messages
+UPDATE pgmq.q_fifo_queue SET vt = CURRENT_TIMESTAMP;
+-- After the VT expires we should be able to read all messages
+SELECT msg_id, message, headers FROM pgmq.read_fifo('fifo_queue', 10, 10);
+ msg_id | message |         headers          
+--------+---------+--------------------------
+      1 | "hello" | {"x-pgmq-fifo": "key-1"}
+      2 | "fifo"  | {"x-pgmq-fifo": "key-2"}
+      4 | "fifo"  | {}
+      7 | "fifo"  | {"x-pgmq-fifo": "key-3"}
+      3 | "fifo"  | {"x-pgmq-fifo": "key-2"}
+      5 | "fifo"  | {"x-pgmq-fifo": "key-1"}
+      6 | "fifo"  | {}
+(7 rows)
+
+SELECT pgmq.drop_queue('fifo_queue');
+ drop_queue 
+------------
+ t
+(1 row)
+
