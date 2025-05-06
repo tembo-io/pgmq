@@ -9,7 +9,7 @@ A lightweight message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RS
 
 **Source**: https://github.com/pgmq/pgmq
 
-<img src="https://github.com/user-attachments/assets/3e6d23c5-83fa-4c4a-98ae-77f305e3cd5c" width="75%" alt="pgmq demo gif">
+<img src="https://github.com/user-attachments/assets/3e6d23c5-83fa-4c4a-98ae-77f305e3cd5c" width="10%" alt="pgmq demo gif">
 
 ## Features
 
