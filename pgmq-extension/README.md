@@ -2,15 +2,12 @@
 
 A lightweight message queue. Like [AWS SQS](https://aws.amazon.com/sqs/) and [RSMQ](https://github.com/smrchy/rsmq) but on Postgres.
 
-[![Tembo Cloud Try Free](https://tembo.io/tryFreeButton.svg)](https://cloud.tembo.io/sign-up)
-
-[![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-293gc1k0k-3K8z~eKW1SEIfrqEI~5_yw)
 [![OSSRank](https://shields.io/endpoint?url=https://ossrank.com/shield/3809)](https://ossrank.com/p/3809)
 [![PGXN version](https://badge.fury.io/pg/pgmq.svg)](https://pgxn.org/dist/pgmq/)
 
-**Documentation**: https://tembo.io/pgmq/
+**Documentation**: https://pgmq.github.io/pgmq/
 
-**Source**: https://github.com/tembo-io/pgmq
+**Source**: https://github.com/pgmq/pgmq
 
 ## Features
 
@@ -60,8 +57,8 @@ To update PGMQ versions, follow the instructions in [UPDATING.md](pgmq-extension
 
 ## Client Libraries
 
-- [Rust](https://github.com/tembo-io/pgmq/tree/main/pgmq-rs)
-- [Python (only for psycopg3)](https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python)
+- [Rust](https://github.com/pgmq/pgmq/tree/main/pgmq-rs)
+- [Python (only for psycopg3)](https://github.com/pgmq/pgmq/tree/main/tembo-pgmq-python)
 
 Community
 
@@ -327,7 +324,7 @@ Partitions behavior is configured at the time queues are created, via `pgmq.crea
 
 In order for automatic partition maintenance to take place, several settings must be added to the `postgresql.conf` file, which is typically located in the postgres `DATADIR`.
 `pg_partman_bgw.interval`
-in `postgresql.conf`. Below are the default configuration values set in Tembo docker images.
+in `postgresql.conf`. Below are the default configuration values set in pgmq docker images.
 
 Add the following to `postgresql.conf`. Note, changing `shared_preload_libraries` requires a restart of Postgres.
 
@@ -350,7 +347,7 @@ As the pgmq community grows, we'd love to see who is using it. Please send a PR 
 
 Currently, officially using pgmq:
 
-1. [Tembo](https://tembo.io) [[@ChuckHend](https://github.com/ChuckHend)]
+1. [Tembo](https://tembo.io) [[@Tembo-io](https://github.com/tembo-io)]
 2. [Supabase](https://supabase.com) [[@Supabase](https://github.com/supabase)]
 3. [Sprinters](https://sprinters.sh) [[@sprinters-sh](https://github.com/sprinters-sh)]
 
@@ -358,6 +355,6 @@ Currently, officially using pgmq:
 
 Thanks goes to these incredible people:
 
-<a href="https://github.com/tembo-io/pgmq/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=tembo-io/pgmq" />
+<a href="https://github.com/pgmq/pgmq/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=pgmq/pgmq" />
 </a>
