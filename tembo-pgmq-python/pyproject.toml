@@ -17,14 +17,30 @@ python = ">=3.9"
 psycopg = {extras = ["binary", "pool"], version = "^3"}
 orjson = "^3"
 asyncpg = { version = "^0.29.0", optional = true }
+sqlalchemy = { version = "^2.0.35", optional = true }
 
 [tool.poetry.extras]
 async = ["asyncpg"]
+sqlalchemy = ["sqlalchemy"]
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
 ruff = "^0.3.1"
 psycopg = {version = "^3.1.14", extras = ["binary", "pool"]}
+
+[tool.poetry.group.dev-sqlalchemy.dependencies]
+sqlalchemy = "2.0.35"
+# postgresql drivers 
+asyncpg = "^0.29.0"
+greenlet = "^3.0.3"
+psycopg = "^3.2.1"
+psycopg2-binary = "^2.9.9"
+# testing
+pytest = "7.4.4"
+pytest-lazy-fixture = "^0.6.3"
+pytest-cov = "^5.0.0"
+pytest-xdist = "^3.6.1"
+filelock = "^3.15.4"
 
 
 [tool.poetry.group.bench.dependencies]
