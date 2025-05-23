@@ -1,0 +1,26 @@
+<header class="px-4 sm:px-6 lg:px-8">
+  <div class="flex items-center justify-between border-b border-zinc-100 py-3 dark:border-neutral-700">
+    <div class="flex items-center gap-4">
+      <a href="/">
+        <strong>Pgmq Admin</strong>
+      </a>
+      <p class="rounded bg-indigo-100 px-2.5 py-0.5 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
+        v<%= Application.spec(:pgmq_admin, :vsn) %>
+      </p>
+      <div>
+        <span class="text-muted p-2 text-slate-700 dark:text-neutral-200">
+          <a href="/queues">Queues</a>
+        </span>
+        <span class="text-muted p-2 text-slate-700 dark:text-neutral-200">
+          <a href="/stats">Stats</a>
+        </span>
+      </div>
+    </div>
+  </div>
+</header>
+<main class="px-4 py-4 sm:px-6 lg:px-8">
+  <div class="max-w-8xl mx-auto">
+    <.flash_group flash={@flash} />
+    <%= @inner_content %>
+  </div>
+</main>
