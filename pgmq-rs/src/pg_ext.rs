@@ -183,7 +183,7 @@ impl PGMQueueExt {
         &self,
         executor: E,
     ) -> Result<Option<Vec<PGMQueueMeta>>, PgmqError> {
-        let queues = sqlx::query!("SELECT * from pgmq.list_queues();")
+        let queues = sqlx::query!(r#"SELECT queue_name, is_partitioned, is_unlogged, created_at as "created_at: chrono::DateTime<Utc>" from pgmq.list_queues();"#)
             .fetch_all(executor)
             .await?;
         if queues.is_empty() {
@@ -219,8 +219,9 @@ impl PGMQueueExt {
         executor: E,
     ) -> Result<Message<T>, PgmqError> {
         check_input(queue_name)?;
+        // queue_name, created_at as "created_at: chrono::DateTime<Utc>", is_partitioned, is_unlogged
         let updated = sqlx::query!(
-            "SELECT * from pgmq.set_vt(queue_name=>$1::text, msg_id=>$2::bigint, vt=>$3::integer);",
+            r#"SELECT msg_id, read_ct, enqueued_at as "enqueued_at: chrono::DateTime<Utc>", vt as "vt: chrono::DateTime<Utc>", message from pgmq.set_vt(queue_name=>$1::text, msg_id=>$2::bigint, vt=>$3::integer);"#,
             queue_name,
             msg_id,
             vt
@@ -321,7 +322,7 @@ impl PGMQueueExt {
     ) -> Result<Option<Message<T>>, PgmqError> {
         check_input(queue_name)?;
         let row = sqlx::query!(
-            "SELECT * from pgmq.read(queue_name=>$1::text, vt=>$2::integer, qty=>$3::integer)",
+            r#"SELECT msg_id, read_ct, enqueued_at as "enqueued_at: chrono::DateTime<Utc>", vt as "vt: chrono::DateTime<Utc>", message from pgmq.read(queue_name=>$1::text, vt=>$2::integer, qty=>$3::integer)"#,
             queue_name,
             vt,
             1
@@ -375,13 +376,13 @@ impl PGMQueueExt {
         let poll_interval_ms =
             poll_interval.map_or(DEFAULT_POLL_INTERVAL_MS, |i| i.as_millis() as i32);
         let result = sqlx::query!(
-            "SELECT * from pgmq.read_with_poll(
+            r#"SELECT msg_id, read_ct, enqueued_at as "enqueued_at: chrono::DateTime<Utc>", vt as "vt: chrono::DateTime<Utc>", message from pgmq.read_with_poll(
                 queue_name=>$1::text,
                 vt=>$2::integer,
                 qty=>$3::integer,
                 max_poll_seconds=>$4::integer,
                 poll_interval_ms=>$5::integer
-            )",
+            )"#,
             queue_name,
             vt,
             max_batch_size,
@@ -500,7 +501,7 @@ impl PGMQueueExt {
         executor: E,
     ) -> Result<Option<Message<T>>, PgmqError> {
         check_input(queue_name)?;
-        let row = sqlx::query!("SELECT * from pgmq.pop(queue_name=>$1::text)", queue_name,)
+        let row = sqlx::query!(r#"SELECT msg_id, read_ct, enqueued_at as "enqueued_at: chrono::DateTime<Utc>", vt as "vt: chrono::DateTime<Utc>", message from pgmq.pop(queue_name=>$1::text)"#, queue_name,)
             .fetch_optional(executor)
             .await?;
         match row {

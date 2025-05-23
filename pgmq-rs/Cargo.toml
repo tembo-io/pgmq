@@ -29,3 +29,7 @@ env_logger = "0.10.0"
 rand = "0.8.5"
 regex = "1.5.4"
 lazy_static = "1.4.0"
+# Enable the `time` feature in dev dependencies to ensure we are able to support consumers who have
+# the feature enabled, either directly or via a transitive dependency. See the following issue for
+# more details: https://github.com/launchbadge/sqlx/issues/3412
+sqlx = { version = "0.8.1", features = ["time"] }
