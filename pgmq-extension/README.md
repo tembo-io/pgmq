@@ -51,7 +51,7 @@ The fastest way to get started is by running the Docker image, where PGMQ comes 
 docker run -d --name pgmq-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 ghcr.io/pgmq/pg17-pgmq:v1.5.1
 ```
 
-If you'd like to install PGMQ into an existing Postgres instance, refer to [INSTALLATION.md](../INSTALLATION.md).
+If you'd like to install PGMQ into an existing Postgres instance, refer to [INSTALLATION.md](https://github.com/pgmq/pgmq/blob/main/INSTALLATION.md).
 
 ### Updating
 
