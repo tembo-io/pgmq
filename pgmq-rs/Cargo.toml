@@ -1,6 +1,6 @@
 [package]
 name = "pgmq"
-version = "0.30.0"
+version = "0.30.1"
 edition = "2021"
 authors = ["Tembo.io"]
 description = "A distributed message queue for Rust applications, on Postgres."
@@ -12,10 +12,10 @@ readme = "README.md"
 repository = "https://github.com/tembo-io/pgmq"
 
 [dependencies]
-chrono = { version = "0.4.23", features = [ "serde" ] }
+chrono = { version = "0.4.23", features = ["serde"] }
 serde = { version = "1.0.152" }
-serde_json = { version = "1.0.91", features = [ "raw_value" ] }
-sqlx = { version = "0.8.1", features = [ "runtime-tokio" , "postgres", "chrono", "json" ] }
+serde_json = { version = "1.0.91", features = ["raw_value"] }
+sqlx = { version = "0.8.1", features = ["runtime-tokio", "postgres", "chrono", "json"] }
 thiserror = "1.0.38"
 tokio = { version = "1", features = ["macros"] }
 log = "0.4.17"
@@ -29,3 +29,15 @@ env_logger = "0.10.0"
 rand = "0.8.5"
 regex = "1.5.4"
 lazy_static = "1.4.0"
+
+# If a consumer has both the `time` and `chrono` features of `sqlx` enabled, `sqlx` will default to using
+# `OffsetDateTime` (from `time`) for timestamp fields instead of `DateTime<Utc>` (from `chrono`), causing a compilation
+# error in `pgmq`. See this issue for more details: https://github.com/launchbadge/sqlx/issues/3412
+
+# `pgmq` only uses the `chrono` feature of `sqlx`, so it's possible to add a query that would encounter this conflict
+# in a consumer and not notice because `pgmq` compiles fine on its own. To ensure queries that would see this conflict
+# are not added in the future, add the `time` feature in dev dependencies. This is a "regression test" of sorts, in
+# that it will enable the `time` feature in tests/examples, simulating the behavior of a consumer of `pgmq` that has
+# both the `time` and `chrono` features enabled. If a query that would see the conflict is added, `pgmq` will fail to
+# compile when running tests/examples.
+sqlx = { version = "0.8.1", features = ["time"] }

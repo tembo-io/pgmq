@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * from pgmq.list_queues();",
+  "query": "SELECT queue_name, is_partitioned, is_unlogged, created_at as \"created_at: chrono::DateTime<Utc>\" from pgmq.list_queues();",
   "describe": {
     "columns": [
       {
@@ -20,7 +20,7 @@
       },
       {
         "ordinal": 3,
-        "name": "created_at",
+        "name": "created_at: chrono::DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
@@ -34,5 +34,5 @@
       null
     ]
   },
-  "hash": "ecde748537ee27524a682a71ac5bfd9237c8b44300c6809cc5808cc1ba497d60"
+  "hash": "b46b05578c075ecc8fb9c561a6d0be974810f4c2047b388832ef14f20a61996c"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * from pgmq.read(queue_name=>$1::text, vt=>$2::integer, qty=>$3::integer)",
+  "query": "SELECT msg_id, read_ct, enqueued_at as \"enqueued_at: chrono::DateTime<Utc>\", vt as \"vt: chrono::DateTime<Utc>\", message from pgmq.set_vt(queue_name=>$1::text, msg_id=>$2::bigint, vt=>$3::integer);",
   "describe": {
     "columns": [
       {
@@ -15,29 +15,24 @@
       },
       {
         "ordinal": 2,
-        "name": "enqueued_at",
+        "name": "enqueued_at: chrono::DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 3,
-        "name": "vt",
+        "name": "vt: chrono::DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 4,
         "name": "message",
         "type_info": "Jsonb"
-      },
-      {
-        "ordinal": 5,
-        "name": "headers",
-        "type_info": "Jsonb"
       }
     ],
     "parameters": {
       "Left": [
         "Text",
-        "Int4",
+        "Int8",
         "Int4"
       ]
     },
@@ -46,9 +41,8 @@
       null,
       null,
       null,
-      null,
       null
     ]
   },
-  "hash": "21b0ca154a192498417a9f1683193f1103d1d6fa4d9dfdc195fb6b8c8092e602"
+  "hash": "e4ae7d7a07b82942bedfd633a555e7eeca38781a82d78096a9a388f74d42e96e"
 }
