@@ -32,7 +32,7 @@ jobs:
           changed_relative_to_ref: origin/${{ github.base_ref || 'not-a-branch' }}
 
   cargo_publish:
-    if: github.repository == 'tembo-io/pgmq'
+    if: github.repository == 'pgmq/pgmq'
     # On a pull request, this is validating that the version
     # is not already published to crates.io, and on a push to
     # main or release branches, it is publishing if the version
